@@ -1,3 +1,7 @@
+# Package manager
+
+Use `pnpm` instead of `npm` for all commands (e.g. `pnpm install`, `pnpm add`, `pnpm run`, `pnpm dlx`). Do not use `npm` or `npx`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
