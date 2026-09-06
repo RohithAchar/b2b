@@ -37,29 +37,25 @@ export default async function Page() {
           {user ? (
             <>
               <Button
-                render={<Link href="/dashboard" />}
-                nativeButton={false}
-                className="w-full"
-              >
-                Go to dashboard
-              </Button>
-              <Button
                 render={
                   <Link
                     href={
-                      profile?.user_type === "supplier"
-                        ? "/supplier/dashboard"
-                        : "/supplier/onboarding"
+                      profile?.user_type === "admin"
+                        ? "/admin/dashboard"
+                        : profile?.user_type === "supplier"
+                          ? "/supplier/dashboard"
+                          : "/supplier/onboarding"
                     }
                   />
                 }
                 nativeButton={false}
-                variant="outline"
                 className="w-full"
               >
-                {profile?.user_type === "supplier"
-                  ? "Supplier dashboard"
-                  : "Become a supplier"}
+                {profile?.user_type === "admin"
+                  ? "Admin dashboard"
+                  : profile?.user_type === "supplier"
+                    ? "Supplier dashboard"
+                    : "Become a supplier"}
               </Button>
               <form action={signOut}>
                 <Button type="submit" variant="outline" className="w-full">

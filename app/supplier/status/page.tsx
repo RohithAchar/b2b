@@ -78,7 +78,7 @@ export default async function SupplierStatusPage() {
             </Button>
           ) : null}
           <Button
-            render={<Link href="/dashboard" />}
+            render={<Link href="/supplier/dashboard" />}
             nativeButton={false}
             variant="outline"
             className="w-full"
