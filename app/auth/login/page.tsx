@@ -9,6 +9,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { signInWithGoogle } from "@/lib/auth/actions";
 import { getSafeNextPath } from "@/lib/auth/paths";
+import { AuthShell } from "../shell";
 import { RequestOtpForm } from "./login-form";
 
 type LoginPageProps = {
@@ -20,7 +21,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const safeNext = getSafeNextPath(next);
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
+    <AuthShell
+      heading="Log in to trade with verified businesses."
+      steps={[
+        "Enter your email — we send a 6-digit code, no password needed.",
+        "Enter the code here, or continue with Google instead.",
+        "Suppliers: apply once, then track verification from your dashboard.",
+      ]}
+    >
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Log in</CardTitle>
@@ -43,6 +51,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </AuthShell>
   );
 }

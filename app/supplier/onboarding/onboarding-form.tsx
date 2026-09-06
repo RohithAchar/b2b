@@ -37,6 +37,14 @@ export type ExistingCompany = {
 
 const STEPS = ["Business", "Tax IDs", "Bank", "Documents", "Logo"] as const;
 
+const STEP_JOBS = [
+  "Who you are and where your business sits.",
+  "The tax IDs we match against government records.",
+  "Where your payouts will land.",
+  "Paper proof for each ID above — matched side by side in review.",
+  "Your public face. Optional, skippable, changeable anytime.",
+] as const;
+
 const DOC_IDS = ["gst_certificate", "pan_card", "license"] as const;
 
 function TextField({
@@ -248,6 +256,9 @@ export function OnboardingForm({
               </li>
             ))}
           </ol>
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            Step {step + 1} of {STEPS.length} — {STEP_JOBS[step]}
+          </p>
 
           <div
             data-step={0}

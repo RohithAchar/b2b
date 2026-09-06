@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSafeNextPath } from "@/lib/auth/paths";
+import { AuthShell } from "../shell";
 import { VerifyOtpForm } from "./verify-form";
 
 type VerifyPageProps = {
@@ -21,7 +22,14 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
+    <AuthShell
+      heading="One code stands between you and the marketplace."
+      steps={[
+        "Open the latest email we sent — earlier codes no longer work.",
+        "Enter the 6 digits here, or click the login link in the email.",
+        "Codes expire quickly. Request a fresh one if this one fails.",
+      ]}
+    >
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Check your inbox</CardTitle>
@@ -32,11 +40,10 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
         <CardContent className="flex flex-col gap-4">
           <VerifyOtpForm email={email} next={getSafeNextPath(next)} />
           <p className="text-xs text-muted-foreground">
-            The email also contains a login link — either works. Each new code
-            expires the previous ones, so use the latest email.
+            Use the latest email — each new code expires the previous ones.
           </p>
         </CardContent>
       </Card>
-    </div>
+    </AuthShell>
   );
 }

@@ -30,7 +30,13 @@ export default async function Page() {
         <CardHeader>
           <CardTitle>B2B Marketplace</CardTitle>
           <CardDescription>
-            {user ? `Signed in as ${user.email}.` : "You are browsing as a guest."}
+            {user
+              ? profile?.user_type === "admin"
+                ? `Signed in as ${user.email}. Supplier applications are waiting in your review desk.`
+                : profile?.user_type === "supplier"
+                  ? `Signed in as ${user.email}. Manage your business from your dashboard.`
+                  : `Signed in as ${user.email}. Sell to verified buyers — apply as a supplier.`
+              : "Trade with verified businesses. Log in to buy or apply as a supplier."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
