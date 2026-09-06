@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +16,12 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("user_type")
+    .eq("id", user?.id ?? "")
+    .maybeSingle();
+
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
       <Card className="w-full max-w-sm">
@@ -24,7 +31,24 @@ export default async function DashboardPage() {
             Signed in as {user?.email ?? "unknown"}.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-3">
+          <Button
+            render={
+              <Link
+                href={
+                  profile?.user_type === "supplier"
+                    ? "/supplier/status"
+                    : "/supplier/onboarding"
+                }
+              />
+            }
+            nativeButton={false}
+            className="w-full"
+          >
+            {profile?.user_type === "supplier"
+              ? "Supplier status"
+              : "Become a supplier"}
+          </Button>
           <form action={signOut}>
             <Button type="submit" variant="outline" className="w-full">
               Log out

@@ -16,6 +16,14 @@ export default async function Page() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("user_type")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
       <Card className="w-full max-w-sm">
@@ -34,6 +42,24 @@ export default async function Page() {
                 className="w-full"
               >
                 Go to dashboard
+              </Button>
+              <Button
+                render={
+                  <Link
+                    href={
+                      profile?.user_type === "supplier"
+                        ? "/supplier/status"
+                        : "/supplier/onboarding"
+                    }
+                  />
+                }
+                nativeButton={false}
+                variant="outline"
+                className="w-full"
+              >
+                {profile?.user_type === "supplier"
+                  ? "Supplier status"
+                  : "Become a supplier"}
               </Button>
               <form action={signOut}>
                 <Button type="submit" variant="outline" className="w-full">

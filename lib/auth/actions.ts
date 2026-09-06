@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/auth/profile";
 import { getSafeNextPath, LOGIN_PATH } from "@/lib/auth/paths";
 
 const emailSchema = z.object({
@@ -95,6 +96,7 @@ export async function verifyOtp(
     return { ok: false, message: "That code did not work. Check it and try again." };
   }
 
+  await ensureProfile(supabase);
   redirect(next);
 }
 

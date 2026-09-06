@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/auth/profile";
 import { getSafeNextPath } from "@/lib/auth/paths";
 
 const TOKEN_HASH_TYPES: readonly EmailOtpType[] = [
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       redirect("/auth/error?reason=exchange-failed");
     }
+    await ensureProfile(supabase);
     redirect(next);
   }
 
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       redirect("/auth/error?reason=exchange-failed");
     }
+    await ensureProfile(supabase);
     redirect(next);
   }
 
