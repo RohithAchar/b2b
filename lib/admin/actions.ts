@@ -75,8 +75,9 @@ export async function approveCompany(
     return { ok: false, message: "Could not approve. Try again." };
   }
 
-  revalidatePath("/admin");
-  redirect("/admin?tab=pending");
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/dashboard/supplier-verification");
+  redirect("/admin/dashboard/supplier-verification?tab=pending");
 }
 
 export async function rejectCompany(
@@ -119,6 +120,7 @@ export async function rejectCompany(
     return { ok: false, message: "Could not send back. Try again." };
   }
 
-  revalidatePath("/admin");
-  redirect("/admin?tab=pending");
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/dashboard/supplier-verification");
+  redirect("/admin/dashboard/supplier-verification?tab=pending");
 }
