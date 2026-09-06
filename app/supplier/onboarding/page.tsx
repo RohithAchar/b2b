@@ -1,11 +1,4 @@
 import { redirect } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
@@ -22,7 +15,7 @@ export default async function OnboardingPage() {
   const { data: company } = await supabase
     .from("companies")
     .select(
-      "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status",
+      "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, logo_path, kyb_status",
     )
     .eq("owner_id", user.id)
     .maybeSingle();
@@ -37,19 +30,15 @@ export default async function OnboardingPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Become a supplier</CardTitle>
-          <CardDescription>
-            {company?.kyb_status === "rejected"
-              ? "Your application needs changes — update the details below and resubmit."
-              : "Fill in your business details. We review every application before approval."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OnboardingForm existing={company} />
-        </CardContent>
-      </Card>
+      <OnboardingForm
+        title="Become a supplier"
+        description={
+          company?.kyb_status === "rejected"
+            ? "Your application needs changes — update the details below and resubmit."
+            : "Fill in your business details. We review every application before approval."
+        }
+        existing={company}
+      />
     </div>
   );
 }

@@ -93,7 +93,7 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
   const { data: company } = await supabase
     .from("companies")
     .select(
-      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, submitted_at",
+      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, logo_path, kyb_status, rejection_note, submitted_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -141,10 +141,22 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader>
-            <CardTitle>{company.business_name}</CardTitle>
-            <CardDescription>
-              {company.contact_person} — {company.phone}
-            </CardDescription>
+            <div className="flex items-center gap-4">
+              {company.logo_path ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${company.logo_path}`}
+                  alt=""
+                  className="size-12 rounded-2xl border border-border object-cover"
+                />
+              ) : null}
+              <div className="flex min-w-0 flex-col gap-1">
+                <CardTitle>{company.business_name}</CardTitle>
+                <CardDescription>
+                  {company.contact_person} — {company.phone}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">

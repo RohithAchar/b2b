@@ -37,7 +37,7 @@ export default async function DashboardPage() {
               <Link
                 href={
                   profile?.user_type === "supplier"
-                    ? "/supplier/status"
+                    ? "/supplier/dashboard"
                     : "/supplier/onboarding"
                 }
               />
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
             className="w-full"
           >
             {profile?.user_type === "supplier"
-              ? "Supplier status"
+              ? "Supplier dashboard"
               : "Become a supplier"}
           </Button>
           <form action={signOut}>

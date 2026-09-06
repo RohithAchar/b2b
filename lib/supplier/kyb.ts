@@ -79,6 +79,12 @@ export const KYB_STEP_FIELDS = [
   ["bank_account", "bank_ifsc"],
 ] as const;
 
+// Editable-anytime business profile: same rules, no status change.
+export const businessProfileSchema = kybSchema.pick({
+  business_name: true,
+  contact_person: true,
+});
+
 export const MAX_DOC_BYTES = 10 * 1024 * 1024;
 export const ALLOWED_DOC_TYPES = [
   "application/pdf",
@@ -86,6 +92,26 @@ export const ALLOWED_DOC_TYPES = [
   "image/png",
   "application/msword",
 ] as const;
+
+export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+export const ALLOWED_LOGO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+export function validateLogoFile(file: File | null): string | null {
+  if (!file || file.size === 0) {
+    return null;
+  }
+  if (!(ALLOWED_LOGO_TYPES as readonly string[]).includes(file.type)) {
+    return "Only JPG, PNG or WEBP images are allowed.";
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    return "Logo must be under 2 MB.";
+  }
+  return null;
+}
 
 export function validateDocFile(file: File | null): string | null {
   if (!file || file.size === 0) {
