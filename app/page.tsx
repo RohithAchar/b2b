@@ -1,19 +1,57 @@
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/lib/auth/actions";
 
-export default function Page() {
+export default async function Page() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
+    <div className="flex min-h-svh items-center justify-center p-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>B2B Marketplace</CardTitle>
+          <CardDescription>
+            {user ? `Signed in as ${user.email}.` : "You are browsing as a guest."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {user ? (
+            <>
+              <Button
+                render={<Link href="/dashboard" />}
+                nativeButton={false}
+                className="w-full"
+              >
+                Go to dashboard
+              </Button>
+              <form action={signOut}>
+                <Button type="submit" variant="outline" className="w-full">
+                  Log out
+                </Button>
+              </form>
+            </>
+          ) : (
+            <Button
+              render={<Link href="/auth/login" />}
+              nativeButton={false}
+              className="w-full"
+            >
+              Log in
+            </Button>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }
