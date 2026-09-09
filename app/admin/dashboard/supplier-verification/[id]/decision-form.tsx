@@ -1,8 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   approveCompany,
@@ -25,15 +27,15 @@ export function DecisionForm({ id }: { id: string }) {
   const message = approveState.message || rejectState.message;
 
   return (
-    <div className="flex flex-col gap-4">
+    <FieldGroup>
       {message ? (
-        <p role="alert" className="text-sm text-destructive">
-          {message}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
       ) : null}
       <form action={approveAction}>
         <input type="hidden" name="id" value={id} />
-        <Button type="submit" disabled={approving || rejecting} className="w-full">
+        <Button type="submit" disabled={approving || rejecting}>
           {approving ? "Approving…" : "Approve supplier"}
         </Button>
       </form>
@@ -41,43 +43,40 @@ export function DecisionForm({ id }: { id: string }) {
         <Button
           type="button"
           variant="outline"
-          className="w-full"
           onClick={() => setShowReject(true)}
         >
           Send back with note
         </Button>
       ) : (
-        <form action={rejectAction} className="flex flex-col gap-3">
-          <input type="hidden" name="id" value={id} />
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="note">What should the supplier fix?</Label>
-            <Textarea
-              id="note"
-              name="note"
-              placeholder="e.g. GST certificate is blurry — please upload a clearer scan."
-              required
-            />
-          </div>
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowReject(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={rejecting}
-              className="flex-1"
-            >
-              {rejecting ? "Sending…" : "Send back"}
-            </Button>
-          </div>
+        <form action={rejectAction}>
+          <FieldGroup>
+            <input type="hidden" name="id" value={id} />
+            <Field>
+              <FieldLabel htmlFor="note">
+                What should the supplier fix?
+              </FieldLabel>
+              <Textarea
+                id="note"
+                name="note"
+                placeholder="e.g. GST certificate is blurry — please upload a clearer scan."
+                required
+              />
+            </Field>
+            <ButtonGroup>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowReject(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive" disabled={rejecting}>
+                {rejecting ? "Sending…" : "Send back"}
+              </Button>
+            </ButtonGroup>
+          </FieldGroup>
         </form>
       )}
-    </div>
+    </FieldGroup>
   );
 }

@@ -35,7 +35,7 @@ export default async function EditCategoryPage({
     .order("name");
 
   return (
-    <div className="mx-auto w-full max-w-xl p-6">
+    <div className="mx-auto w-full max-w-xl">
       <Card>
         <CardHeader>
           <CardTitle>Edit category</CardTitle>

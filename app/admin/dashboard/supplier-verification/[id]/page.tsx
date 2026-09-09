@@ -1,15 +1,33 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { DecisionForm } from "./decision-form";
@@ -24,27 +42,25 @@ const STATUS_BADGE: Record<
   rejected: { label: "Needs changes", variant: "destructive" },
 };
 
-function Field({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || "—"}</span>
-    </div>
-  );
-}
-
-function SectionTitle({ index, title }: { index: string; title: string }) {
-  return (
-    <h2 className="text-base font-medium">
-      <span className="mr-2 text-muted-foreground">{index}</span>
-      {title}
-    </h2>
+    <Item variant="outline" size="sm">
+      <ItemContent>
+        <ItemTitle>{value || "—"}</ItemTitle>
+        <ItemDescription>{label}</ItemDescription>
+      </ItemContent>
+    </Item>
   );
 }
 
 function DocPreview({ url, path }: { url: string | null; path: string | null }) {
   if (!url) {
-    return <span className="text-sm text-muted-foreground">Not uploaded</span>;
+    return (
+      <Empty>
+        <EmptyTitle>Not uploaded</EmptyTitle>
+        <EmptyDescription>This document was not provided.</EmptyDescription>
+      </Empty>
+    );
   }
   const lower = (path ?? "").toLowerCase();
   if (lower.endsWith(".pdf")) {
@@ -71,14 +87,9 @@ function DocPreview({ url, path }: { url: string | null; path: string | null }) 
     );
   }
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-sm text-primary underline underline-offset-4"
-    >
+    <Button render={<a href={url} target="_blank" rel="noopener noreferrer" />} nativeButton={false} variant="outline">
       Open document
-    </a>
+    </Button>
   );
 }
 
@@ -129,97 +140,115 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
     company.kyb_status === "pending" || company.kyb_status === "rejected";
 
   return (
-    <div className="mx-auto w-full max-w-5xl p-6">
-      <Button
-        render={<Link href="/admin/dashboard/supplier-verification" />}
-        nativeButton={false}
-        variant="ghost"
-        className="mb-4"
-      >
-        ← Back to queue
-      </Button>
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              render={<Link href="/admin/dashboard/supplier-verification" />}
+            >
+              Supplier applications
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{company.business_name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-4">
-              {company.logo_path ? (
-                // eslint-disable-next-line @next/next/no-img-element
+            <CardTitle>{company.business_name}</CardTitle>
+            <CardDescription>
+              {company.contact_person} — {company.phone}
+            </CardDescription>
+            {company.logo_path ? (
+              <CardAction>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${company.logo_path}`}
                   alt=""
                   className="size-12 rounded-2xl border border-border object-cover"
                 />
-              ) : null}
-              <div className="flex min-w-0 flex-col gap-1">
-                <CardTitle>{company.business_name}</CardTitle>
-                <CardDescription>
-                  {company.contact_person} — {company.phone}
-                </CardDescription>
-              </div>
-            </div>
+              </CardAction>
+            ) : null}
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
-            <div className="flex flex-col gap-4">
-              <SectionTitle index="1" title="Business" />
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Contact person" value={company.contact_person} />
-                <Field label="Mobile" value={company.phone} />
-              </div>
-              <Field
-                label="Registered address"
-                value={
-                  company.address
-                    ? `${company.address}, ${company.city}, ${company.state} ${company.pincode}`
-                    : null
-                }
-              />
-            </div>
+            <FieldSet>
+              <FieldLegend>1 — Business</FieldLegend>
+              <ItemGroup>
+                <Detail label="Contact person" value={company.contact_person} />
+                <Detail label="Mobile" value={company.phone} />
+                <Detail
+                  label="Registered address"
+                  value={
+                    company.address
+                      ? `${company.address}, ${company.city}, ${company.state} ${company.pincode}`
+                      : null
+                  }
+                />
+              </ItemGroup>
+            </FieldSet>
             <Separator />
-            <div className="flex flex-col gap-4">
-              <SectionTitle index="2" title="Tax IDs" />
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="GSTIN" value={company.gstin} />
-                <Field label="PAN" value={company.pan} />
-              </div>
-            </div>
+            <FieldSet>
+              <FieldLegend>2 — Tax IDs</FieldLegend>
+              <ItemGroup>
+                <Detail label="GSTIN" value={company.gstin} />
+                <Detail label="PAN" value={company.pan} />
+              </ItemGroup>
+            </FieldSet>
             <Separator />
-            <div className="flex flex-col gap-4">
-              <SectionTitle index="3" title="Bank" />
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Account number" value={company.bank_account} />
-                <Field label="IFSC" value={company.bank_ifsc} />
-              </div>
-            </div>
+            <FieldSet>
+              <FieldLegend>3 — Bank</FieldLegend>
+              <ItemGroup>
+                <Detail label="Account number" value={company.bank_account} />
+                <Detail label="IFSC" value={company.bank_ifsc} />
+              </ItemGroup>
+            </FieldSet>
             <Separator />
-            <div className="flex flex-col gap-4">
-              <SectionTitle index="4" title="Documents" />
-              {docs.map((doc) => (
-                <div key={doc.label} className="flex flex-col gap-2">
-                  <Label>
-                    {doc.label}
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      filed as {doc.against || "—"}
-                    </span>
-                  </Label>
-                  <DocPreview url={signedUrls[doc.label] ?? null} path={doc.path} />
-                  {signedUrls[doc.label] ? (
-                    <a
-                      href={signedUrls[doc.label]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary underline underline-offset-4"
-                    >
-                      Open in new tab to zoom
-                    </a>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+            <FieldSet>
+              <FieldLegend>4 — Documents</FieldLegend>
+              <ItemGroup>
+                {docs.map((doc) => (
+                  <Item key={doc.label} variant="outline">
+                    <ItemContent>
+                      <ItemTitle>{doc.label}</ItemTitle>
+                      <ItemDescription>
+                        filed as {doc.against || "—"}
+                      </ItemDescription>
+                      <DocPreview
+                        url={signedUrls[doc.label] ?? null}
+                        path={doc.path}
+                      />
+                      {signedUrls[doc.label] ? (
+                        <Button
+                          render={
+                            <a
+                              href={signedUrls[doc.label]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            />
+                          }
+                          nativeButton={false}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Open in new tab to zoom
+                        </Button>
+                      ) : null}
+                    </ItemContent>
+                  </Item>
+                ))}
+              </ItemGroup>
+            </FieldSet>
             {company.kyb_status === "rejected" && company.rejection_note ? (
-              <div className="flex flex-col gap-1 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
-                <Label>Previous note to supplier</Label>
-                <p className="text-sm">{company.rejection_note}</p>
-              </div>
+              <Alert variant="destructive">
+                <AlertTitle>Previous note to supplier</AlertTitle>
+                <AlertDescription>
+                  {company.rejection_note}
+                </AlertDescription>
+              </Alert>
             ) : null}
           </CardContent>
         </Card>
@@ -227,7 +256,7 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
         <div className="lg:sticky lg:top-6 lg:self-start">
           <Card>
             <CardHeader>
-              <Badge variant={status.variant}>{status.label}</Badge>
+              <CardTitle>Decision</CardTitle>
               <CardDescription>
                 Submitted{" "}
                 {company.submitted_at
@@ -238,14 +267,18 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
                     })
                   : "—"}
               </CardDescription>
+              <CardAction>
+                <Badge variant={status.variant}>{status.label}</Badge>
+              </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {decidable ? (
                 <DecisionForm id={company.id} />
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Already decided — no action needed.
-                </p>
+                <Empty>
+                  <EmptyTitle>Already decided</EmptyTitle>
+                  <EmptyDescription>No action needed.</EmptyDescription>
+                </Empty>
               )}
             </CardContent>
           </Card>

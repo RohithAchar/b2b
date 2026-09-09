@@ -1,14 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 
@@ -71,19 +81,21 @@ export default async function SupplierOverviewPage() {
   const status = STATUS[company.kyb_status] ?? STATUS.draft;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-center gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div className="mb-2 flex min-w-0 items-center gap-4">
         {company.logo_path ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl(company.logo_path)}
             alt=""
-            className="size-14 rounded-2xl border border-border object-cover"
+            className="size-14 shrink-0 rounded-2xl border border-border object-cover"
           />
         ) : null}
-        <div>
-          <h1 className="text-xl font-medium">{company.business_name}</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold tracking-tight">
+            {company.business_name}
+          </h1>
+          <p className="truncate text-sm text-muted-foreground">
             {company.contact_person} — {company.city}, {company.state}
           </p>
         </div>
@@ -91,12 +103,17 @@ export default async function SupplierOverviewPage() {
 
       <Card>
         <CardHeader>
-          <Badge variant={status.variant}>{status.title}</Badge>
+          <CardTitle>{status.title}</CardTitle>
           <CardDescription>{status.body}</CardDescription>
+          <CardAction>
+            <Badge variant={status.variant}>{status.title}</Badge>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {company.kyb_status === "rejected" && company.rejection_note ? (
-            <p className="text-sm text-destructive">{company.rejection_note}</p>
+            <Alert variant="destructive">
+              <AlertDescription>{company.rejection_note}</AlertDescription>
+            </Alert>
           ) : null}
           <div className="flex gap-3">
             <Button
@@ -125,10 +142,33 @@ export default async function SupplierOverviewPage() {
         <CardHeader>
           <CardTitle>What unlocks next</CardTitle>
           <CardDescription>
-            Once verified you can list products, receive inquiries, and grow
-            from here. We will update this page when each tool opens.
+            {company.kyb_status === "verified"
+              ? "You can now list products, receive inquiries, and grow from here."
+              : "Once verified you can list products, receive inquiries, and grow from here. We will update this page when each tool opens."}
           </CardDescription>
         </CardHeader>
+        {company.kyb_status === "verified" ? (
+          <CardContent>
+            <ItemGroup>
+              <Item variant="outline">
+                <ItemContent>
+                  <ItemTitle>Product catalog</ItemTitle>
+                  <ItemDescription>
+                    List products with pricing, MOQ and images.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Button
+                    render={<Link href="/supplier/dashboard/products" />}
+                    nativeButton={false}
+                  >
+                    Manage products
+                  </Button>
+                </ItemActions>
+              </Item>
+            </ItemGroup>
+          </CardContent>
+        ) : null}
       </Card>
     </div>
   );

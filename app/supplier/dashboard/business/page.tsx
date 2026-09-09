@@ -8,17 +8,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { BusinessProfileForm } from "./business-form";
 
-function Field({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || "—"}</span>
-    </div>
+    <Item variant="outline" size="sm">
+      <ItemContent>
+        <ItemTitle>{value || "—"}</ItemTitle>
+        <ItemDescription>{label}</ItemDescription>
+      </ItemContent>
+    </Item>
   );
 }
 
@@ -48,7 +57,16 @@ export default async function SupplierBusinessPage() {
     company.kyb_status === "draft" || company.kyb_status === "rejected";
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div className="mb-2">
+        <Button
+          render={<Link href="/supplier/dashboard" />}
+          nativeButton={false}
+          variant="ghost"
+        >
+          Back to overview
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Business profile</CardTitle>
@@ -75,51 +93,42 @@ export default async function SupplierBusinessPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <div className="flex flex-col gap-4">
-            <h2 className="text-base font-medium">Contact & address</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Mobile" value={company.phone} />
-              <Field
-                label="City"
-                value={company.city}
+          <FieldSet>
+            <FieldLegend>Contact & address</FieldLegend>
+            <ItemGroup>
+              <Detail label="Mobile" value={company.phone} />
+              <Detail label="City" value={company.city} />
+              <Detail
+                label="Registered address"
+                value={
+                  company.address
+                    ? `${company.address}, ${company.city}, ${company.state} ${company.pincode}`
+                    : null
+                }
               />
-            </div>
-            <Field
-              label="Registered address"
-              value={
-                company.address
-                  ? `${company.address}, ${company.city}, ${company.state} ${company.pincode}`
-                  : null
-              }
-            />
-          </div>
-          <Separator />
-          <div className="flex flex-col gap-4">
-            <h2 className="text-base font-medium">Tax IDs</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="GSTIN" value={company.gstin} />
-              <Field label="PAN" value={company.pan} />
-            </div>
-          </div>
-          <Separator />
-          <div className="flex flex-col gap-4">
-            <h2 className="text-base font-medium">Bank</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Account number" value={company.bank_account} />
-              <Field label="IFSC" value={company.bank_ifsc} />
-            </div>
-          </div>
+            </ItemGroup>
+          </FieldSet>
+          <FieldSet>
+            <FieldLegend>Tax IDs</FieldLegend>
+            <ItemGroup>
+              <Detail label="GSTIN" value={company.gstin} />
+              <Detail label="PAN" value={company.pan} />
+            </ItemGroup>
+          </FieldSet>
+          <FieldSet>
+            <FieldLegend>Bank</FieldLegend>
+            <ItemGroup>
+              <Detail label="Account number" value={company.bank_account} />
+              <Detail label="IFSC" value={company.bank_ifsc} />
+            </ItemGroup>
+          </FieldSet>
           {editable ? (
-            <>
-              <Separator />
-              <Button
-                render={<Link href="/supplier/onboarding" />}
-                nativeButton={false}
-                className="w-full"
-              >
-                Edit full application
-              </Button>
-            </>
+            <Button
+              render={<Link href="/supplier/onboarding" />}
+              nativeButton={false}
+            >
+              Edit full application
+            </Button>
           ) : null}
         </CardContent>
       </Card>

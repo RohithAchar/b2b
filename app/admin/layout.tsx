@@ -2,12 +2,9 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Header } from "@/components/layout/header";
+import { Main } from "@/components/layout/main";
 import { AdminSidebar } from "./sidebar";
 
 export default async function AdminLayout({
@@ -40,15 +37,16 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <Suspense>
-        <AdminSidebar pendingCount={pendingCount ?? 0} />
+        <AdminSidebar
+          pendingCount={pendingCount ?? 0}
+          user={{ name: "Admin", email: user.email ?? "" }}
+        />
       </Suspense>
-      <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="h-4" />
+      <SidebarInset className="@container/content">
+        <Header>
           <span className="text-sm font-medium">Review desk</span>
-        </header>
-        {children}
+        </Header>
+        <Main>{children}</Main>
       </SidebarInset>
     </SidebarProvider>
   );

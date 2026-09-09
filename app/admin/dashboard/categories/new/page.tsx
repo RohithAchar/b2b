@@ -27,7 +27,7 @@ export default async function NewCategoryPage({
     parent && (parents ?? []).some((p) => p.id === parent) ? parent : "";
 
   return (
-    <div className="mx-auto w-full max-w-xl p-6">
+    <div className="mx-auto w-full max-w-xl">
       <Card>
         <CardHeader>
           <CardTitle>Add category</CardTitle>

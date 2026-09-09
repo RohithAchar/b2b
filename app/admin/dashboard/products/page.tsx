@@ -20,59 +20,52 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 
 const TABS = [
-  { key: "pending", label: "To verify" },
-  { key: "verified", label: "Approved" },
-  { key: "rejected", label: "Needs changes" },
+  { key: "pending", label: "To review" },
+  { key: "approved", label: "Live" },
+  { key: "rejected", label: "Sent back" },
 ] as const;
 
-const BASE = "/admin/dashboard/supplier-verification";
+const BASE = "/admin/dashboard/products";
+
+function supplierName(s: unknown): string {
+  if (Array.isArray(s)) return (s[0] as { business_name?: string } | undefined)?.business_name ?? "—";
+  return (s as { business_name?: string } | null)?.business_name ?? "—";
+}
 
 type TabKey = (typeof TABS)[number]["key"];
 
-type AdminQueuePageProps = {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
   searchParams: Promise<{ tab?: string }>;
-};
-
-export default async function AdminQueuePage({ searchParams }: AdminQueuePageProps) {
+}) {
   const { tab } = await searchParams;
-  const active: TabKey =
-    tab === "verified" || tab === "rejected" ? tab : "pending";
-
+  const active: TabKey = tab === "approved" || tab === "rejected" ? tab : "pending";
   const supabase = await createClient();
 
-  const { count: pendingCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "pending");
-  const { count: verifiedCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "verified");
-  const { count: rejectedCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "rejected");
+  const counts: Record<TabKey, number> = { pending: 0, approved: 0, rejected: 0 };
+  for (const t of TABS) {
+    const { count } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("status", t.key);
+    counts[t.key] = count ?? 0;
+  }
 
-  const counts: Record<TabKey, number> = {
-    pending: pendingCount ?? 0,
-    verified: verifiedCount ?? 0,
-    rejected: rejectedCount ?? 0,
-  };
-
-  const { data: companies } = await supabase
-    .from("companies")
-    .select("id, business_name, contact_person, city, state, submitted_at")
-    .eq("kyb_status", active)
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, title, price_per_unit, unit, moq, status, submitted_at, supplier:supplier_id(business_name)")
+    .eq("status", active)
     .order("submitted_at", { ascending: true, nullsFirst: true });
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Supplier applications</CardTitle>
+          <CardTitle>Product approvals</CardTitle>
           <CardDescription>
-            Review each business, open its documents, then approve or send back
-            with a note.
+            Review listings, check images and variants, then approve or send
+            back.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -90,29 +83,25 @@ export default async function AdminQueuePage({ searchParams }: AdminQueuePagePro
             ))}
           </div>
           <Separator />
-          {!companies || companies.length === 0 ? (
+          {!products || products.length === 0 ? (
             <Empty>
               <EmptyTitle>Nothing here</EmptyTitle>
-              <EmptyDescription>
-                No applications in this queue right now.
-              </EmptyDescription>
+              <EmptyDescription>No {active} products right now.</EmptyDescription>
             </Empty>
           ) : (
             <ItemGroup>
-              {companies.map((c) => (
-                <Item key={c.id} variant="outline" size="sm">
+              {products.map((p) => (
+                <Item key={p.id} variant="outline" size="sm">
                   <ItemContent>
-                    <ItemTitle>{c.business_name}</ItemTitle>
+                    <ItemTitle>{p.title}</ItemTitle>
                     <ItemDescription>
-                      {c.contact_person} — {c.city}, {c.state}
-                      {c.submitted_at
-                        ? ` — submitted ${new Date(c.submitted_at).toLocaleDateString()}`
-                        : null}
+                      {supplierName(p.supplier)} — ₹{Number(p.price_per_unit)} /{" "}
+                      {p.unit} — MOQ {p.moq}
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
                     <Button
-                      render={<Link href={`${BASE}/${c.id}`} />}
+                      render={<Link href={`${BASE}/${p.id}`} />}
                       nativeButton={false}
                       variant="outline"
                       size="sm"

@@ -1,9 +1,21 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import {
   updateBusinessProfile,
   type KybActionState,
@@ -50,22 +62,24 @@ export function BusinessProfileForm({
     (logoPath ? logoPublicUrl(logoPath) : null);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <div className="flex items-center gap-4">
-        {currentLogo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={currentLogo}
-            alt=""
-            className="size-14 rounded-2xl border border-border object-cover"
-          />
-        ) : (
-          <span className="flex size-14 items-center justify-center rounded-2xl border border-border text-xs text-muted-foreground">
-            No logo
-          </span>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Label htmlFor="logo">Company logo</Label>
+    <form action={action}>
+      <FieldGroup>
+        <Item variant="outline">
+          <ItemMedia variant="image">
+            {currentLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={currentLogo} alt="" />
+            ) : null}
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{businessName}</ItemTitle>
+            <ItemDescription>
+              {currentLogo ? "Choose a file to replace the logo." : "No logo yet."}
+            </ItemDescription>
+          </ItemContent>
+        </Item>
+        <Field>
+          <FieldLabel htmlFor="logo">Company logo</FieldLabel>
           <Input
             id="logo"
             name="logo"
@@ -73,43 +87,36 @@ export function BusinessProfileForm({
             accept=".jpg,.jpeg,.png,.webp"
             onChange={onLogoChange}
           />
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="business_name">Company name</Label>
-        <Input
-          id="business_name"
-          name="business_name"
-          required
-          minLength={2}
-          defaultValue={businessName}
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="contact_person">Contact name</Label>
-        <Input
-          id="contact_person"
-          name="contact_person"
-          required
-          minLength={2}
-          defaultValue={contactPerson}
-        />
-      </div>
-      {state.message ? (
-        <p
-          role={state.ok ? "status" : "alert"}
-          className={
-            state.ok
-              ? "text-sm text-muted-foreground"
-              : "text-sm text-destructive"
-          }
-        >
-          {state.message}
-        </p>
-      ) : null}
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Saving…" : "Save changes"}
-      </Button>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="business_name">Company name</FieldLabel>
+          <Input
+            id="business_name"
+            name="business_name"
+            required
+            minLength={2}
+            defaultValue={businessName}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="contact_person">Contact name</FieldLabel>
+          <Input
+            id="contact_person"
+            name="contact_person"
+            required
+            minLength={2}
+            defaultValue={contactPerson}
+          />
+        </Field>
+        {state.message ? (
+          <Alert variant={state.ok ? "default" : "destructive"}>
+            <AlertDescription>{state.message}</AlertDescription>
+          </Alert>
+        ) : null}
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save changes"}
+        </Button>
+      </FieldGroup>
     </form>
   );
 }

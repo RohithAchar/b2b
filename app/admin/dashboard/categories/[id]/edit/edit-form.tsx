@@ -1,9 +1,19 @@
 "use client";
 
 import { useActionState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import {
   updateCategory,
   type CategoryActionState,
@@ -27,54 +37,65 @@ export function EditCategoryForm({
   const [state, action, pending] = useActionState(updateCategory, initialState);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <input type="hidden" name="id" value={id} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="parent_id">Parent (leave empty for a top-level category)</Label>
-        <select
-          id="parent_id"
-          name="parent_id"
-          defaultValue={parentId ?? ""}
-          className="h-9 rounded-4xl border border-input bg-input/30 px-3 text-sm outline-none"
-        >
-          <option value="">No parent — top-level category</option>
-          {parents
-            .filter((p) => p.id !== id)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" required minLength={2} defaultValue={name} />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="image">
-          Image (JPG, PNG or WEBP, max 5 MB)
+    <form action={action}>
+      <FieldGroup>
+        <input type="hidden" name="id" value={id} />
+        <Field>
+          <FieldLabel htmlFor="parent_id">
+            Parent (leave empty for a top-level category)
+          </FieldLabel>
+          <NativeSelect
+            id="parent_id"
+            name="parent_id"
+            defaultValue={parentId ?? ""}
+          >
+            <NativeSelectOption value="">
+              No parent — top-level category
+            </NativeSelectOption>
+            {parents
+              .filter((p) => p.id !== id)
+              .map((p) => (
+                <NativeSelectOption key={p.id} value={p.id}>
+                  {p.name}
+                </NativeSelectOption>
+              ))}
+          </NativeSelect>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="name">Name</FieldLabel>
+          <Input
+            id="name"
+            name="name"
+            required
+            minLength={2}
+            defaultValue={name}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="image">
+            Image (JPG, PNG or WEBP, max 5 MB)
+          </FieldLabel>
           {imageKept ? (
-            <span className="ml-2 text-xs text-muted-foreground">
-              (already set — choose a file to replace)
-            </span>
+            <FieldDescription>
+              Already set — choose a file to replace.
+            </FieldDescription>
           ) : null}
-        </Label>
-        <Input
-          id="image"
-          name="image"
-          type="file"
-          accept=".jpg,.jpeg,.png,.webp"
-        />
-      </div>
-      {state.message ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.message}
-        </p>
-      ) : null}
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save changes"}
-      </Button>
+          <Input
+            id="image"
+            name="image"
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp"
+          />
+        </Field>
+        {state.message ? (
+          <Alert variant="destructive">
+            <AlertDescription>{state.message}</AlertDescription>
+          </Alert>
+        ) : null}
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save changes"}
+        </Button>
+      </FieldGroup>
     </form>
   );
 }

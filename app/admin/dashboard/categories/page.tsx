@@ -1,12 +1,24 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
 import {
   DeleteCategoryButton,
@@ -30,10 +42,10 @@ export default async function CategoriesPage() {
     (rows ?? []).filter((r) => r.parent_id === parentId);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div className="mb-2 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-medium">Categories</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
           <p className="text-sm text-muted-foreground">
             What suppliers will browse. Hidden items stay invisible until you
             turn them on.
@@ -49,89 +61,100 @@ export default async function CategoriesPage() {
 
       {parents.length === 0 ? (
         <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">
-              No categories yet. Add the first one above.
-            </p>
+          <CardContent>
+            <Empty>
+              <EmptyTitle>No categories yet</EmptyTitle>
+              <EmptyDescription>
+                Add the first one to get started.
+              </EmptyDescription>
+            </Empty>
           </CardContent>
         </Card>
       ) : (
         parents.map((parent) => (
           <Card key={parent.id}>
             <CardHeader>
-              <div className="flex items-center gap-4">
-                {parent.image_path !== "pending" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imageUrl(parent.image_path)}
-                    alt=""
-                    className="size-12 rounded-xl border border-border object-cover"
-                  />
-                ) : null}
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <CardTitle>{parent.name}</CardTitle>
-                  <CardDescription>
-                    {parent.is_active ? "Visible" : "Hidden"}
-                  </CardDescription>
-                </div>
-                <ToggleVisibilityButton
-                  id={parent.id}
-                  isActive={parent.is_active}
-                />
-                <Button
-                  render={
-                    <Link
-                      href={`/admin/dashboard/categories/${parent.id}/edit`}
-                    />
-                  }
-                  nativeButton={false}
-                  variant="outline"
-                >
-                  Edit
-                </Button>
-                <DeleteCategoryButton id={parent.id} />
-              </div>
+              <CardTitle>{parent.name}</CardTitle>
+              <CardDescription>
+                {parent.is_active ? "Visible" : "Hidden"}
+              </CardDescription>
+              <CardAction>
+                <Badge variant={parent.is_active ? "default" : "outline"}>
+                  {parent.is_active ? "Visible" : "Hidden"}
+                </Badge>
+              </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {childrenOf(parent.id).map((child) => (
-                <div
-                  key={child.id}
-                  className="flex items-center gap-4 rounded-xl border border-border p-3"
-                >
-                  {child.image_path !== "pending" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imageUrl(child.image_path)}
-                      alt=""
-                      className="size-10 rounded-xl border border-border object-cover"
-                    />
+              <ItemGroup>
+                <Item variant="outline" size="sm">
+                  {parent.image_path && parent.image_path !== "pending" ? (
+                    <ItemMedia variant="image">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imageUrl(parent.image_path)} alt="" />
+                    </ItemMedia>
                   ) : null}
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-medium">
-                      {child.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {child.is_active ? "Visible" : "Hidden"}
-                    </span>
-                  </div>
-                  <ToggleVisibilityButton
-                    id={child.id}
-                    isActive={child.is_active}
-                  />
-                  <Button
-                    render={
-                      <Link
-                        href={`/admin/dashboard/categories/${child.id}/edit`}
+                  <ItemContent>
+                    <ItemTitle>{parent.name}</ItemTitle>
+                    <ItemDescription>
+                      Top-level category
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <ToggleVisibilityButton
+                      id={parent.id}
+                      isActive={parent.is_active}
+                    />
+                    <Button
+                      render={
+                        <Link
+                          href={`/admin/dashboard/categories/${parent.id}/edit`}
+                        />
+                      }
+                      nativeButton={false}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Edit
+                    </Button>
+                    <DeleteCategoryButton id={parent.id} />
+                  </ItemActions>
+                </Item>
+                {childrenOf(parent.id).map((child) => (
+                  <Item key={child.id} variant="outline" size="sm">
+                    {child.image_path && child.image_path !== "pending" ? (
+                      <ItemMedia variant="image">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imageUrl(child.image_path)} alt="" />
+                      </ItemMedia>
+                    ) : null}
+                    <ItemContent>
+                      <ItemTitle>{child.name}</ItemTitle>
+                      <ItemDescription>
+                        {child.is_active ? "Visible" : "Hidden"}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <ToggleVisibilityButton
+                        id={child.id}
+                        isActive={child.is_active}
                       />
-                    }
-                    nativeButton={false}
-                    variant="outline"
-                  >
-                    Edit
-                  </Button>
-                  <DeleteCategoryButton id={child.id} />
-                </div>
-              ))}
+                      <Button
+                        render={
+                          <Link
+                            href={`/admin/dashboard/categories/${child.id}/edit`}
+                          />
+                        }
+                        nativeButton={false}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Edit
+                      </Button>
+                      <DeleteCategoryButton id={child.id} />
+                    </ItemActions>
+                  </Item>
+                ))}
+              </ItemGroup>
               <Button
                 render={
                   <Link
@@ -140,7 +163,6 @@ export default async function CategoriesPage() {
                 }
                 nativeButton={false}
                 variant="outline"
-                className="w-full"
               >
                 Add subcategory
               </Button>
