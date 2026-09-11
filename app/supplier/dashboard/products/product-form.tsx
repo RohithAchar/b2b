@@ -221,12 +221,22 @@ export function ProductForm({
   );
 
   function onImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).slice(0, MAX_PRODUCT_IMAGES);
+    const picked = Array.from(e.target.files ?? []);
+    const seen = new Set(newFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`));
+    const merged = [
+      ...newFiles,
+      ...picked.filter((f) => !seen.has(`${f.name}:${f.size}:${f.lastModified}`)),
+    ].slice(0, MAX_PRODUCT_IMAGES);
     for (const url of objectUrlsRef.current) URL.revokeObjectURL(url);
-    const urls = files.map((f) => URL.createObjectURL(f));
+    const urls = merged.map((f) => URL.createObjectURL(f));
     objectUrlsRef.current = urls;
+    // Keep the file input in sync with the full staged set so the form POST
+    // carries every chosen image, not just the latest pick.
+    const dt = new DataTransfer();
+    for (const f of merged) dt.items.add(f);
+    if (fileInputRef.current) fileInputRef.current.files = dt.files;
     setPreviewUrls(urls);
-    setNewFiles(files);
+    setNewFiles(merged);
   }
 
   function removeStaged(index: number) {
