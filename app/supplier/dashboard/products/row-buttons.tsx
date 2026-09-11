@@ -1,7 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { deleteProduct, submitProduct } from "@/lib/supplier/product-actions";
 
 export function ProductRowButtons({
@@ -14,6 +16,7 @@ export function ProductRowButtons({
   verified: boolean;
 }) {
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   if (!verified) return null;
 
@@ -25,7 +28,21 @@ export function ProductRowButtons({
           disabled={pending}
           onClick={() =>
             start(async () => {
-              await submitProduct(productId);
+              const result = await submitProduct(productId);
+              if (result.ok) {
+                toast.add({
+                  type: "success",
+                  title: "Submitted",
+                  description: result.message,
+                });
+                router.refresh();
+              } else {
+                toast.add({
+                  type: "error",
+                  title: "Could not submit",
+                  description: result.message,
+                });
+              }
             })
           }
         >
@@ -39,7 +56,18 @@ export function ProductRowButtons({
           disabled={pending}
           onClick={() =>
             start(async () => {
-              if (confirm("Delete this product?")) await deleteProduct(productId);
+              if (confirm("Delete this product?")) {
+                const result = await deleteProduct(productId);
+                if (result.ok) {
+                  router.refresh();
+                } else {
+                  toast.add({
+                    type: "error",
+                    title: "Could not delete",
+                    description: result.message,
+                  });
+                }
+              }
             })
           }
         >

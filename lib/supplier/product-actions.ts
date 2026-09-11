@@ -296,6 +296,9 @@ export async function updateProduct(
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
   }
 
+  const imagesOrErr = await collectImages(formData);
+  if (!Array.isArray(imagesOrErr)) return { ok: false, message: imagesOrErr.error };
+
   const youtubeUrl = parsed.data.youtube_url?.trim() ? parsed.data.youtube_url.trim() : null;
 
   const { error } = await supabase
@@ -325,6 +328,27 @@ export async function updateProduct(
   if (error) {
     console.error("updateProduct failed:", error);
     return { ok: false, message: "Could not save. Try again." };
+  }
+
+  if (imagesOrErr.length > 0) {
+    const { count } = await supabase
+      .from("product_images")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", productId);
+    try {
+      let sort = count ?? 0;
+      for (const file of imagesOrErr) {
+        const path = await uploadProductImage(supabase, user.id, productId, file);
+        await supabase.from("product_images").insert({
+          product_id: productId,
+          path,
+          sort: sort++,
+        });
+      }
+    } catch (err) {
+      console.error("updateProduct media failed:", err);
+      return { ok: false, message: "Product saved but media upload failed. Edit to retry.", productId };
+    }
   }
 
   revalidatePath("/supplier/dashboard/products");
@@ -360,6 +384,7 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
     return { ok: false, message: "Could not submit. Try again." };
   }
   revalidatePath("/supplier/dashboard/products");
+  revalidatePath("/admin/dashboard/products");
   return { ok: true, message: "Submitted for approval." };
 }
 
