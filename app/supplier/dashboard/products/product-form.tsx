@@ -204,6 +204,7 @@ export function ProductForm({
       variants
         .filter((v) => v.label.trim() !== "")
         .map((v) => ({
+          id: v.id ?? undefined,
           label: v.label,
           attr_key: v.attr_key ?? "",
           attr_value: v.attr_value ?? "",

@@ -59,6 +59,7 @@ async function uploadProductImage(
 }
 
 type ParsedVariant = {
+  id?: string;
   label: string;
   attrs: Record<string, string>;
   seller_sku: string;
@@ -91,6 +92,7 @@ function parseVariants(raw: string | null): ParsedVariant[] | { error: string } 
       attrs[parsed.data.attr_key] = parsed.data.attr_value;
     }
     out.push({
+      id: typeof (item as { id?: unknown }).id === "string" ? (item as { id: string }).id : undefined,
       label: parsed.data.label,
       attrs,
       seller_sku: sku,
@@ -299,6 +301,9 @@ export async function updateProduct(
   const imagesOrErr = await collectImages(formData);
   if (!Array.isArray(imagesOrErr)) return { ok: false, message: imagesOrErr.error };
 
+  const variantsOrErr = parseVariants(nullIfEmpty(formData.get("variants_json")));
+  if (!Array.isArray(variantsOrErr)) return { ok: false, message: variantsOrErr.error };
+
   const youtubeUrl = parsed.data.youtube_url?.trim() ? parsed.data.youtube_url.trim() : null;
 
   const { error } = await supabase
@@ -349,6 +354,55 @@ export async function updateProduct(
       console.error("updateProduct media failed:", err);
       return { ok: false, message: "Product saved but media upload failed. Edit to retry.", productId };
     }
+  }
+
+  try {
+    const { data: existingVariants } = await supabase
+      .from("product_variants")
+      .select("id")
+      .eq("product_id", productId);
+    const existingIds = new Set((existingVariants ?? []).map((v) => v.id as string));
+    const touched = new Set<string>();
+
+    let vsort = 0;
+    for (const v of variantsOrErr) {
+      const payload = {
+        label: v.label,
+        attrs: v.attrs,
+        seller_sku: v.seller_sku,
+        price: v.price,
+        moq: v.moq,
+        stock_qty: v.stock_qty,
+        sort: vsort++,
+      };
+      if (v.id && existingIds.has(v.id)) {
+        touched.add(v.id);
+        const { error } = await supabase
+          .from("product_variants")
+          .update(payload)
+          .eq("id", v.id)
+          .eq("product_id", productId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("product_variants")
+          .insert({ ...payload, product_id: productId });
+        if (error) throw error;
+      }
+    }
+
+    const orphans = [...existingIds].filter((id) => !touched.has(id));
+    if (orphans.length > 0) {
+      const { error } = await supabase
+        .from("product_variants")
+        .delete()
+        .eq("product_id", productId)
+        .in("id", orphans);
+      if (error) throw error;
+    }
+  } catch (err) {
+    console.error("updateProduct variants failed:", err);
+    return { ok: false, message: "Product saved but variant sync failed. Edit to retry.", productId };
   }
 
   revalidatePath("/supplier/dashboard/products");
