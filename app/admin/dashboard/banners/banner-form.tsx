@@ -5,22 +5,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
-import {
-  type BannerActionState,
-} from "@/lib/admin/banners";
-import {
-  SLOT_LABELS,
-  type BannerSlot,
-} from "@/lib/admin/banner-slots";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { type BannerActionState } from "@/lib/admin/banners";
+import { SLOT_ASPECTS, SLOT_LABELS, type BannerSlot } from "@/lib/admin/banner-slots";
+import { ImageUploadEditor } from "./image-upload-editor";
 
 const initialState: BannerActionState = { ok: false, message: "" };
 
@@ -34,8 +26,8 @@ type BannerFormProps = {
   title?: string;
   subtitle?: string;
   linkUrl?: string;
-  imageKept?: boolean;
   imageRequired?: boolean;
+  currentImageUrl?: string | null;
 };
 
 export function BannerForm({
@@ -45,8 +37,8 @@ export function BannerForm({
   title = "",
   subtitle = "",
   linkUrl = "",
-  imageKept = false,
   imageRequired = false,
+  currentImageUrl = null,
 }: BannerFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -101,20 +93,13 @@ export function BannerForm({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="image">
-            Image (JPG, PNG or WEBP, max 5 MB)
-          </FieldLabel>
-          {imageKept ? (
-            <FieldDescription>
-              Already set — choose a file to replace it.
-            </FieldDescription>
-          ) : null}
-          <Input
-            id="image"
-            name="image"
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp"
+          <FieldLabel htmlFor="image">Image</FieldLabel>
+          <ImageUploadEditor
+            aspect={SLOT_ASPECTS[slot]}
             required={imageRequired}
+            currentImageUrl={currentImageUrl}
+            onAppliedFile={() => {}}
+            onStatusChange={() => {}}
           />
         </Field>
         {state.message ? (

@@ -10,15 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
 import {
@@ -35,6 +26,52 @@ const SLOT_HINTS: Record<string, string> = {
   hero: "Rotates at the top of the home page (aim for a wide 1200 x 256 image).",
   promo: "Single strip under the category grid (aim for a wide, short image).",
 };
+
+function BannerPreview({
+  imagePath,
+  title,
+  subtitle,
+  slot,
+}: {
+  imagePath: string;
+  title: string | null;
+  subtitle: string | null;
+  slot: string;
+}) {
+  const media = (
+    <div
+      className={`relative w-full overflow-hidden rounded-2xl bg-muted ${
+        slot === "hero" ? "h-64" : "h-32"
+      }`}
+    >
+      {imagePath !== "pending" ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={publicImageUrl("banners", imagePath)}
+            alt={title ?? "Banner"}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {title || subtitle ? (
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+              {title ? (
+                <p className="text-lg font-semibold text-white">{title}</p>
+              ) : null}
+              {subtitle ? (
+                <p className="text-sm text-white/90">{subtitle}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          Image pending
+        </div>
+      )}
+    </div>
+  );
+  return media;
+}
 
 export default async function BannersPage() {
   const supabase = await createClient();
@@ -57,8 +94,8 @@ export default async function BannersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Home banners</h1>
           <p className="text-sm text-muted-foreground">
-            The images buyers see at the top of the storefront. Hidden
-            banners stay invisible until you turn them on.
+            The images buyers see at the top of the storefront. Previews are
+            shown at the exact size and ratio they appear on the home page.
           </p>
         </div>
       </div>
@@ -87,42 +124,53 @@ export default async function BannersPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <ItemGroup>
+                <div className="flex flex-col gap-4">
                   {banners.map((banner) => (
-                    <Item key={banner.id} variant="outline" size="sm">
-                      {banner.image_path && banner.image_path !== "pending" ? (
-                        <ItemMedia variant="image">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={publicImageUrl("banners", banner.image_path)} alt="" />
-                        </ItemMedia>
-                      ) : null}
-                      <ItemContent>
-                        <ItemTitle>{banner.title || "Untitled banner"}</ItemTitle>
-                        <ItemDescription>
-                          {banner.is_active ? "Visible" : "Hidden"}
-                          {banner.link_url ? ` · ${banner.link_url}` : ""}
-                        </ItemDescription>
-                      </ItemContent>
-                      <ItemActions>
-                        <ToggleVisibilityButton
-                          id={banner.id}
-                          isActive={banner.is_active}
-                        />
-                        <Button
-                          render={
-                            <Link href={`/admin/dashboard/banners/${banner.id}/edit`} />
-                          }
-                          nativeButton={false}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Edit
-                        </Button>
-                        <DeleteBannerButton id={banner.id} />
-                      </ItemActions>
-                    </Item>
+                    <div key={banner.id} className="flex flex-col gap-2">
+                      <Badge
+                        variant={banner.is_active ? "default" : "outline"}
+                        className="w-fit"
+                      >
+                        {banner.is_active ? "Visible" : "Hidden"}
+                      </Badge>
+                      <BannerPreview
+                        imagePath={banner.image_path}
+                        title={banner.title}
+                        subtitle={banner.subtitle}
+                        slot={banner.slot}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 text-sm">
+                          <p className="truncate font-medium">
+                            {banner.title || "Untitled banner"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {banner.link_url ? `Links to ${banner.link_url}` : "No link"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <ToggleVisibilityButton
+                            id={banner.id}
+                            isActive={banner.is_active}
+                          />
+                          <Button
+                            render={
+                              <Link
+                                href={`/admin/dashboard/banners/${banner.id}/edit`}
+                              />
+                            }
+                            nativeButton={false}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Edit
+                          </Button>
+                          <DeleteBannerButton id={banner.id} />
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </ItemGroup>
+                </div>
               )}
               <Button
                 render={

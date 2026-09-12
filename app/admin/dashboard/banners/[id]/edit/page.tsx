@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { BANNER_SLOTS, type BannerSlot } from "@/lib/admin/banner-slots";
 import { createClient } from "@/lib/supabase/server";
+import { publicImageUrl } from "@/lib/storage";
 import { BannerForm } from "../../banner-form";
 import { updateBanner } from "@/lib/admin/banners";
 
@@ -32,13 +33,19 @@ export default async function EditBannerPage({ params }: EditBannerPageProps) {
     ? (banner.slot as BannerSlot)
     : "hero";
 
+  const currentImageUrl =
+    banner.image_path && banner.image_path !== "pending"
+      ? publicImageUrl("banners", banner.image_path)
+      : null;
+
   return (
     <div className="mx-auto w-full max-w-xl">
       <Card>
         <CardHeader>
           <CardTitle>Edit banner</CardTitle>
           <CardDescription>
-            Update the text, link, or replace the image.
+            Update the text, link, or replace the image. The preview marks
+            where the crop sits in this slot.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -49,7 +56,7 @@ export default async function EditBannerPage({ params }: EditBannerPageProps) {
             title={banner.title ?? ""}
             subtitle={banner.subtitle ?? ""}
             linkUrl={banner.link_url ?? ""}
-            imageKept={Boolean(banner.image_path)}
+            currentImageUrl={currentImageUrl}
           />
         </CardContent>
       </Card>
