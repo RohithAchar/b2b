@@ -26,17 +26,9 @@ export async function getHomepageData(supabase: SupabaseClient) {
   const categories = categoriesResult.data ?? [];
   const products = productsResult.data ?? [];
 
-  // Get product counts per category.
+  // Product counts per category (approved, subcategories rolled into parents).
   const categoryIds = categories.map((c) => c.id);
-  const countsResult = await supabase.rpc("get_category_product_counts" as never, {
-    p_category_ids: categoryIds,
-  }).maybeSingle();
-
-  // Fallback: if RPC doesn't exist, return zeros.
-  const counts: Record<string, number> = {};
-  if (countsResult.data && typeof countsResult.data === "object") {
-    Object.assign(counts, countsResult.data);
-  }
+  const counts = await getCategoryProductCounts(supabase, categoryIds);
 
   return {
     categories: categories.map((c) => ({
@@ -163,17 +155,34 @@ export async function getCategoryProductCounts(
 ): Promise<Record<string, number>> {
   if (categoryIds.length === 0) return {};
 
-  // Count products per parent category (includes subcategories).
+  // Subcategories belonging to the given (parent) categories.
+  const { data: subs } = await supabase
+    .from("categories")
+    .select("id, parent_id")
+    .in("parent_id", categoryIds)
+    .eq("is_active", true);
+
+  const subIds = (subs ?? []).map((s) => s.id as string);
+  const allIds = [...categoryIds, ...subIds];
+
+  // Tally approved products per category_id in a single query.
+  const tally: Record<string, number> = {};
+  const { data: countRows } = await supabase
+    .from("products")
+    .select("category_id")
+    .in("category_id", allIds)
+    .eq("status", "approved");
+
+  for (const row of countRows ?? []) {
+    tally[row.category_id as string] = (tally[row.category_id as string] ?? 0) + 1;
+  }
+
+  const subToParent = new Map((subs ?? []).map((s) => [s.id as string, s.parent_id as string]));
+
   const counts: Record<string, number> = {};
-
-  for (const id of categoryIds) {
-    const { count } = await supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "approved")
-      .eq("category_id", id);
-
-    counts[id] = count ?? 0;
+  for (const id of categoryIds) counts[id] = tally[id] ?? 0;
+  for (const [subId, parentId] of subToParent) {
+    counts[parentId] = (counts[parentId] ?? 0) + (tally[subId] ?? 0);
   }
 
   return counts;
