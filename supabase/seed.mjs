@@ -458,6 +458,64 @@ const PRODUCTS = [
   },
 ];
 
+const BANNERS = [
+  {
+    slot: "hero",
+    title: "Monsoon office refresh",
+    subtitle: "Ergonomic chairs and desks at wholesale prices",
+    link: "/category/furniture-fixtures",
+    sortOrder: 0,
+    imagePath: "seed/banner-hero-1.jpg",
+    imageSeed: "banner-hero-1",
+    imageSize: "1200/480",
+  },
+  {
+    slot: "hero",
+    title: "Bulk packaging deals",
+    subtitle: "Cartons, boxes and wrapping for every order",
+    link: "/category/packaging-materials",
+    sortOrder: 1,
+    imagePath: "seed/banner-hero-2.jpg",
+    imageSeed: "banner-hero-2",
+    imageSize: "1200/480",
+  },
+  {
+    slot: "promo",
+    title: "Readymade garments sale",
+    subtitle: "Regular-fit cotton shirts from ₹599",
+    link: "/products?q=cotton",
+    sortOrder: 0,
+    imagePath: "seed/banner-promo-1.jpg",
+    imageSeed: "banner-promo-1",
+    imageSize: "1200/256",
+  },
+];
+
+async function ensureBanner(spec) {
+  const { data: existing } = await admin
+    .from("home_banners")
+    .select("id")
+    .eq("slot", spec.slot)
+    .eq("sort_order", spec.sortOrder)
+    .maybeSingle();
+  if (existing) return { id: existing.id, created: false };
+  const { data, error } = await admin
+    .from("home_banners")
+    .insert({
+      slot: spec.slot,
+      title: spec.title,
+      subtitle: spec.subtitle,
+      link_url: spec.link,
+      is_active: true,
+      sort_order: spec.sortOrder,
+      image_path: spec.imagePath,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { id: data.id, created: true };
+}
+
 async function main() {
   log("project", new URL(url).hostname);
 
@@ -555,6 +613,18 @@ async function main() {
     }
   }
   log("media rows", "reconciled");
+
+  let bannerUploads = 0;
+  const bannerResults = [];
+  for (const spec of BANNERS) {
+    const result = await ensureBanner(spec);
+    bannerResults.push({ spec, ...result });
+    if (result.created) bannerUploads += 1;
+  }
+  await mapLimit(bannerResults, CONCURRENCY, async ({ spec }) => {
+    await uploadImage("banners", spec.imagePath, `${IMAGE_BASE}${spec.imageSeed}/${spec.imageSize}`);
+  });
+  log("banners", `${bannerUploads} created, ${BANNERS.length - bannerUploads} existing`);
 
   log("done", `${productIds.length} products, ${allCategories.length} categories, ${SUPPLIERS.length} suppliers`);
   console.log("demo logins: " + SUPPLIERS.map((s) => s.email).join(", ") + " / " + PASSWORD);
