@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   DashboardSquare01Icon,
+  Image01Icon,
   LayoutDashboardIcon,
   Package01Icon,
   SaleTag01Icon,
@@ -42,6 +43,7 @@ export function AdminSidebar({
     pathname === "/admin/dashboard" || pathname === "/admin/dashboard/";
   const categoriesActive = pathname.startsWith("/admin/dashboard/categories");
   const productsActive = pathname.startsWith("/admin/dashboard/products");
+  const bannersActive = pathname.startsWith("/admin/dashboard/banners");
 
   return (
     <Sidebar collapsible="icon">
@@ -115,6 +117,16 @@ export function AdminSidebar({
                 >
                   <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />
                   <span>Products</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/admin/dashboard/banners" />}
+                  isActive={bannersActive}
+                  tooltip="Home banners"
+                >
+                  <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
+                  <span>Home banners</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
