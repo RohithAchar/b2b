@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
-import { getHomepageData, getFeaturedSuppliers } from "@/lib/storefront";
+import { getHomepageData, getFeaturedSuppliers, getHomeBanners } from "@/lib/storefront";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  HomeBannerCarousel,
+  type HomeBanner,
+} from "@/components/storefront/home-banner-carousel";
 
 type CoverImageProduct = { images: { path: string; sort: number }[] | null };
 type PriceProduct = { price_per_unit: number; unit: string };
@@ -21,6 +25,30 @@ function productCoverUrl(product: CoverImageProduct): string {
 
 function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
+function PromoBanner({ banner }: { banner: HomeBanner }) {
+  const strip = (
+    <div className="relative h-32 overflow-hidden rounded-2xl bg-muted">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={publicImageUrl("banners", banner.image_path)}
+        alt={banner.title ?? "Promotional banner"}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      {banner.title || banner.subtitle ? (
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+          {banner.title ? (
+            <p className="text-sm font-semibold text-white">{banner.title}</p>
+          ) : null}
+          {banner.subtitle ? (
+            <p className="text-xs text-white/90">{banner.subtitle}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+  return banner.link_url ? <Link href={banner.link_url}>{strip}</Link> : strip;
 }
 
 export default async function HomePage() {
@@ -39,6 +67,9 @@ export default async function HomePage() {
 
   const { categories, products } = await getHomepageData(supabase);
   const featuredSuppliers = await getFeaturedSuppliers(supabase);
+  const banners = await getHomeBanners(supabase);
+  const heroBanners = banners.filter((b) => b.slot === "hero");
+  const promoBanner = banners.find((b) => b.slot === "promo");
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -47,11 +78,15 @@ export default async function HomePage() {
       />
 
       <main className="flex-1">
-        {/* Hero banner placeholder */}
+        {/* Hero banner carousel */}
         <section className="mx-auto max-w-7xl px-4 pt-6">
-          <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20">
-            <span className="text-sm text-muted-foreground">Banner placeholder (1200 x 256)</span>
-          </div>
+          {heroBanners.length > 0 ? (
+            <HomeBannerCarousel banners={heroBanners} />
+          ) : (
+            <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20">
+              <span className="text-sm text-muted-foreground">Banner placeholder (1200 x 256)</span>
+            </div>
+          )}
         </section>
 
         {/* Search bar */}
@@ -113,11 +148,15 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Promotional banner placeholder */}
+        {/* Promotional banner */}
         <section className="mx-auto max-w-7xl px-4 pb-8">
-          <div className="flex h-32 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20">
-            <span className="text-sm text-muted-foreground">Promotional banner placeholder</span>
-          </div>
+          {promoBanner ? (
+            <PromoBanner banner={promoBanner} />
+          ) : (
+            <div className="flex h-32 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20">
+              <span className="text-sm text-muted-foreground">Promotional banner placeholder</span>
+            </div>
+          )}
         </section>
 
         <Separator className="mx-auto max-w-7xl" />

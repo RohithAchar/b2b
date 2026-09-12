@@ -189,6 +189,21 @@ export async function getCategoryProductCounts(
 }
 
 // ---------------------------------------------------------------------------
+// Homepage banners (hero carousel + promo strip)
+// ---------------------------------------------------------------------------
+
+export async function getHomeBanners(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from("home_banners")
+    .select("id, slot, title, subtitle, link_url, image_path")
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("created_at");
+
+  return data ?? [];
+}
+
+// ---------------------------------------------------------------------------
 // Featured suppliers (for homepage)
 // ---------------------------------------------------------------------------
 
