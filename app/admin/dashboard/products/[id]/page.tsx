@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -42,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { youtubeThumbUrl } from "@/lib/supplier/products";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ProductDecisionForm } from "./decision-form";
 
 function imageUrl(path: string): string {
@@ -94,17 +94,6 @@ export default async function AdminProductReviewPage({
     ? (rawSupplier[0] ?? null)
     : rawSupplier;
 
-  const STATUS_LABEL: Record<string, { label: string; variant: "secondary" | "default" | "destructive" | "outline" }> = {
-    draft: { label: "Draft", variant: "outline" },
-    pending: { label: "Waiting for review", variant: "secondary" },
-    approved: { label: "Live", variant: "default" },
-    rejected: { label: "Sent back", variant: "destructive" },
-  };
-  const status = STATUS_LABEL[product.status] ?? {
-    label: product.status,
-    variant: "outline" as const,
-  };
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
       <Breadcrumb>
@@ -129,14 +118,14 @@ export default async function AdminProductReviewPage({
           {product.unit} — MOQ {product.moq}
         </CardDescription>
         <CardAction>
-          <Badge variant={status.variant}>{status.label}</Badge>
+          <StatusBadge status="product" value={product.status} />
         </CardAction>
       </CardHeader>
       <CardContent>
         <FieldGroup>
           <Field>
             <FieldLabel>Status</FieldLabel>
-            <Badge variant={status.variant}>{status.label}</Badge>
+            <StatusBadge status="product" value={product.status} />
             {product.rejection_note ? (
               <FieldDescription>{product.rejection_note}</FieldDescription>
             ) : null}

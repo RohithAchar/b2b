@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,7 +19,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
-import { PageHeader } from "@/components/layout/page-header";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   DeleteCategoryButton,
   ToggleVisibilityButton,
@@ -43,19 +42,22 @@ export default async function CategoriesPage() {
     (rows ?? []).filter((r) => r.parent_id === parentId);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <PageHeader
-        title="Categories"
-        description="What suppliers will browse. Hidden items stay invisible until you turn them on."
-        actions={
-          <Button
-            render={<Link href="/admin/dashboard/categories/new" />}
-            nativeButton={false}
-          >
-            Add category
-          </Button>
-        }
-      />
+    <div className="mx-auto flex w-full flex-col gap-4">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <div className="grid min-w-0 gap-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Categories</h1>
+          <p className="text-sm text-muted-foreground">
+            What suppliers will browse. Hidden items stay invisible until you
+            turn them on.
+          </p>
+        </div>
+        <Button
+          render={<Link href="/admin/dashboard/categories/new" />}
+          nativeButton={false}
+        >
+          Add category
+        </Button>
+      </div>
 
       {parents.length === 0 ? (
         <Card>
@@ -77,9 +79,10 @@ export default async function CategoriesPage() {
                 {parent.is_active ? "Visible" : "Hidden"}
               </CardDescription>
               <CardAction>
-                <Badge variant={parent.is_active ? "default" : "outline"}>
-                  {parent.is_active ? "Visible" : "Hidden"}
-                </Badge>
+                <StatusBadge
+                  status="visibility"
+                  value={parent.is_active ? "active" : "inactive"}
+                />
               </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">

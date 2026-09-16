@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,17 +29,8 @@ import {
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { DecisionForm } from "./decision-form";
-
-const STATUS_BADGE: Record<
-  string,
-  { label: string; variant: "secondary" | "default" | "destructive" | "outline" }
-> = {
-  draft: { label: "Not submitted", variant: "outline" },
-  pending: { label: "Waiting for review", variant: "secondary" },
-  verified: { label: "Approved", variant: "default" },
-  rejected: { label: "Needs changes", variant: "destructive" },
-};
 
 function Detail({ label, value }: { label: string; value: string | null }) {
   return (
@@ -112,11 +102,6 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
   if (!company) {
     notFound();
   }
-
-  const status = STATUS_BADGE[company.kyb_status] ?? {
-    label: company.kyb_status,
-    variant: "outline" as const,
-  };
 
   const docs = [
     { label: "GST certificate", path: company.gst_certificate_path, against: company.gstin },
@@ -268,7 +253,7 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
                   : "—"}
               </CardDescription>
               <CardAction>
-                <Badge variant={status.variant}>{status.label}</Badge>
+                <StatusBadge status="kyb" value={company.kyb_status} />
               </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">

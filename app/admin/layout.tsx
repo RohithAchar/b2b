@@ -5,6 +5,7 @@ import { LOGIN_PATH } from "@/lib/auth/paths";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
+import { TopBar } from "@/components/dashboard/top-bar";
 import { AdminSidebar } from "./sidebar";
 
 export default async function AdminLayout({
@@ -44,7 +45,7 @@ export default async function AdminLayout({
       </Suspense>
       <SidebarInset className="@container/content">
         <Header>
-          <span className="text-sm font-medium">Review desk</span>
+          <TopBar title="Admin dashboard" />
         </Header>
         <Main>{children}</Main>
       </SidebarInset>

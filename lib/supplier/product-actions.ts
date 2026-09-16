@@ -104,6 +104,28 @@ async function collectImages(formData: FormData): Promise<File[] | { error: stri
   return files;
 }
 
+async function submitForApproval(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  supplierId: string,
+  productId: string,
+): Promise<{ ok: boolean; message: string }> {
+  const { count } = await supabase
+    .from("product_images")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+  if ((count ?? 0) < MIN_PRODUCT_IMAGES) {
+    return { ok: false, message: `Add at least ${MIN_PRODUCT_IMAGES} images before submitting.` };
+  }
+  const { error } = await supabase.rpc("submit_product_for_approval", {
+    p_product_id: productId,
+  });
+  if (error) {
+    console.error("submitForApproval failed:", error);
+    return { ok: false, message: "Saved, but could not submit for approval. Try again." };
+  }
+  return { ok: true, message: "Saved and submitted for approval." };
+}
+
 export async function createProduct(
   _prev: ProductActionState,
   formData: FormData,
@@ -224,6 +246,12 @@ export async function createProduct(
   }
 
   revalidatePath("/supplier/dashboard/products");
+  if (boolOf(formData.get("auto_submit"))) {
+    const res = await submitForApproval(supabase, supplierId, product.id);
+    if (!res.ok) return { ok: false, message: res.message, productId: product.id };
+    revalidatePath("/admin/dashboard/products");
+    return { ok: true, message: res.message, productId: product.id };
+  }
   return { ok: true, message: "Saved as draft.", productId: product.id };
 }
 
@@ -390,7 +418,13 @@ export async function updateProduct(
   }
 
   revalidatePath("/supplier/dashboard/products");
-  return { ok: true, message: "Saved." };
+  if (boolOf(formData.get("auto_submit"))) {
+    const res = await submitForApproval(supabase, supplierId, productId);
+    if (!res.ok) return { ok: false, message: res.message, productId };
+    revalidatePath("/admin/dashboard/products");
+    return { ok: true, message: res.message, productId };
+  }
+  return { ok: true, message: "Saved.", productId };
 }
 
 export async function submitProduct(productId: string): Promise<ProductActionState> {

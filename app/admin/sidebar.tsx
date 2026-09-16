@@ -42,7 +42,9 @@ export function AdminSidebar({
   const overviewActive =
     pathname === "/admin/dashboard" || pathname === "/admin/dashboard/";
   const categoriesActive = pathname.startsWith("/admin/dashboard/categories");
-  const productsActive = pathname.startsWith("/admin/dashboard/products");
+  const productsPage =
+    pathname === "/admin/dashboard/products" ||
+    /\/admin\/dashboard\/products\/[\w-]+$/.test(pathname);
   const bannersActive = pathname.startsWith("/admin/dashboard/banners");
 
   return (
@@ -55,7 +57,7 @@ export function AdminSidebar({
                 <HugeiconsIcon icon={LayoutDashboardIcon} strokeWidth={2} />
               </span>
               <span className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Review desk</span>
+                <span className="truncate font-medium">Marketplace</span>
                 <span className="truncate text-xs text-muted-foreground">
                   Admin
                 </span>
@@ -66,7 +68,7 @@ export function AdminSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Supplier applications</SidebarGroupLabel>
+          <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -79,6 +81,13 @@ export function AdminSidebar({
                   <span>Overview</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Review</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={<Link href="/admin/dashboard/supplier-verification" />}
@@ -91,6 +100,16 @@ export function AdminSidebar({
                 {pendingCount > 0 ? (
                   <SidebarMenuBadge>{pendingCount}</SidebarMenuBadge>
                 ) : null}
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/admin/dashboard/products" />}
+                  isActive={productsPage}
+                  tooltip="Product moderation"
+                >
+                  <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />
+                  <span>Product moderation</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -107,16 +126,6 @@ export function AdminSidebar({
                 >
                   <HugeiconsIcon icon={SaleTag01Icon} strokeWidth={2} />
                   <span>Categories</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link href="/admin/dashboard/products" />}
-                  isActive={productsActive}
-                  tooltip="Products"
-                >
-                  <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />
-                  <span>Products</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

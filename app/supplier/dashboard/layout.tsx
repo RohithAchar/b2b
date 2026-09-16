@@ -5,6 +5,7 @@ import { LOGIN_PATH } from "@/lib/auth/paths";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
+import { TopBar } from "@/components/dashboard/top-bar";
 import { SupplierSidebar } from "./sidebar";
 
 export default async function SupplierDashboardLayout({
@@ -31,7 +32,7 @@ export default async function SupplierDashboardLayout({
 
   const { data: company } = await supabase
     .from("companies")
-    .select("business_name")
+    .select("business_name, kyb_status")
     .eq("owner_id", user.id)
     .maybeSingle();
 
@@ -43,11 +44,12 @@ export default async function SupplierDashboardLayout({
             name: company?.business_name ?? "Supplier",
             email: user.email ?? "",
           }}
+          kybStatus={company?.kyb_status ?? "draft"}
         />
       </Suspense>
       <SidebarInset className="@container/content">
         <Header>
-          <span className="text-sm font-medium">Supplier dashboard</span>
+          <TopBar title="Supplier dashboard" />
         </Header>
         <Main>{children}</Main>
       </SidebarInset>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +11,7 @@ import {
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   DeleteBannerButton,
   ToggleVisibilityButton,
@@ -108,7 +108,9 @@ export default async function BannersPage() {
               <CardTitle>{SLOT_LABELS[slot]}</CardTitle>
               <CardDescription>{SLOT_HINTS[slot]}</CardDescription>
               <CardAction>
-                <Badge variant="secondary">{banners.length} live</Badge>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {banners.length} live
+                </span>
               </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -127,12 +129,11 @@ export default async function BannersPage() {
                 <div className="flex flex-col gap-4">
                   {banners.map((banner) => (
                     <div key={banner.id} className="flex flex-col gap-2">
-                      <Badge
-                        variant={banner.is_active ? "default" : "outline"}
+                      <StatusBadge
+                        status="visibility"
+                        value={banner.is_active ? "active" : "inactive"}
                         className="w-fit"
-                      >
-                        {banner.is_active ? "Visible" : "Hidden"}
-                      </Badge>
+                      />
                       <BannerPreview
                         imagePath={banner.image_path}
                         title={banner.title}

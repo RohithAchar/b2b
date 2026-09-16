@@ -1,9 +1,13 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon, SendIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { deleteProduct, submitProduct } from "@/lib/supplier/product-actions";
 
 export function ProductRowButtons({
@@ -20,9 +24,21 @@ export function ProductRowButtons({
 
   if (!verified) return null;
 
+  const editable = status === "draft" || status === "rejected";
+
   return (
     <>
-      {status === "draft" || status === "rejected" ? (
+      {status === "approved" ? (
+        <Button
+          render={<Link href={`/products/${productId}`} />}
+          nativeButton={false}
+          variant="ghost"
+          size="sm"
+        >
+          View
+        </Button>
+      ) : null}
+      {editable ? (
         <Button
           size="sm"
           disabled={pending}
@@ -46,33 +62,36 @@ export function ProductRowButtons({
             })
           }
         >
+          <HugeiconsIcon icon={SendIcon} strokeWidth={2} />
           Submit
         </Button>
       ) : null}
-      {status === "draft" || status === "rejected" ? (
-        <Button
-          size="sm"
-          variant="destructive"
-          disabled={pending}
-          onClick={() =>
+      {editable ? (
+        <ConfirmDialog
+          title="Delete this product?"
+          description="This removes the listing and its images permanently. This cannot be undone."
+          confirmLabel="Delete"
+          trigger={
+            <Button variant="destructive" size="sm" disabled={pending}>
+              <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
+              Delete
+            </Button>
+          }
+          onConfirm={() =>
             start(async () => {
-              if (confirm("Delete this product?")) {
-                const result = await deleteProduct(productId);
-                if (result.ok) {
-                  router.refresh();
-                } else {
-                  toast.add({
-                    type: "error",
-                    title: "Could not delete",
-                    description: result.message,
-                  });
-                }
+              const result = await deleteProduct(productId);
+              if (result.ok) {
+                router.refresh();
+              } else {
+                toast.add({
+                  type: "error",
+                  title: "Could not delete",
+                  description: result.message,
+                });
               }
             })
           }
-        >
-          Delete
-        </Button>
+        />
       ) : null}
     </>
   );
