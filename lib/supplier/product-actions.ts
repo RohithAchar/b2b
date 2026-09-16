@@ -44,6 +44,67 @@ async function uploadProductImage(
   return path;
 }
 
+async function removeStoredPaths(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  paths: string[],
+): Promise<void> {
+  if (paths.length === 0) return;
+  const { error } = await supabase.storage.from("product_images").remove(paths);
+  if (error) {
+    console.error("storage cleanup failed:", error);
+  }
+}
+
+async function uploadImages(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  userId: string,
+  productId: string,
+  files: File[],
+): Promise<string[]> {
+  const uploaded: string[] = [];
+  try {
+    for (const file of files) {
+      uploaded.push(await uploadProductImage(supabase, userId, productId, file));
+    }
+  } catch (err) {
+    await removeStoredPaths(supabase, uploaded);
+    throw err;
+  }
+  return uploaded;
+}
+
+function variantRpcPayload(variants: ParsedVariant[]) {
+  return variants.map((v) => ({
+    label: v.label,
+    attrs: v.attrs,
+    seller_sku: v.seller_sku,
+    price: v.price,
+    moq: v.moq,
+    stock_qty: v.stock_qty,
+  }));
+}
+
+async function rollbackCreatedProduct(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  supplierId: string,
+  productId: string,
+  uploadedPaths: string[],
+): Promise<void> {
+  await removeStoredPaths(supabase, uploadedPaths);
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", productId)
+    .eq("supplier_id", supplierId);
+  if (error) {
+    console.error("createProduct rollback delete failed:", error);
+  }
+}
+
+function rpcMessage(error: { message?: string } | null, fallback: string): string {
+  return error?.message ? error.message : fallback;
+}
+
 type ParsedVariant = {
   id?: string;
   label: string;
@@ -121,7 +182,7 @@ async function submitForApproval(
   });
   if (error) {
     console.error("submitForApproval failed:", error);
-    return { ok: false, message: "Saved, but could not submit for approval. Try again." };
+    return { ok: false, message: rpcMessage(error, "Saved, but could not submit for approval. Try again.") };
   }
   return { ok: true, message: "Saved and submitted for approval." };
 }
@@ -217,32 +278,35 @@ export async function createProduct(
     return { ok: false, message: "Could not save. Try again." };
   }
 
+  // Upload images to storage first so a failed upload never leaves DB rows
+  // behind, then publish the DB rows through the atomic replacement RPCs.
+  let uploadedPaths: string[] = [];
   try {
-    let sort = 0;
-    for (const file of imagesOrErr) {
-      const path = await uploadProductImage(supabase, user.id, product.id, file);
-      await supabase.from("product_images").insert({
-        product_id: product.id,
-        path,
-        sort: sort++,
-      });
-    }
-    let vsort = 0;
-    for (const v of variantsOrErr) {
-      await supabase.from("product_variants").insert({
-        product_id: product.id,
-        label: v.label,
-        attrs: v.attrs,
-        seller_sku: v.seller_sku,
-        price: v.price,
-        moq: v.moq,
-        stock_qty: v.stock_qty,
-        sort: vsort++,
-      });
-    }
+    uploadedPaths = await uploadImages(supabase, user.id, product.id, imagesOrErr);
   } catch (err) {
-    console.error("createProduct media failed:", err);
-    return { ok: false, message: "Product saved but media upload failed. Edit to retry.", productId: product.id };
+    console.error("createProduct image upload failed:", err);
+    await rollbackCreatedProduct(supabase, supplierId, product.id, uploadedPaths);
+    return { ok: false, message: "Could not upload product images. Make sure the files are valid and try again." };
+  }
+
+  const { error: imageRowsError } = await supabase.rpc("replace_product_images", {
+    p_product_id: product.id,
+    p_paths: uploadedPaths,
+  });
+  if (imageRowsError) {
+    console.error("createProduct image rows failed:", imageRowsError);
+    await rollbackCreatedProduct(supabase, supplierId, product.id, uploadedPaths);
+    return { ok: false, message: rpcMessage(imageRowsError, "Could not save product images. Try again.") };
+  }
+
+  const { error: variantsError } = await supabase.rpc("replace_product_variants", {
+    p_product_id: product.id,
+    p_variants: variantRpcPayload(variantsOrErr),
+  });
+  if (variantsError) {
+    console.error("createProduct variants failed:", variantsError);
+    await rollbackCreatedProduct(supabase, supplierId, product.id, uploadedPaths);
+    return { ok: false, message: rpcMessage(variantsError, "Could not save variants. Try again.") };
   }
 
   revalidatePath("/supplier/dashboard/products");
@@ -313,9 +377,21 @@ export async function updateProduct(
   const variantsOrErr = parseVariants(nullIfEmpty(formData.get("variants_json")));
   if (!Array.isArray(variantsOrErr)) return { ok: false, message: variantsOrErr.error };
 
+  const { data: existingImageRows } = await supabase
+    .from("product_images")
+    .select("path")
+    .eq("product_id", productId);
+  const existingPaths = (existingImageRows ?? []).map((i) => i.path as string);
+  if (existingPaths.length + imagesOrErr.length > MAX_PRODUCT_IMAGES) {
+    return {
+      ok: false,
+      message: `Products can have up to ${MAX_PRODUCT_IMAGES} images total. Remove some before adding more.`,
+    };
+  }
+
   const youtubeUrl = parsed.data.youtube_url?.trim() ? parsed.data.youtube_url.trim() : null;
 
-  const { error } = await supabase
+  const { error: updateError, data: updatedRows } = await supabase
     .from("products")
     .update({
       category_id: parsed.data.category_id,
@@ -336,85 +412,47 @@ export async function updateProduct(
       warranty_return: parsed.data.warranty_return?.trim() ? parsed.data.warranty_return.trim() : null,
       youtube_url: youtubeUrl,
       youtube_id: youtubeUrl ? extractYoutubeId(youtubeUrl) : null,
-      updated_at: new Date().toISOString(),
     })
-    .eq("id", productId);
-  if (error) {
-    console.error("updateProduct failed:", error);
-    if (error.code === "23505") {
+    .eq("id", productId)
+    .select("id");
+  if (updateError) {
+    console.error("updateProduct failed:", updateError);
+    if (updateError.code === "23505") {
       return { ok: false, message: "You already use this SKU on another product." };
     }
     return { ok: false, message: "Could not save. Try again." };
   }
-
-  if (imagesOrErr.length > 0) {
-    const { count } = await supabase
-      .from("product_images")
-      .select("id", { count: "exact", head: true })
-      .eq("product_id", productId);
-    try {
-      let sort = count ?? 0;
-      for (const file of imagesOrErr) {
-        const path = await uploadProductImage(supabase, user.id, productId, file);
-        await supabase.from("product_images").insert({
-          product_id: productId,
-          path,
-          sort: sort++,
-        });
-      }
-    } catch (err) {
-      console.error("updateProduct media failed:", err);
-      return { ok: false, message: "Product saved but media upload failed. Edit to retry.", productId };
-    }
+  if (!updatedRows || updatedRows.length === 0) {
+    return { ok: false, message: "Product not found." };
   }
 
+  // Cumulative image cap is enforced above; upload the new files before any
+  // DB mutation so a failed upload leaves the product untouched.
+  let newPaths: string[] = [];
   try {
-    const { data: existingVariants } = await supabase
-      .from("product_variants")
-      .select("id")
-      .eq("product_id", productId);
-    const existingIds = new Set((existingVariants ?? []).map((v) => v.id as string));
-    const touched = new Set<string>();
-
-    let vsort = 0;
-    for (const v of variantsOrErr) {
-      const payload = {
-        label: v.label,
-        attrs: v.attrs,
-        seller_sku: v.seller_sku,
-        price: v.price,
-        moq: v.moq,
-        stock_qty: v.stock_qty,
-        sort: vsort++,
-      };
-      if (v.id && existingIds.has(v.id)) {
-        touched.add(v.id);
-        const { error } = await supabase
-          .from("product_variants")
-          .update(payload)
-          .eq("id", v.id)
-          .eq("product_id", productId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("product_variants")
-          .insert({ ...payload, product_id: productId });
-        if (error) throw error;
-      }
-    }
-
-    const orphans = [...existingIds].filter((id) => !touched.has(id));
-    if (orphans.length > 0) {
-      const { error } = await supabase
-        .from("product_variants")
-        .delete()
-        .eq("product_id", productId)
-        .in("id", orphans);
-      if (error) throw error;
-    }
+    newPaths = await uploadImages(supabase, user.id, productId, imagesOrErr);
   } catch (err) {
-    console.error("updateProduct variants failed:", err);
-    return { ok: false, message: "Product saved but variant sync failed. Edit to retry.", productId };
+    console.error("updateProduct image upload failed:", err);
+    return { ok: false, message: "Product saved but image upload failed. Edit to retry.", productId };
+  }
+
+  const { error: imageRowsError } = await supabase.rpc("replace_product_images", {
+    p_product_id: productId,
+    p_paths: [...existingPaths, ...newPaths],
+  });
+  if (imageRowsError) {
+    await removeStoredPaths(supabase, newPaths);
+    console.error("updateProduct image rows failed:", imageRowsError);
+    return { ok: false, message: rpcMessage(imageRowsError, "Cannot add that many images."), productId };
+  }
+
+  const { error: variantsError } = await supabase.rpc("replace_product_variants", {
+    p_product_id: productId,
+    p_variants: variantRpcPayload(variantsOrErr),
+  });
+  if (variantsError) {
+    console.error("updateProduct variants failed:", variantsError);
+    return { ok: false, message: rpcMessage(variantsError, "Product saved but variant sync failed. Edit to retry."), productId };
   }
 
   revalidatePath("/supplier/dashboard/products");
@@ -435,11 +473,14 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, supplier_id")
+    .select("id, supplier_id, status")
     .eq("id", productId)
     .maybeSingle();
   if (!product || product.supplier_id !== supplierId) {
     return { ok: false, message: "Product not found." };
+  }
+  if (product.status !== "draft" && product.status !== "rejected") {
+    return { ok: false, message: "Only draft or returned products can be submitted." };
   }
 
   const { count } = await supabase
@@ -455,7 +496,7 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
   });
   if (error) {
     console.error("submitProduct failed:", error);
-    return { ok: false, message: "Could not submit. Try again." };
+    return { ok: false, message: rpcMessage(error, "Could not submit. Try again.") };
   }
   revalidatePath("/supplier/dashboard/products");
   revalidatePath("/admin/dashboard/products");
@@ -472,18 +513,25 @@ export async function deleteProduct(productId: string): Promise<ProductActionSta
     .from("product_images")
     .select("path")
     .eq("product_id", productId);
-  const { error } = await supabase
+  const { error, data: deletedRows } = await supabase
     .from("products")
     .delete()
     .eq("id", productId)
     .eq("supplier_id", supplierId)
-    .in("status", ["draft", "rejected"]);
+    .in("status", ["draft", "rejected"])
+    .select("id");
   if (error) {
     console.error("deleteProduct failed:", error);
     return { ok: false, message: "Could not delete. Try again." };
   }
+  if (!deletedRows || deletedRows.length === 0) {
+    return { ok: false, message: "Only draft or returned products can be deleted." };
+  }
   if (images && images.length > 0) {
-    await supabase.storage.from("product_images").remove(images.map((i) => i.path));
+    await removeStoredPaths(
+      supabase,
+      images.map((i) => i.path as string),
+    );
   }
   revalidatePath("/supplier/dashboard/products");
   return { ok: true, message: "Deleted." };
