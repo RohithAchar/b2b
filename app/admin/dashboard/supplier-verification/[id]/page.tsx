@@ -169,7 +169,7 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
                 <img
                   src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${company.logo_path}`}
                   alt=""
-                  className="size-12 rounded-2xl border border-border object-cover"
+                  className="size-12 rounded-lg border border-border object-cover"
                 />
               </CardAction>
             ) : null}

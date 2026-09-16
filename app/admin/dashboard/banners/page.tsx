@@ -40,7 +40,7 @@ function BannerPreview({
 }) {
   const media = (
     <div
-      className={`relative w-full overflow-hidden rounded-2xl bg-muted ${
+      className={`relative w-full overflow-hidden rounded-lg bg-muted ${
         slot === "hero" ? "h-64" : "h-32"
       }`}
     >

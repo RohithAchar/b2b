@@ -5,10 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
 import { getCategoryBySlug } from "@/lib/storefront";
 import { getProducts } from "@/lib/storefront";
+import { getNavigationCategories } from "@/lib/storefront";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import {
@@ -54,6 +54,8 @@ export default async function CategoryPage({
     perPage: 24,
   });
 
+  const navCategories = await getNavigationCategories(supabase);
+
   function buildPageUrl(p: number) {
     return `/category/${slug}?page=${p}`;
   }
@@ -62,18 +64,19 @@ export default async function CategoryPage({
     <div className="flex min-h-screen flex-col">
       <StorefrontHeader
         user={user ? { email: user.email!, user_type: userType ?? "buyer" } : null}
+        categories={navCategories}
       />
 
       <main className="flex-1">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6">
+        <div className="mx-auto w-full max-w-7xl px-4 py-5">
           <Breadcrumbs
             items={[{ label: "Home", href: "/" }, { label: category.name }]}
           />
 
           {/* Category header */}
-          <div className="mb-6 flex items-center gap-4">
+          <div className="mb-5 flex items-center gap-4 border-b border-border pb-4">
             {category.image_path && (
-              <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+              <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                 <Image
                   src={publicImageUrl("category_images", category.image_path)}
                   alt={category.name}
@@ -84,21 +87,29 @@ export default async function CategoryPage({
               </div>
             )}
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">{category.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{category.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {total} product{total !== 1 ? "s" : ""}
+                {total} product{total !== 1 ? "s" : ""} from verified suppliers
               </p>
             </div>
           </div>
 
           {/* Subcategories */}
           {category.subcategories.length > 0 && (
-            <div className="mb-6 flex flex-wrap gap-2">
+            <div className="mb-5 flex flex-wrap gap-1.5">
+              <span className="mr-1 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Sub-categories:
+              </span>
               {category.subcategories.map((sub) => (
                 <Link key={sub.id} href={`/category/${sub.slug}`}>
-                  <Badge variant="secondary" className="cursor-pointer hover:bg-muted">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    nativeButton={false}
+                    className="h-7 rounded-sm text-xs"
+                  >
                     {sub.name}
-                  </Badge>
+                  </Button>
                 </Link>
               ))}
             </div>
@@ -120,7 +131,7 @@ export default async function CategoryPage({
               </Empty>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product as ProductCardData} />
               ))}
@@ -137,7 +148,7 @@ export default async function CategoryPage({
                       <PaginationPrevious href={buildPageUrl(page - 1)} />
                     </PaginationItem>
                   )}
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                     const p = i + 1;
                     return (
                       <PaginationItem key={p}>

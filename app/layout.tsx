@@ -1,10 +1,10 @@
-import { Geist_Mono, Figtree } from "next/font/google"
+import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
 import { Toaster } from "@/components/ui/toast"
 import { cn } from "@/lib/utils";
 
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("light", "antialiased", fontMono.variable, "font-sans", figtree.variable)}
+      className={cn("light", "antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
         {children}

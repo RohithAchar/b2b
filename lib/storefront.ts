@@ -28,6 +28,21 @@ async function fetchSupplierMap(
 }
 
 // ---------------------------------------------------------------------------
+// Storefront navigation categories (header rail)
+// ---------------------------------------------------------------------------
+
+export async function getNavigationCategories(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from("categories")
+    .select("id, name, slug")
+    .eq("is_active", true)
+    .is("parent_id", null)
+    .order("sort_order")
+    .order("name");
+  return (data ?? []) as { id: string; name: string; slug: string }[];
+}
+
+// ---------------------------------------------------------------------------
 // Homepage data
 // ---------------------------------------------------------------------------
 
@@ -43,7 +58,7 @@ export async function getHomepageData(supabase: SupabaseClient) {
     supabase
       .from("products")
       .select(
-        "id, title, price_per_unit, unit, moq, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+        "id, title, price_per_unit, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
       )
       .eq("status", "approved")
       .order("created_at", { ascending: false })
@@ -93,7 +108,7 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   let qb = supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+      "id, title, price_per_unit, unit, moq, negotiable, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
       { count: "exact" },
     )
     .eq("status", "approved");
@@ -225,6 +240,30 @@ export async function getHomeBanners(supabase: SupabaseClient) {
     .order("created_at");
 
   return data ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Source From India: real supplier locations grouped by state
+// ---------------------------------------------------------------------------
+
+export async function getSourceRegions(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from("storefront_suppliers")
+    .select("city, state")
+    .limit(500);
+
+  const regions: { state: string; cities: string[] }[] = [];
+  const stateMap = new Map<string, Set<string>>();
+  for (const row of (data ?? []) as { city: string | null; state: string | null }[]) {
+    if (!row.state || !row.city) continue;
+    if (!stateMap.has(row.state)) stateMap.set(row.state, new Set());
+    stateMap.get(row.state)!.add(row.city);
+  }
+  for (const [state, cities] of stateMap) {
+    regions.push({ state, cities: [...cities].slice(0, 6) });
+  }
+  regions.sort((a, b) => b.cities.length - a.cities.length);
+  return regions.slice(0, 8);
 }
 
 // ---------------------------------------------------------------------------

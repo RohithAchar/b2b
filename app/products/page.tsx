@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getProducts } from "@/lib/storefront";
+import { getProducts, getNavigationCategories } from "@/lib/storefront";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
@@ -50,14 +49,8 @@ export default async function ProductsPage({
     perPage: 24,
   });
 
-  // Fetch categories for filter chips.
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name, slug")
-    .eq("is_active", true)
-    .is("parent_id", null)
-    .order("sort_order")
-    .order("name");
+  // Fetch categories for the nav rail + filter sidebar.
+  const navCategories = await getNavigationCategories(supabase);
 
   function buildPageUrl(p: number) {
     const sp = new URLSearchParams();
@@ -75,21 +68,22 @@ export default async function ProductsPage({
   }
 
   const activeFilter = categorySlug
-    ? (categories ?? []).find((c) => c.slug === categorySlug)?.name
+    ? (navCategories ?? []).find((c) => c.slug === categorySlug)?.name
     : null;
 
   return (
     <div className="flex min-h-screen flex-col">
       <StorefrontHeader
         user={user ? { email: user.email!, user_type: userType ?? "buyer" } : null}
+        categories={navCategories}
       />
 
       <main className="flex-1">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6">
+        <div className="mx-auto w-full max-w-7xl px-4 py-5">
           <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Products" }]} />
 
-          {/* Search + filters */}
-          <div className="mb-6 flex flex-col gap-3">
+          {/* Search + category chips */}
+          <div className="mb-4 flex flex-col gap-3">
             <form action="/products" method="get" className="flex gap-2">
               {categorySlug && (
                 <input type="hidden" name="category" value={categorySlug} />
@@ -99,56 +93,63 @@ export default async function ProductsPage({
                 <Input
                   name="q"
                   defaultValue={query}
-                  placeholder="Search products..."
-                  className="h-9 pr-9"
+                  placeholder="Search products, suppliers or brands..."
+                  className="h-10 pr-9"
                 />
                 <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <HugeiconsIcon icon={Search01Icon} strokeWidth={2} className="size-4" />
                 </span>
               </div>
-              <Button type="submit" size="sm">
+              <Button type="submit" size="lg">
                 Search
               </Button>
             </form>
 
             {/* Category chips */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               <Link
                 href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
               >
-                <Badge variant={categorySlug ? "secondary" : "default"}>All</Badge>
+                <Button
+                  variant={categorySlug ? "outline" : "default"}
+                  size="sm"
+                  nativeButton={false}
+                  className="h-7 rounded-sm text-xs"
+                >
+                  All
+                </Button>
               </Link>
-              {(categories ?? []).map((cat) => (
+              {navCategories.map((cat) => (
                 <Link key={cat.id} href={buildCategoryLink(cat.slug)}>
-                  <Badge variant={categorySlug === cat.slug ? "default" : "secondary"}>
+                  <Button
+                    variant={categorySlug === cat.slug ? "default" : "outline"}
+                    size="sm"
+                    nativeButton={false}
+                    className="h-7 rounded-sm text-xs"
+                  >
                     {cat.name}
-                  </Badge>
+                  </Button>
                 </Link>
               ))}
             </div>
           </div>
 
           {/* Results meta */}
-          <div className="mb-4 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="mb-4 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1">
             <p className="text-sm text-muted-foreground">
-              {total} product{total !== 1 ? "s" : ""} found
+              <span className="font-semibold text-foreground">{total}</span>{" "}
+              product{total !== 1 ? "s" : ""} found
               {query && <> for &ldquo;{query}&rdquo;</>}
             </p>
             {activeFilter && (
-              <Badge variant="secondary">
+              <Link
+                aria-label={`Remove ${activeFilter} filter`}
+                href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
+                className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
+              >
                 {activeFilter}
-                <Link
-                  aria-label={`Remove ${activeFilter} filter`}
-                  href={
-                    query
-                      ? `/products?q=${encodeURIComponent(query)}`
-                      : "/products"
-                  }
-                  className="ml-1 text-muted-foreground hover:text-foreground"
-                >
-                  ×
-                </Link>
-              </Badge>
+                <span aria-hidden>×</span>
+              </Link>
             )}
           </div>
 
@@ -168,7 +169,7 @@ export default async function ProductsPage({
               </Empty>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product as ProductCardData} />
               ))}
@@ -185,7 +186,7 @@ export default async function ProductsPage({
                       <PaginationPrevious href={buildPageUrl(page - 1)} />
                     </PaginationItem>
                   )}
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                     const p = i + 1;
                     return (
                       <PaginationItem key={p}>

@@ -49,7 +49,7 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
         <CarouselContent className="-ml-0">
           {banners.map((banner) => {
             const slide = (
-              <div className="relative h-64 w-full overflow-hidden rounded-xl bg-muted">
+              <div className="relative h-56 w-full overflow-hidden rounded-lg border border-border bg-muted md:h-64">
                 <Image
                   src={publicImageUrl("banners", banner.image_path)}
                   alt={banner.title ?? "Banner"}
@@ -58,9 +58,9 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
                   className="object-cover"
                 />
                 {banner.title || banner.subtitle ? (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
                     {banner.title ? (
-                      <p className="text-lg font-semibold text-white">
+                      <p className="text-lg font-bold text-white">
                         {banner.title}
                       </p>
                     ) : null}
@@ -84,7 +84,7 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
         </CarouselContent>
       </Carousel>
       {banners.length > 1 ? (
-        <div className="mt-3 flex justify-center gap-2">
+        <div className="mt-2 flex justify-center gap-1.5">
           {banners.map((banner, i) => (
             <button
               key={banner.id}
@@ -92,8 +92,10 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
               aria-label={`Go to slide ${i + 1}`}
               onClick={() => api?.scrollTo(i)}
               className={cn(
-                "size-2 rounded-full transition-colors",
-                i === current ? "bg-primary" : "bg-muted-foreground/30",
+                "h-1.5 rounded-full transition-all",
+                i === current
+                  ? "w-5 bg-primary"
+                  : "w-1.5 bg-muted-foreground/30",
               )}
             />
           ))}

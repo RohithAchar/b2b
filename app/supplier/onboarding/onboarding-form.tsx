@@ -250,7 +250,7 @@ export function OnboardingForm({
                 </span>
                 <span
                   className={
-                    i <= step ? "h-1 rounded-full bg-primary" : "h-1 rounded-full bg-muted"
+                    i <= step ? "h-1 rounded-sm bg-primary" : "h-1 rounded-sm bg-muted"
                   }
                 />
               </li>
