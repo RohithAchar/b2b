@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { LOGIN_PATH } from "@/lib/auth/paths";
+import { requireAdmin } from "@/lib/auth/guard";
+import { isSupportedImageType, sniffImageType } from "@/lib/storage";
 import { BANNER_SLOTS } from "./banner-slots";
 
 export type BannerActionState = {
@@ -13,7 +13,6 @@ export type BannerActionState = {
 };
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 const linkUrlSchema = z
   .string()
@@ -58,44 +57,22 @@ function normalizeInput(formData: FormData) {
   };
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(LOGIN_PATH);
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("user_type")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profile?.user_type !== "admin") {
-    redirect("/");
-  }
-
-  return supabase;
-}
-
-function validateImage(file: File | null, required: boolean): string | null {
+async function validateImage(file: File | null, required: boolean): Promise<string | null> {
   if (!file || file.size === 0) {
     return required ? "An image is required." : null;
   }
-  if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
-    return "Only JPG, PNG or WEBP images are allowed.";
-  }
   if (file.size > MAX_IMAGE_BYTES) {
     return "Image must be under 5 MB.";
+  }
+  const detected = await sniffImageType(file);
+  if (!isSupportedImageType(detected)) {
+    return "Only JPG, PNG or WEBP images are allowed.";
   }
   return null;
 }
 
 async function uploadImage(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
   bannerId: string,
   file: File,
 ): Promise<string> {
@@ -119,7 +96,7 @@ export async function createBanner(
   _prevState: BannerActionState,
   formData: FormData,
 ): Promise<BannerActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = baseSchema.safeParse(normalizeInput(formData));
   if (!parsed.success) {
     return {
@@ -130,7 +107,7 @@ export async function createBanner(
 
   const value = formData.get("image");
   const file = value instanceof File && value.size > 0 ? value : null;
-  const fileError = validateImage(file, true);
+  const fileError = await validateImage(file, true);
   if (fileError || !file) {
     return { ok: false, message: fileError ?? "An image is required." };
   }
@@ -180,7 +157,7 @@ export async function toggleBanner(
   _prevState: BannerActionState,
   formData: FormData,
 ): Promise<BannerActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = idSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) {
     return { ok: false, message: "Invalid banner." };
@@ -212,7 +189,7 @@ export async function deleteBanner(
   _prevState: BannerActionState,
   formData: FormData,
 ): Promise<BannerActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = idSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) {
     return { ok: false, message: "Invalid banner." };
@@ -246,7 +223,7 @@ export async function updateBanner(
   _prevState: BannerActionState,
   formData: FormData,
 ): Promise<BannerActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = updateSchema.safeParse({
     ...normalizeInput(formData),
     id: formData.get("id"),
@@ -260,7 +237,7 @@ export async function updateBanner(
 
   const value = formData.get("image");
   const file = value instanceof File && value.size > 0 ? value : null;
-  const fileError = validateImage(file, false);
+  const fileError = await validateImage(file, false);
   if (fileError) {
     return { ok: false, message: fileError };
   }

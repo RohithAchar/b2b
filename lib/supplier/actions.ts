@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth/guard";
 import {
   businessProfileSchema,
   kybSchema,
@@ -22,7 +22,7 @@ const DOC_FIELDS = [
 ] as const;
 
 async function uploadDoc(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,
   field: string,
   file: File,
@@ -42,14 +42,7 @@ export async function submitKyb(
   _prevState: KybActionState,
   formData: FormData,
 ): Promise<KybActionState | never> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login");
-  }
+  const { supabase, user } = await requireUser();
 
   const parsed = kybSchema.safeParse({
     business_name: formData.get("business_name"),
@@ -87,7 +80,7 @@ export async function submitKyb(
     for (const doc of DOC_FIELDS) {
       const value = formData.get(doc.field);
       const file = value instanceof File && value.size > 0 ? value : null;
-      const fileError = validateDocFile(file);
+      const fileError = await validateDocFile(file);
       if (fileError) {
         return { ok: false, message: `${doc.label}: ${fileError}` };
       }
@@ -111,7 +104,7 @@ export async function submitKyb(
   const logoFile =
     logoValue instanceof File && logoValue.size > 0 ? logoValue : null;
   if (logoFile) {
-    const logoError = validateLogoFile(logoFile);
+    const logoError = await validateLogoFile(logoFile);
     if (logoError) {
       return { ok: false, message: `Logo: ${logoError}` };
     }
@@ -143,24 +136,69 @@ export async function submitKyb(
   if (existing?.kyb_status === "verified") {
     return { ok: false, message: "Your business is already verified." };
   }
+  if (existing?.kyb_status === "pending") {
+    return { ok: false, message: "Your application is already under review." };
+  }
 
-  const row = {
-    owner_id: user.id,
-    ...parsed.data,
-    ...docPaths,
-    logo_path: logoPath,
-    kyb_status: "pending",
-    submitted_at: new Date().toISOString(),
-    rejection_note: null,
-  };
+  if (existing) {
+    // Content-only update; approval fields are owned by admin/RPCs.
+    const { error: updateError } = await supabase
+      .from("companies")
+      .update({
+        business_name: parsed.data.business_name,
+        contact_person: parsed.data.contact_person,
+        phone: parsed.data.phone,
+        address: parsed.data.address,
+        city: parsed.data.city,
+        state: parsed.data.state,
+        pincode: parsed.data.pincode,
+        gstin: parsed.data.gstin,
+        pan: parsed.data.pan,
+        bank_account: parsed.data.bank_account,
+        bank_ifsc: parsed.data.bank_ifsc,
+        ...docPaths,
+        logo_path: logoPath,
+      })
+      .eq("owner_id", user.id);
 
-  const { error: upsertError } = existing
-    ? await supabase.from("companies").update(row).eq("owner_id", user.id)
-    : await supabase.from("companies").insert(row);
+    if (updateError) {
+      console.error("submitKyb companies update failed:", updateError);
+      return { ok: false, message: "Could not save. Try again." };
+    }
 
-  if (upsertError) {
-    console.error("submitKyb companies save failed:", upsertError);
-    return { ok: false, message: "Could not save. Try again." };
+    const { error: submitError } = await supabase.rpc("submit_kyb", {
+      p_company_id: existing.id,
+    });
+    if (submitError) {
+      console.error("submitKyb rpc failed:", submitError);
+      return { ok: false, message: "Could not submit. Try again." };
+    }
+  } else {
+    // Fresh application: insert as draft (RLS requires it), then submit.
+    const { data: inserted, error: insertError } = await supabase
+      .from("companies")
+      .insert({
+        owner_id: user.id,
+        ...parsed.data,
+        ...docPaths,
+        logo_path: logoPath,
+        kyb_status: "draft",
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !inserted) {
+      console.error("submitKyb companies insert failed:", insertError);
+      return { ok: false, message: "Could not save. Try again." };
+    }
+
+    const { error: submitError } = await supabase.rpc("submit_kyb", {
+      p_company_id: inserted.id,
+    });
+    if (submitError) {
+      console.error("submitKyb rpc failed:", submitError);
+      return { ok: false, message: "Could not submit. Try again." };
+    }
   }
 
   const { error: profileError } = await supabase
@@ -185,14 +223,7 @@ export async function updateBusinessProfile(
   _prevState: KybActionState,
   formData: FormData,
 ): Promise<KybActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login");
-  }
+  const { supabase, user } = await requireUser();
 
   const parsed = businessProfileSchema.safeParse({
     business_name: formData.get("business_name"),
@@ -219,7 +250,7 @@ export async function updateBusinessProfile(
   const logoFile =
     logoValue instanceof File && logoValue.size > 0 ? logoValue : null;
   if (logoFile) {
-    const logoError = validateLogoFile(logoFile);
+    const logoError = await validateLogoFile(logoFile);
     if (logoError) {
       return { ok: false, message: `Logo: ${logoError}` };
     }

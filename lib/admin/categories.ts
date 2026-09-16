@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { LOGIN_PATH } from "@/lib/auth/paths";
+import { requireAdmin } from "@/lib/auth/guard";
+import { isSupportedImageType, sniffImageType } from "@/lib/storage";
 
 export type CategoryActionState = {
   ok: boolean;
@@ -12,7 +12,6 @@ export type CategoryActionState = {
 };
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 const baseSchema = z.object({
   name: z.string().trim().min(2, "Give it a name of at least 2 characters."),
@@ -38,44 +37,22 @@ function slugify(name: string): string {
   return base;
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(LOGIN_PATH);
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("user_type")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profile?.user_type !== "admin") {
-    redirect("/");
-  }
-
-  return supabase;
-}
-
-function validateImage(file: File | null, required: boolean): string | null {
+async function validateImage(file: File | null, required: boolean): Promise<string | null> {
   if (!file || file.size === 0) {
     return required ? "An image is required." : null;
   }
-  if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
-    return "Only JPG, PNG or WEBP images are allowed.";
-  }
   if (file.size > MAX_IMAGE_BYTES) {
     return "Image must be under 5 MB.";
+  }
+  const detected = await sniffImageType(file);
+  if (!isSupportedImageType(detected)) {
+    return "Only JPG, PNG or WEBP images are allowed.";
   }
   return null;
 }
 
 async function uniqueSlug(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
   name: string,
   parentId: string | null,
   ignoreId?: string,
@@ -102,7 +79,7 @@ async function uniqueSlug(
 }
 
 async function uploadImage(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
   categoryId: string,
   file: File,
 ): Promise<string> {
@@ -121,7 +98,7 @@ export async function createCategory(
   _prevState: CategoryActionState,
   formData: FormData,
 ): Promise<CategoryActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = baseSchema.safeParse({
     name: formData.get("name"),
     parent_id: formData.get("parent_id") ?? "",
@@ -136,7 +113,7 @@ export async function createCategory(
 
   const value = formData.get("image");
   const file = value instanceof File && value.size > 0 ? value : null;
-  const fileError = validateImage(file, true);
+  const fileError = await validateImage(file, true);
   if (fileError || !file) {
     return { ok: false, message: fileError ?? "An image is required." };
   }
@@ -199,7 +176,7 @@ export async function toggleCategory(
   _prevState: CategoryActionState,
   formData: FormData,
 ): Promise<CategoryActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = idSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) {
     return { ok: false, message: "Invalid category." };
@@ -231,7 +208,7 @@ export async function deleteCategory(
   _prevState: CategoryActionState,
   formData: FormData,
 ): Promise<CategoryActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = idSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) {
     return { ok: false, message: "Invalid category." };
@@ -276,7 +253,7 @@ export async function updateCategory(
   _prevState: CategoryActionState,
   formData: FormData,
 ): Promise<CategoryActionState | never> {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
     name: formData.get("name"),
@@ -292,7 +269,7 @@ export async function updateCategory(
 
   const value = formData.get("image");
   const file = value instanceof File && value.size > 0 ? value : null;
-  const fileError = validateImage(file, false);
+  const fileError = await validateImage(file, false);
   if (fileError) {
     return { ok: false, message: fileError };
   }

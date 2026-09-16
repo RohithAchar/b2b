@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSupportedImageType, sniffImageType } from "@/lib/storage";
 
 export const PRODUCT_UNITS = ["pcs", "kg", "box", "mtr", "ltr"] as const;
 export const PRODUCT_GST_RATES = [0, 5, 12, 18, 28] as const;
@@ -7,11 +8,6 @@ export const PRODUCT_STATUSES = ["draft", "pending", "approved", "rejected"] as 
 export const MAX_PRODUCT_IMAGES = 8;
 export const MIN_PRODUCT_IMAGES = 3;
 export const MAX_PRODUCT_IMAGE_BYTES = 2 * 1024 * 1024;
-export const ALLOWED_PRODUCT_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
 export const MAX_VARIANTS = 20;
 
 const YOUTUBE_ID_RE = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
@@ -30,13 +26,14 @@ export function youtubeThumbUrl(id: string): string {
   return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 }
 
-export function validateProductImageFile(file: File | null): string | null {
+export async function validateProductImageFile(file: File | null): Promise<string | null> {
   if (!file || file.size === 0) return null;
-  if (!(ALLOWED_PRODUCT_IMAGE_TYPES as readonly string[]).includes(file.type)) {
-    return "Only JPG, PNG or WEBP images are allowed.";
-  }
   if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
     return "Each image must be under 2 MB.";
+  }
+  const detected = await sniffImageType(file);
+  if (!isSupportedImageType(detected)) {
+    return "Only JPG, PNG or WEBP images are allowed.";
   }
   return null;
 }

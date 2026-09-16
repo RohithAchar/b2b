@@ -1,5 +1,32 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+type StorefrontSupplier = {
+  id: string;
+  business_name: string;
+  city: string;
+  state: string;
+  logo_path: string | null;
+};
+
+async function fetchSupplierMap(
+  supabase: SupabaseClient,
+  ids: (string | null | undefined)[],
+): Promise<Map<string, StorefrontSupplier>> {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id))] as string[];
+  const map = new Map<string, StorefrontSupplier>();
+  if (unique.length === 0) return map;
+
+  const { data } = await supabase
+    .from("storefront_suppliers")
+    .select("id, business_name, city, state, logo_path")
+    .in("id", unique);
+
+  for (const s of (data ?? []) as StorefrontSupplier[]) {
+    map.set(s.id, s);
+  }
+  return map;
+}
+
 // ---------------------------------------------------------------------------
 // Homepage data
 // ---------------------------------------------------------------------------
@@ -16,7 +43,7 @@ export async function getHomepageData(supabase: SupabaseClient) {
     supabase
       .from("products")
       .select(
-        "id, title, price_per_unit, unit, moq, created_at, category:category_id(name, slug), supplier:supplier_id(id, business_name, city, state, logo_path), images:product_images(path, sort)",
+        "id, title, price_per_unit, unit, moq, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
       )
       .eq("status", "approved")
       .order("created_at", { ascending: false })
@@ -27,15 +54,23 @@ export async function getHomepageData(supabase: SupabaseClient) {
   const products = productsResult.data ?? [];
 
   // Product counts per category (approved, subcategories rolled into parents).
-  const categoryIds = categories.map((c) => c.id);
+  const categoryIds = categories.map((c) => c.id as string);
   const counts = await getCategoryProductCounts(supabase, categoryIds);
+
+  const supplierMap = await fetchSupplierMap(
+    supabase,
+    products.map((p) => p.supplier_id as string),
+  );
 
   return {
     categories: categories.map((c) => ({
       ...c,
-      product_count: counts[c.id] ?? 0,
+      product_count: counts[c.id as string] ?? 0,
     })),
-    products,
+    products: products.map((p) => ({
+      ...p,
+      supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    })),
   };
 }
 
@@ -58,7 +93,7 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   let qb = supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, category:category_id(name, slug), supplier:supplier_id(id, business_name, city, state), images:product_images(path, sort)",
+      "id, title, price_per_unit, unit, moq, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
       { count: "exact" },
     )
     .eq("status", "approved");
@@ -82,10 +117,18 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
 
   qb = qb.order("created_at", { ascending: false }).range(from, to);
 
-  const { data, count, error } = await qb;
+  const { data, count } = await qb;
+
+  const supplierMap = await fetchSupplierMap(
+    supabase,
+    (data ?? []).map((p) => p.supplier_id as string),
+  );
 
   return {
-    products: data ?? [],
+    products: (data ?? []).map((p) => ({
+      ...p,
+      supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    })),
     total: count ?? 0,
     page,
     perPage,
@@ -98,7 +141,7 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
 // ---------------------------------------------------------------------------
 
 export async function getProduct(supabase: SupabaseClient, productId: string) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("products")
     .select(
       `
@@ -106,9 +149,8 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
         price_per_unit, moq, stock_qty, price_slabs, negotiable,
         sample_available, sample_price, lead_time_days, gst_rate,
         attributes, certifications, packaging_details, warranty_return,
-        youtube_url, youtube_id, created_at,
+        youtube_url, youtube_id, created_at, supplier_id,
         category:category_id(id, name, slug),
-        supplier:supplier_id(id, business_name, city, state, logo_path),
         images:product_images(id, path, sort, alt),
         variants:product_variants(id, label, attrs, seller_sku, price, moq, stock_qty, sort)
       `,
@@ -117,7 +159,10 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
     .eq("status", "approved")
     .maybeSingle();
 
-  return data;
+  if (!data) return null;
+
+  const supplierMap = await fetchSupplierMap(supabase, [data.supplier_id as string]);
+  return { ...data, supplier: supplierMap.get(data.supplier_id as string) ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,36 +200,15 @@ export async function getCategoryProductCounts(
 ): Promise<Record<string, number>> {
   if (categoryIds.length === 0) return {};
 
-  // Subcategories belonging to the given (parent) categories.
-  const { data: subs } = await supabase
-    .from("categories")
-    .select("id, parent_id")
-    .in("parent_id", categoryIds)
-    .eq("is_active", true);
-
-  const subIds = (subs ?? []).map((s) => s.id as string);
-  const allIds = [...categoryIds, ...subIds];
-
-  // Tally approved products per category_id in a single query.
-  const tally: Record<string, number> = {};
-  const { data: countRows } = await supabase
-    .from("products")
-    .select("category_id")
-    .in("category_id", allIds)
-    .eq("status", "approved");
-
-  for (const row of countRows ?? []) {
-    tally[row.category_id as string] = (tally[row.category_id as string] ?? 0) + 1;
-  }
-
-  const subToParent = new Map((subs ?? []).map((s) => [s.id as string, s.parent_id as string]));
+  const { data } = await supabase
+    .from("category_product_counts")
+    .select("category_id, product_count")
+    .in("category_id", categoryIds);
 
   const counts: Record<string, number> = {};
-  for (const id of categoryIds) counts[id] = tally[id] ?? 0;
-  for (const [subId, parentId] of subToParent) {
-    counts[parentId] = (counts[parentId] ?? 0) + (tally[subId] ?? 0);
+  for (const row of (data ?? []) as { category_id: string; product_count: number }[]) {
+    counts[row.category_id] = row.product_count;
   }
-
   return counts;
 }
 
@@ -209,40 +233,33 @@ export async function getHomeBanners(supabase: SupabaseClient) {
 
 export async function getFeaturedSuppliers(supabase: SupabaseClient) {
   const { data: suppliers } = await supabase
-    .from("companies")
+    .from("storefront_suppliers")
     .select("id, business_name, city, state, logo_path")
-    .eq("kyb_status", "verified")
-    .order("verified_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(6);
 
   if (!suppliers || suppliers.length === 0) return [];
 
-  // Get 3 product images per supplier.
-  const supplierIds = suppliers.map((s) => s.id);
-  const { data: products } = await supabase
-    .from("products")
-    .select("supplier_id, images:product_images(path, sort)")
-    .in("supplier_id", supplierIds)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
+  // Get up to 3 product images per supplier from the projection view.
+  const supplierIds = suppliers.map((s) => s.id as string);
+  const { data: featured } = await supabase
+    .from("supplier_featured_images")
+    .select("supplier_id, image_path")
+    .in("supplier_id", supplierIds);
 
   const imagesBySupplier: Record<string, string[]> = {};
-  for (const p of products ?? []) {
-    const sid = p.supplier_id;
-    if (!imagesBySupplier[sid]) imagesBySupplier[sid] = [];
-    if (imagesBySupplier[sid].length < 3) {
-      const imgs = (p.images as { path: string }[]) ?? [];
-      for (const img of imgs) {
-        if (imagesBySupplier[sid].length < 3) {
-          imagesBySupplier[sid].push(img.path);
-        }
-      }
+  for (const row of (featured ?? []) as {
+    supplier_id: string;
+    image_path: string;
+  }[]) {
+    if ((imagesBySupplier[row.supplier_id]?.length ?? 0) < 3) {
+      (imagesBySupplier[row.supplier_id] ??= []).push(row.image_path);
     }
   }
 
   return suppliers.map((s) => ({
     ...s,
-    product_images: imagesBySupplier[s.id] ?? [],
+    product_images: imagesBySupplier[s.id as string] ?? [],
   }));
 }
 
@@ -258,7 +275,7 @@ export async function getRelatedProducts(
   const { data } = await supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, supplier:supplier_id(id, business_name), images:product_images(path, sort)",
+      "id, title, price_per_unit, unit, moq, supplier_id, images:product_images(path, sort)",
     )
     .eq("status", "approved")
     .eq("category_id", categoryId)
@@ -266,5 +283,14 @@ export async function getRelatedProducts(
     .order("created_at", { ascending: false })
     .limit(8);
 
-  return data ?? [];
+  const rows = data ?? [];
+  const supplierMap = await fetchSupplierMap(
+    supabase,
+    rows.map((p) => p.supplier_id as string),
+  );
+
+  return rows.map((p) => ({
+    ...p,
+    supplier: supplierMap.get(p.supplier_id as string) ?? null,
+  }));
 }

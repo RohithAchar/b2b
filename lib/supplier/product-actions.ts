@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser, getVerifiedSupplierId } from "@/lib/auth/guard";
 import {
   MAX_PRODUCT_IMAGES,
   MIN_PRODUCT_IMAGES,
@@ -30,21 +29,8 @@ function nullIfEmpty(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
-async function verifiedSupplierId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data } = await supabase
-    .from("companies")
-    .select("id, kyb_status")
-    .eq("owner_id", userId)
-    .maybeSingle();
-  if (!data || data.kyb_status !== "verified") return null;
-  return data.id as string;
-}
-
 async function uploadProductImage(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,
   productId: string,
   file: File,
@@ -112,7 +98,7 @@ async function collectImages(formData: FormData): Promise<File[] | { error: stri
     return { error: `You can upload up to ${MAX_PRODUCT_IMAGES} images.` };
   }
   for (const f of files) {
-    const err = validateProductImageFile(f);
+    const err = await validateProductImageFile(f);
     if (err) return { error: `Image ${f.name}: ${err}` };
   }
   return files;
@@ -122,13 +108,9 @@ export async function createProduct(
   _prev: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { supabase, user } = await requireUser();
 
-  const supplierId = await verifiedSupplierId(supabase, user.id);
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
   if (!supplierId) return { ...initialState, message: "Only verified suppliers can list products." };
 
   // Wizard-completion token: rendered only on the Review step. Rejects any
@@ -207,6 +189,9 @@ export async function createProduct(
     .single();
   if (insertError || !product) {
     console.error("createProduct insert failed:", insertError);
+    if (insertError?.code === "23505") {
+      return { ok: false, message: "You already use this SKU on another product." };
+    }
     return { ok: false, message: "Could not save. Try again." };
   }
 
@@ -247,13 +232,9 @@ export async function updateProduct(
   _prev: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { supabase, user } = await requireUser();
 
-  const supplierId = await verifiedSupplierId(supabase, user.id);
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
   if (!supplierId) return { ok: false, message: "Only verified suppliers can list products." };
 
   // Wizard-completion token: rendered only on the Review step. Rejects any
@@ -332,6 +313,9 @@ export async function updateProduct(
     .eq("id", productId);
   if (error) {
     console.error("updateProduct failed:", error);
+    if (error.code === "23505") {
+      return { ok: false, message: "You already use this SKU on another product." };
+    }
     return { ok: false, message: "Could not save. Try again." };
   }
 
@@ -410,14 +394,19 @@ export async function updateProduct(
 }
 
 export async function submitProduct(productId: string): Promise<ProductActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { supabase, user } = await requireUser();
 
-  const supplierId = await verifiedSupplierId(supabase, user.id);
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
   if (!supplierId) return { ok: false, message: "Only verified suppliers can list products." };
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, supplier_id")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product || product.supplier_id !== supplierId) {
+    return { ok: false, message: "Product not found." };
+  }
 
   const { count } = await supabase
     .from("product_images")
@@ -427,12 +416,9 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
     return { ok: false, message: `Add at least ${MIN_PRODUCT_IMAGES} images before submitting.` };
   }
 
-  const { error } = await supabase
-    .from("products")
-    .update({ status: "pending", submitted_at: new Date().toISOString(), rejection_note: null })
-    .eq("id", productId)
-    .eq("supplier_id", supplierId)
-    .in("status", ["draft", "rejected"]);
+  const { error } = await supabase.rpc("submit_product_for_approval", {
+    p_product_id: productId,
+  });
   if (error) {
     console.error("submitProduct failed:", error);
     return { ok: false, message: "Could not submit. Try again." };
@@ -443,13 +429,9 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
 }
 
 export async function deleteProduct(productId: string): Promise<ProductActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { supabase, user } = await requireUser();
 
-  const supplierId = await verifiedSupplierId(supabase, user.id);
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
   if (!supplierId) return { ok: false, message: "Only verified suppliers can list products." };
 
   const { data: images } = await supabase
