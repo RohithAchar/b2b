@@ -20,6 +20,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   DeleteCategoryButton,
   ToggleVisibilityButton,
@@ -43,21 +44,18 @@ export default async function CategoriesPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <div className="mb-2 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
-          <p className="text-sm text-muted-foreground">
-            What suppliers will browse. Hidden items stay invisible until you
-            turn them on.
-          </p>
-        </div>
-        <Button
-          render={<Link href="/admin/dashboard/categories/new" />}
-          nativeButton={false}
-        >
-          Add category
-        </Button>
-      </div>
+      <PageHeader
+        title="Categories"
+        description="What suppliers will browse. Hidden items stay invisible until you turn them on."
+        actions={
+          <Button
+            render={<Link href="/admin/dashboard/categories/new" />}
+            nativeButton={false}
+          >
+            Add category
+          </Button>
+        }
+      />
 
       {parents.length === 0 ? (
         <Card>

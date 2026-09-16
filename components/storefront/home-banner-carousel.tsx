@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { cn } from "cn";
 import { publicImageUrl } from "@/lib/storage";
@@ -48,12 +49,13 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
         <CarouselContent className="-ml-0">
           {banners.map((banner) => {
             const slide = (
-              <div className="relative h-64 w-full overflow-hidden rounded-2xl bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="relative h-64 w-full overflow-hidden rounded-xl bg-muted">
+                <Image
                   src={publicImageUrl("banners", banner.image_path)}
                   alt={banner.title ?? "Banner"}
-                  className="absolute inset-0 h-full w-full object-cover"
+                  fill
+                  sizes="(min-width: 1280px) 1216px, 100vw"
+                  className="object-cover"
                 />
                 {banner.title || banner.subtitle ? (
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-4">

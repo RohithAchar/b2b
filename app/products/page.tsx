@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { publicImageUrl } from "@/lib/storage";
 import { getProducts } from "@/lib/storefront";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
-import { Card } from "@/components/ui/card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
+import { Search01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Pagination,
   PaginationContent,
@@ -15,17 +18,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
-function productCoverUrl(product: { images: unknown }): string {
-  const images = product.images as { path: string; sort: number }[];
-  if (!images || images.length === 0) return "/placeholder.png";
-  const sorted = [...images].sort((a, b) => a.sort - b.sort);
-  return publicImageUrl("product_images", sorted[0].path);
-}
-
-function formatPrice(price: number): string {
-  return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
+import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
 
 export default async function ProductsPage({
   searchParams,
@@ -74,6 +67,17 @@ export default async function ProductsPage({
     return `/products?${sp.toString()}`;
   }
 
+  function buildCategoryLink(slug: string) {
+    const sp = new URLSearchParams();
+    sp.set("category", slug);
+    if (query) sp.set("q", query);
+    return `/products?${sp.toString()}`;
+  }
+
+  const activeFilter = categorySlug
+    ? (categories ?? []).find((c) => c.slug === categorySlug)?.name
+    : null;
+
   return (
     <div className="flex min-h-screen flex-col">
       <StorefrontHeader
@@ -81,13 +85,8 @@ export default async function ProductsPage({
       />
 
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          {/* Breadcrumb */}
-          <nav className="mb-4 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground">Home</Link>
-            <span className="mx-1">/</span>
-            <span className="text-foreground">Products</span>
-          </nav>
+        <div className="mx-auto w-full max-w-7xl px-4 py-6">
+          <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Products" }]} />
 
           {/* Search + filters */}
           <div className="mb-6 flex flex-col gap-3">
@@ -96,13 +95,17 @@ export default async function ProductsPage({
                 <input type="hidden" name="category" value={categorySlug} />
               )}
               <input type="hidden" name="page" value="1" />
-              <input
-                type="text"
-                name="q"
-                defaultValue={query}
-                placeholder="Search products..."
-                className="h-9 flex-1 rounded-lg border border-input bg-input/30 px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
-              />
+              <div className="relative flex-1">
+                <Input
+                  name="q"
+                  defaultValue={query}
+                  placeholder="Search products..."
+                  className="h-9 pr-9"
+                />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <HugeiconsIcon icon={Search01Icon} strokeWidth={2} className="size-4" />
+                </span>
+              </div>
               <Button type="submit" size="sm">
                 Search
               </Button>
@@ -110,16 +113,13 @@ export default async function ProductsPage({
 
             {/* Category chips */}
             <div className="flex flex-wrap gap-2">
-              <Link href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}>
-                <Badge variant={categorySlug ? "secondary" : "default"}>
-                  All
-                </Badge>
+              <Link
+                href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
+              >
+                <Badge variant={categorySlug ? "secondary" : "default"}>All</Badge>
               </Link>
               {(categories ?? []).map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={buildCategoryLink(cat.slug, query)}
-                >
+                <Link key={cat.id} href={buildCategoryLink(cat.slug)}>
                   <Badge variant={categorySlug === cat.slug ? "default" : "secondary"}>
                     {cat.name}
                   </Badge>
@@ -128,61 +128,50 @@ export default async function ProductsPage({
             </div>
           </div>
 
-          {/* Results count */}
-          <p className="mb-4 text-sm text-muted-foreground">
-            {total} product{total !== 1 ? "s" : ""} found
-            {query && (
-              <> for &ldquo;{query}&rdquo;</>
+          {/* Results meta */}
+          <div className="mb-4 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-sm text-muted-foreground">
+              {total} product{total !== 1 ? "s" : ""} found
+              {query && <> for &ldquo;{query}&rdquo;</>}
+            </p>
+            {activeFilter && (
+              <Badge variant="secondary">
+                {activeFilter}
+                <Link
+                  aria-label={`Remove ${activeFilter} filter`}
+                  href={
+                    query
+                      ? `/products?q=${encodeURIComponent(query)}`
+                      : "/products"
+                  }
+                  className="ml-1 text-muted-foreground hover:text-foreground"
+                >
+                  ×
+                </Link>
+              </Badge>
             )}
-          </p>
+          </div>
 
           {/* Product grid */}
           {products.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm text-muted-foreground">No products found.</p>
-              <Link href="/products">
-                <Button variant="outline" size="sm" className="mt-3">
-                  Clear filters
-                </Button>
-              </Link>
+            <div className="py-16">
+              <Empty>
+                <EmptyTitle>No products found</EmptyTitle>
+                <EmptyDescription>
+                  Try a different search or clear the filters.
+                </EmptyDescription>
+                <Link href="/products">
+                  <Button variant="outline" size="sm" className="mt-3">
+                    Clear filters
+                  </Button>
+                </Link>
+              </Empty>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {products.map((product) => {
-                const supplier = product.supplier as { business_name?: string } | null;
-                return (
-                  <Link key={product.id} href={`/products/${product.id}`}>
-                    <Card className="group overflow-hidden transition-shadow hover:shadow-md">
-                      <div className="aspect-square w-full overflow-hidden bg-muted">
-                        <img
-                          src={productCoverUrl(product)}
-                          alt={product.title}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1 px-3 py-2">
-                        <p className="line-clamp-1 text-sm font-medium">
-                          {product.title}
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {formatPrice(product.price_per_unit)}
-                          <span className="ml-1 text-xs font-normal text-muted-foreground">
-                            / {product.unit}
-                          </span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          MOQ: {product.moq}+
-                        </p>
-                        {supplier && (
-                          <p className="line-clamp-1 text-xs text-muted-foreground">
-                            {supplier.business_name}
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  </Link>
-                );
-              })}
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product as ProductCardData} />
+              ))}
             </div>
           )}
 
@@ -200,10 +189,7 @@ export default async function ProductsPage({
                     const p = i + 1;
                     return (
                       <PaginationItem key={p}>
-                        <PaginationLink
-                          href={buildPageUrl(p)}
-                          isActive={p === page}
-                        >
+                        <PaginationLink href={buildPageUrl(p)} isActive={p === page}>
                           {p}
                         </PaginationLink>
                       </PaginationItem>
@@ -224,11 +210,4 @@ export default async function ProductsPage({
       <StorefrontFooter />
     </div>
   );
-}
-
-function buildCategoryLink(slug: string, query: string) {
-  const sp = new URLSearchParams();
-  sp.set("category", slug);
-  if (query) sp.set("q", query);
-  return `/products?${sp.toString()}`;
 }

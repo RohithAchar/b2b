@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
@@ -5,36 +6,25 @@ import { getHomepageData, getFeaturedSuppliers, getHomeBanners } from "@/lib/sto
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
 import {
   HomeBannerCarousel,
   type HomeBanner,
 } from "@/components/storefront/home-banner-carousel";
-
-type CoverImageProduct = { images: { path: string; sort: number }[] | null };
-type PriceProduct = { price_per_unit: number; unit: string };
-
-function productCoverUrl(product: CoverImageProduct): string {
-  const images = product.images;
-  if (!images || images.length === 0) return "/placeholder.png";
-  const sorted = [...images].sort((a, b) => a.sort - b.sort);
-  return publicImageUrl("product_images", sorted[0].path);
-}
-
-function formatPrice(price: number): string {
-  return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
+import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
+import { SupplierCard } from "@/components/storefront/supplier-card";
+import { SectionHeader } from "@/components/storefront/section-header";
 
 function PromoBanner({ banner }: { banner: HomeBanner }) {
   const strip = (
-    <div className="relative h-32 overflow-hidden rounded-2xl bg-muted">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+    <div className="relative h-32 overflow-hidden rounded-xl bg-muted">
+      <Image
         src={publicImageUrl("banners", banner.image_path)}
         alt={banner.title ?? "Promotional banner"}
-        className="absolute inset-0 h-full w-full object-cover"
+        fill
+        sizes="(min-width: 1280px) 1216px, 100vw"
+        className="object-cover"
       />
       {banner.title || banner.subtitle ? (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3">
@@ -49,6 +39,14 @@ function PromoBanner({ banner }: { banner: HomeBanner }) {
     </div>
   );
   return banner.link_url ? <Link href={banner.link_url}>{strip}</Link> : strip;
+}
+
+function BannerPlaceholder({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/20">
+      <EmptyTitle className="text-sm font-normal">{children}</EmptyTitle>
+    </div>
+  );
 }
 
 export default async function HomePage() {
@@ -79,56 +77,31 @@ export default async function HomePage() {
 
       <main className="flex-1">
         {/* Hero banner carousel */}
-        <section className="mx-auto max-w-7xl px-4 pt-6">
+        <section className="mx-auto w-full max-w-7xl px-4 pt-6">
           {heroBanners.length > 0 ? (
             <HomeBannerCarousel banners={heroBanners} />
           ) : (
-            <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20">
-              <span className="text-sm text-muted-foreground">Banner placeholder (1200 x 256)</span>
+            <div className="h-64">
+              <BannerPlaceholder>No hero banner set</BannerPlaceholder>
             </div>
           )}
         </section>
 
-        {/* Search bar */}
-        <section className="mx-auto max-w-7xl px-4 py-6">
-          <form action="/products" method="get" className="flex gap-2">
-            <input type="hidden" name="page" value="1" />
-            <div className="relative flex-1">
-              <input
-                type="text"
-                name="q"
-                placeholder="Search products..."
-                className="h-10 w-full rounded-lg border border-input bg-input/30 px-4 pr-10 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
-              />
-            </div>
-            <Button type="submit" className="h-10 px-6">
-              Search
-            </Button>
-          </form>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {categories.slice(0, 8).map((cat) => (
-              <Link key={cat.id} href={`/category/${cat.slug}`}>
-                <Badge variant="secondary" className="cursor-pointer hover:bg-muted">
-                  {cat.name}
-                </Badge>
-              </Link>
-            ))}
-          </div>
-        </section>
-
         {/* Category grid */}
-        <section className="mx-auto max-w-7xl px-4 pb-8">
-          <h2 className="mb-4 text-lg font-semibold">Browse Categories</h2>
+        <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-10">
+          <SectionHeader title="Browse Categories" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {categories.map((cat) => (
               <Link key={cat.id} href={`/category/${cat.slug}`}>
-                <Card className="group overflow-hidden transition-shadow hover:shadow-md">
-                  <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+                <Card className="group overflow-hidden rounded-xl transition-[box-shadow,border-color] hover:ring-foreground/20 hover:shadow-sm">
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                     {cat.image_path ? (
-                      <img
+                      <Image
                         src={publicImageUrl("category_images", cat.image_path)}
                         alt={cat.name}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -139,7 +112,7 @@ export default async function HomePage() {
                   <div className="px-3 py-2">
                     <p className="text-sm font-medium">{cat.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {cat.product_count} products
+                      {cat.product_count} product{cat.product_count !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </Card>
@@ -149,117 +122,46 @@ export default async function HomePage() {
         </section>
 
         {/* Promotional banner */}
-        <section className="mx-auto max-w-7xl px-4 pb-8">
+        <section className="mx-auto w-full max-w-7xl px-4 pb-8">
           {promoBanner ? (
             <PromoBanner banner={promoBanner} />
           ) : (
-            <div className="flex h-32 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20">
-              <span className="text-sm text-muted-foreground">Promotional banner placeholder</span>
+            <div className="h-32">
+              <BannerPlaceholder>No promotional banner set</BannerPlaceholder>
             </div>
           )}
         </section>
 
-        <Separator className="mx-auto max-w-7xl" />
+        <Separator className="mx-auto w-full max-w-7xl" />
 
         {/* New arrivals */}
-        <section className="mx-auto max-w-7xl px-4 py-8">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">New Arrivals</h2>
-            <Link href="/products">
-              <Button variant="ghost" size="sm">
-                View all →
-              </Button>
-            </Link>
-          </div>
+        <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-8">
+          <SectionHeader title="New Arrivals" actionLabel="View all" actionHref="/products" />
           {products.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No products available yet.
-            </p>
+            <div className="py-8">
+              <Empty>
+                <EmptyTitle>No products yet</EmptyTitle>
+                <EmptyDescription>Products appear here as suppliers publish them.</EmptyDescription>
+              </Empty>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {products.map((product) => {
-                const supplier = product.supplier as { business_name?: string } | null;
-                return (
-                  <Link key={product.id} href={`/products/${product.id}`}>
-                    <Card className="group overflow-hidden transition-shadow hover:shadow-md">
-                      <div className="aspect-square w-full overflow-hidden bg-muted">
-                        <img
-                          src={productCoverUrl(product)}
-                          alt={product.title}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1 px-3 py-2">
-                        <p className="line-clamp-1 text-sm font-medium">
-                          {product.title}
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {formatPrice((product as PriceProduct).price_per_unit)}
-                          <span className="ml-1 text-xs font-normal text-muted-foreground">
-                            / {(product as PriceProduct).unit}
-                          </span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          MOQ: {product.moq}+
-                        </p>
-                        {supplier && (
-                          <p className="line-clamp-1 text-xs text-muted-foreground">
-                            {supplier.business_name}
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  </Link>
-                );
-              })}
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product as ProductCardData} />
+              ))}
             </div>
           )}
         </section>
 
-        <Separator className="mx-auto max-w-7xl" />
+        <Separator className="mx-auto w-full max-w-7xl" />
 
         {/* Featured suppliers */}
         {featuredSuppliers.length > 0 && (
-          <section className="mx-auto max-w-7xl px-4 py-8">
-            <h2 className="mb-4 text-lg font-semibold">Featured Suppliers</h2>
+          <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-8">
+            <SectionHeader title="Featured Suppliers" />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
               {featuredSuppliers.map((supplier) => (
-                <Card key={supplier.id} className="overflow-hidden">
-                  <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-                    {supplier.logo_path ? (
-                      <img
-                        src={publicImageUrl("company_logos", supplier.logo_path)}
-                        alt={supplier.business_name}
-                        className="size-10 shrink-0 rounded-lg border border-border object-cover"
-                      />
-                    ) : (
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium">
-                        {supplier.business_name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {supplier.business_name}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {supplier.city}, {supplier.state}
-                      </p>
-                    </div>
-                  </div>
-                  {supplier.product_images.length > 0 && (
-                    <div className="flex gap-1 p-2">
-                      {supplier.product_images.slice(0, 3).map((path, i) => (
-                        <div key={i} className="aspect-square flex-1 overflow-hidden rounded-lg bg-muted">
-                          <img
-                            src={publicImageUrl("product_images", path)}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
+                <SupplierCard key={supplier.id} supplier={supplier} />
               ))}
             </div>
           </section>

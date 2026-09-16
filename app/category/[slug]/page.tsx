@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
@@ -6,9 +7,10 @@ import { getCategoryBySlug } from "@/lib/storefront";
 import { getProducts } from "@/lib/storefront";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
-import { Card } from "@/components/ui/card";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import {
   Pagination,
   PaginationContent,
@@ -17,17 +19,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
-function productCoverUrl(product: { images: unknown }): string {
-  const images = product.images as { path: string; sort: number }[];
-  if (!images || images.length === 0) return "/placeholder.png";
-  const sorted = [...images].sort((a, b) => a.sort - b.sort);
-  return publicImageUrl("product_images", sorted[0].path);
-}
-
-function formatPrice(price: number): string {
-  return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
+import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
 
 export default async function CategoryPage({
   params,
@@ -73,25 +65,26 @@ export default async function CategoryPage({
       />
 
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          {/* Breadcrumb */}
-          <nav className="mb-4 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground">Home</Link>
-            <span className="mx-1">/</span>
-            <span className="text-foreground">{category.name}</span>
-          </nav>
+        <div className="mx-auto w-full max-w-7xl px-4 py-6">
+          <Breadcrumbs
+            items={[{ label: "Home", href: "/" }, { label: category.name }]}
+          />
 
           {/* Category header */}
           <div className="mb-6 flex items-center gap-4">
             {category.image_path && (
-              <img
-                src={publicImageUrl("category_images", category.image_path)}
-                alt={category.name}
-                className="size-16 shrink-0 rounded-xl border border-border object-cover"
-              />
+              <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+                <Image
+                  src={publicImageUrl("category_images", category.image_path)}
+                  alt={category.name}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              </div>
             )}
             <div>
-              <h1 className="text-xl font-semibold">{category.name}</h1>
+              <h1 className="text-xl font-semibold tracking-tight">{category.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {total} product{total !== 1 ? "s" : ""}
               </p>
@@ -113,53 +106,24 @@ export default async function CategoryPage({
 
           {/* Product grid */}
           {products.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm text-muted-foreground">
-                No products in this category yet.
-              </p>
-              <Link href="/products">
-                <Button variant="outline" size="sm" className="mt-3">
-                  Browse all products
-                </Button>
-              </Link>
+            <div className="py-16">
+              <Empty>
+                <EmptyTitle>No products in this category yet</EmptyTitle>
+                <EmptyDescription>
+                  Suppliers haven&apos;t listed products here yet.
+                </EmptyDescription>
+                <Link href="/products">
+                  <Button variant="outline" size="sm" className="mt-3">
+                    Browse all products
+                  </Button>
+                </Link>
+              </Empty>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {products.map((product) => {
-                const supplier = product.supplier as { business_name?: string } | null;
-                return (
-                  <Link key={product.id} href={`/products/${product.id}`}>
-                    <Card className="group overflow-hidden transition-shadow hover:shadow-md">
-                      <div className="aspect-square w-full overflow-hidden bg-muted">
-                        <img
-                          src={productCoverUrl(product)}
-                          alt={product.title}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1 px-3 py-2">
-                        <p className="line-clamp-1 text-sm font-medium">
-                          {product.title}
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {formatPrice(product.price_per_unit)}
-                          <span className="ml-1 text-xs font-normal text-muted-foreground">
-                            / {product.unit}
-                          </span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          MOQ: {product.moq}+
-                        </p>
-                        {supplier && (
-                          <p className="line-clamp-1 text-xs text-muted-foreground">
-                            {supplier.business_name}
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  </Link>
-                );
-              })}
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product as ProductCardData} />
+              ))}
             </div>
           )}
 
@@ -177,10 +141,7 @@ export default async function CategoryPage({
                     const p = i + 1;
                     return (
                       <PaginationItem key={p}>
-                        <PaginationLink
-                          href={buildPageUrl(p)}
-                          isActive={p === page}
-                        >
+                        <PaginationLink href={buildPageUrl(p)} isActive={p === page}>
                           {p}
                         </PaginationLink>
                       </PaginationItem>

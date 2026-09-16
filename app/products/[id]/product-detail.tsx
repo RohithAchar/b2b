@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import { publicImageUrl } from "@/lib/storage";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 
 function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -51,6 +52,15 @@ type Product = {
   variants: { id: string; label: string; attrs: Record<string, string>; seller_sku: string; price: number; moq: number | null; stock_qty: number; sort: number }[];
 };
 
+function SpecItem({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-sm font-medium">{value}</p>
+    </div>
+  );
+}
+
 export function ProductDetail({ product }: { product: Product }) {
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState("description");
@@ -58,32 +68,29 @@ export function ProductDetail({ product }: { product: Product }) {
   const sortedVariants = [...product.variants].sort((a, b) => a.sort - b.sort);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Breadcrumb */}
-      <nav className="mb-4 text-sm text-muted-foreground">
-        <Link href="/" className="hover:text-foreground">Home</Link>
-        <span className="mx-1">/</span>
-        {product.category && (
-          <>
-            <Link href={`/category/${product.category.slug}`} className="hover:text-foreground">
-              {product.category.name}
-            </Link>
-            <span className="mx-1">/</span>
-          </>
-        )}
-        <span className="text-foreground">{product.title}</span>
-      </nav>
+    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          ...(product.category
+            ? [{ label: product.category.name, href: `/category/${product.category.slug}` }]
+            : []),
+          { label: product.title },
+        ]}
+      />
 
       {/* Main content: image + info */}
       <div className="grid gap-6 md:grid-cols-[1fr_400px]">
         {/* Image gallery */}
         <div>
-          <div className="aspect-square w-full overflow-hidden rounded-2xl border border-border bg-muted">
+          <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border bg-muted">
             {images.length > 0 ? (
-              <img
+              <Image
                 src={publicImageUrl("product_images", images[activeImage].path)}
                 alt={images[activeImage].alt ?? product.title}
-                className="h-full w-full object-contain"
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-contain"
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -97,14 +104,18 @@ export function ProductDetail({ product }: { product: Product }) {
                 <button
                   key={img.id}
                   onClick={() => setActiveImage(i)}
-                  className={`size-16 shrink-0 overflow-hidden rounded-lg border-2 bg-muted ${
+                  aria-label={`View image ${i + 1}`}
+                  aria-current={i === activeImage}
+                  className={`relative size-16 shrink-0 overflow-hidden rounded-lg border-2 bg-muted ${
                     i === activeImage ? "border-foreground" : "border-transparent"
                   }`}
                 >
-                  <img
+                  <Image
                     src={publicImageUrl("product_images", img.path)}
                     alt=""
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="64px"
+                    className="object-cover"
                   />
                 </button>
               ))}
@@ -114,57 +125,67 @@ export function ProductDetail({ product }: { product: Product }) {
 
         {/* Product info */}
         <div className="flex flex-col gap-4">
-          <h1 className="text-xl font-semibold">{product.title}</h1>
-
-          {product.brand && (
-            <p className="text-sm text-muted-foreground">Brand: {product.brand}</p>
-          )}
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">{product.title}</h1>
+            {product.brand && (
+              <p className="mt-1 text-sm text-muted-foreground">Brand: {product.brand}</p>
+            )}
+          </div>
 
           {/* Price */}
-          <Card className="p-4">
+          <Card className="rounded-xl p-4">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-semibold">
                 {formatPrice(product.price_per_unit)}
               </span>
               <span className="text-sm text-muted-foreground">/ {product.unit}</span>
+              {product.negotiable && (
+                <Badge variant="secondary" className="ml-auto">
+                  Negotiable
+                </Badge>
+              )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               MOQ: {product.moq} {product.unit}
             </p>
-            {product.negotiable && (
-              <Badge variant="secondary" className="mt-2">Negotiable</Badge>
+            {product.sample_available && (
+              <p className="mt-1 text-sm">
+                <span className="text-muted-foreground">Sample: </span>
+                <span className="font-medium">
+                  {product.sample_price ? formatPrice(product.sample_price) : "Available"}
+                </span>
+              </p>
             )}
           </Card>
 
           {/* Quick specs */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <span className="text-muted-foreground">Stock</span>
-              <p className="font-medium">
-                {product.stock_qty > 0 ? `${product.stock_qty} in stock` : "Out of stock"}
-              </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Lead Time</span>
-              <p className="font-medium">{product.lead_time_days} days</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">GST Rate</span>
-              <p className="font-medium">{product.gst_rate ?? 0}%</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">HSN Code</span>
-              <p className="font-medium">{product.hsn_code}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            <SpecItem label="Stock" value={product.stock_qty > 0 ? `${product.stock_qty} in stock` : "Out of stock"} />
+            <SpecItem label="Lead time" value={`${product.lead_time_days} days`} />
+            <SpecItem label="GST rate" value={`${product.gst_rate ?? 0}%`} />
+            <SpecItem label="HSN code" value={product.hsn_code} />
           </div>
 
-          {/* Sample */}
-          {product.sample_available && (
-            <div className="text-sm">
-              <span className="text-muted-foreground">Sample: </span>
-              <span className="font-medium">
-                {product.sample_price ? formatPrice(product.sample_price) : "Available"}
-              </span>
+          {/* Price slabs */}
+          {product.price_slabs.length > 0 && (
+            <div>
+              <p className="mb-2 text-sm font-medium">Quantity pricing</p>
+              <Table>
+                <TableBody>
+                  {[...product.price_slabs]
+                    .sort((a, b) => a.min_qty - b.min_qty)
+                    .map((slab, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {slab.min_qty}+ {product.unit}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium tabular-nums">
+                          {formatPrice(slab.price)} / {product.unit}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
             </div>
           )}
 
@@ -172,7 +193,9 @@ export function ProductDetail({ product }: { product: Product }) {
           {product.certifications.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {product.certifications.map((cert) => (
-                <Badge key={cert} variant="outline">{cert}</Badge>
+                <Badge key={cert} variant="outline">
+                  {cert}
+                </Badge>
               ))}
             </div>
           )}
@@ -181,22 +204,33 @@ export function ProductDetail({ product }: { product: Product }) {
 
           {/* Supplier info */}
           {product.supplier && (
-            <Card className="p-4">
+            <Card className="rounded-xl p-4">
               <div className="flex items-center gap-3">
                 {product.supplier.logo_path ? (
-                  <img
-                    src={publicImageUrl("company_logos", product.supplier.logo_path)}
-                    alt={product.supplier.business_name}
-                    className="size-10 shrink-0 rounded-lg border border-border object-cover"
-                  />
+                  <div className="relative size-10 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                    <Image
+                      src={publicImageUrl("company_logos", product.supplier.logo_path)}
+                      alt={product.supplier.business_name}
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium">
                     {product.supplier.business_name.slice(0, 2).toUpperCase()}
                   </div>
                 )}
-                <div>
-                  <p className="text-sm font-medium">{product.supplier.business_name}</p>
-                  <p className="text-xs text-muted-foreground">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium">
+                      {product.supplier.business_name}
+                    </p>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      Verified
+                    </span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
                     {product.supplier.city}, {product.supplier.state}
                   </p>
                 </div>
@@ -225,7 +259,7 @@ export function ProductDetail({ product }: { product: Product }) {
           </TabsList>
 
           <TabsContent value="description" className="mt-4">
-            <Card className="p-6">
+            <Card className="rounded-xl p-6">
               <div className="prose prose-sm max-w-none text-sm">
                 <p className="whitespace-pre-wrap">{product.description}</p>
               </div>
@@ -246,7 +280,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
           {Object.keys(product.attributes).length > 0 && (
             <TabsContent value="specifications" className="mt-4">
-              <Card className="p-6">
+              <Card className="rounded-xl p-6">
                 <Table>
                   <TableBody>
                     {Object.entries(product.attributes).map(([key, value]) => (
@@ -263,7 +297,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
           {sortedVariants.length > 0 && (
             <TabsContent value="variants" className="mt-4">
-              <Card className="p-6">
+              <Card className="rounded-xl p-6">
                 <Table>
                   <TableHeader>
                     <TableRow>

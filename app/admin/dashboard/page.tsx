@@ -19,6 +19,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/layout/page-header";
 
 function StatCard({
   label,
@@ -80,20 +81,18 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <div className="mb-2 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
-          <p className="text-sm text-muted-foreground">
-            Supplier applications at a glance.
-          </p>
-        </div>
-        <Button
-          render={<Link href="/admin/dashboard/supplier-verification" />}
-          nativeButton={false}
-        >
-          Review applications
-        </Button>
-      </div>
+      <PageHeader
+        title="Overview"
+        description="Supplier applications at a glance."
+        actions={
+          <Button
+            render={<Link href="/admin/dashboard/supplier-verification" />}
+            nativeButton={false}
+          >
+            Review applications
+          </Button>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="To verify" value={pendingCount ?? 0} />

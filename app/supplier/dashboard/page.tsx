@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -84,12 +85,15 @@ export default async function SupplierOverviewPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <div className="mb-2 flex min-w-0 items-center gap-4">
         {company.logo_path ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl(company.logo_path)}
-            alt=""
-            className="size-14 shrink-0 rounded-2xl border border-border object-cover"
-          />
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border border-border bg-muted">
+            <Image
+              src={logoUrl(company.logo_path)}
+              alt=""
+              fill
+              sizes="56px"
+              className="object-cover"
+            />
+          </div>
         ) : null}
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-bold tracking-tight">
