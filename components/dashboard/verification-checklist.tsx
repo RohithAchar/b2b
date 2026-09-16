@@ -63,7 +63,7 @@ export function VerificationChecklistCard({
   const editable = company.kyb_status === "draft" || company.kyb_status === "rejected";
 
   return (
-    <Card size="sm" className="!gap-0 !py-0">
+    <Card size="sm" className="!gap-0 !pb-0">
       <CardHeader className="flex w-full flex-row items-center justify-between border-b border-border gap-2">
         <div className="grid gap-0.5">
           <CardTitle>Verification</CardTitle>

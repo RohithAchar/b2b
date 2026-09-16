@@ -263,7 +263,7 @@ export default async function SupplierOverviewPage() {
         </div>
       </div>
 
-      <Card className="!gap-0 !py-0">
+      <Card className="!gap-0 !pb-0">
         <CardHeader className="flex w-full flex-row items-center justify-between border-b border-border gap-2">
           <div className="grid gap-0.5">
             <CardTitle>Recent products</CardTitle>
