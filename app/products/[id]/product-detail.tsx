@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -8,7 +5,9 @@ import {
   Location01Icon,
   PinLocation01Icon,
 } from "@hugeicons/core-free-icons";
+import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
+import { getRelatedProducts } from "@/lib/storefront";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,9 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
+import { ProductGallery, type GalleryImage } from "@/components/storefront/product-gallery";
+import { ProductDetailTabs } from "@/components/storefront/product-content-tabs";
 import { SectionHeader } from "@/components/storefront/section-header";
 
 function formatPrice(price: number): string {
@@ -70,18 +70,12 @@ function SpecItem({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function ProductDetail({
-  product,
-  related,
-}: {
-  product: Product;
-  related?: ProductCardData[];
-}) {
-  const [activeImage, setActiveImage] = useState(0);
-  const [activeTab, setActiveTab] = useState("description");
-  const images = [...product.images].sort((a, b) => a.sort - b.sort);
+export function ProductDetail({ product }: { product: Product }) {
+  const images: GalleryImage[] = [...product.images].sort((a, b) => a.sort - b.sort);
   const sortedVariants = [...product.variants].sort((a, b) => a.sort - b.sort);
   const supplier = product.supplier;
+  const attributeEntries = Object.entries(product.attributes);
+  const slabs = [...product.price_slabs].sort((a, b) => a.min_qty - b.min_qty);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -98,53 +92,11 @@ export function ProductDetail({
       {/* Main content: image + transactional sidebar */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_440px]">
         {/* Image gallery */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border bg-card">
-            {images.length > 0 ? (
-              <Image
-                src={publicImageUrl("product_images", images[activeImage].path)}
-                alt={images[activeImage].alt ?? product.title}
-                fill
-                sizes="(min-width: 1024px) 55vw, 100vw"
-                className="object-contain"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No image
-              </div>
-            )}
-            {product.negotiable && (
-              <span className="absolute left-3 top-3 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-                Negotiable
-              </span>
-            )}
-          </div>
-          {images.length > 1 && (
-            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-              {images.map((img, i) => (
-                <button
-                  key={img.id}
-                  onClick={() => setActiveImage(i)}
-                  aria-label={`View image ${i + 1}`}
-                  aria-current={i === activeImage}
-                  className={`relative size-16 shrink-0 overflow-hidden rounded-md border-2 bg-muted ${
-                    i === activeImage
-                      ? "border-primary"
-                      : "border-transparent hover:border-border"
-                  }`}
-                >
-                  <Image
-                    src={publicImageUrl("product_images", img.path)}
-                    alt=""
-                    fill
-                    sizes="64px"
-                    className="object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery
+          images={images}
+          title={product.title}
+          negotiable={product.negotiable}
+        />
 
         {/* Transactional info column */}
         <div className="flex flex-col gap-4">
@@ -209,28 +161,26 @@ export function ProductDetail({
           </div>
 
           {/* Quantity pricing */}
-          {product.price_slabs.length > 0 && (
+          {slabs.length > 0 && (
             <div className="overflow-hidden rounded-lg border border-border bg-card">
               <p className="border-b border-border px-4 py-2.5 text-sm font-semibold">
                 Quantity Pricing
               </p>
               <Table>
                 <TableBody>
-                  {[...product.price_slabs]
-                    .sort((a, b) => a.min_qty - b.min_qty)
-                    .map((slab, i) => (
-                      <TableRow key={i} className="border-b-0 hover:bg-transparent">
-                        <TableCell className="text-sm text-muted-foreground">
-                          {slab.min_qty}+ {product.unit}s
-                        </TableCell>
-                        <TableCell className="text-right text-sm font-bold tabular-nums text-foreground">
-                          {formatPrice(slab.price)}
-                          <span className="ml-1 text-xs font-normal text-muted-foreground">
-                            / {product.unit}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                  {slabs.map((slab, i) => (
+                    <TableRow key={i} className="border-b-0 hover:bg-transparent">
+                      <TableCell className="text-sm text-muted-foreground">
+                        {slab.min_qty}+ {product.unit}s
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-bold tabular-nums text-foreground">
+                        {formatPrice(slab.price)}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          / {product.unit}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -315,18 +265,8 @@ export function ProductDetail({
 
           {/* Description / specifications / variants */}
           <div className="w-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="description">Description</TabsTrigger>
-                {Object.keys(product.attributes).length > 0 && (
-                  <TabsTrigger value="specifications">Specifications</TabsTrigger>
-                )}
-                {sortedVariants.length > 0 && (
-                  <TabsTrigger value="variants">Variants</TabsTrigger>
-                )}
-              </TabsList>
-
-              <TabsContent value="description" className="mt-4">
+            <ProductDetailTabs
+              description={
                 <Card className="rounded-lg p-6">
                   <div className="prose prose-sm max-w-none text-sm">
                     <p className="whitespace-pre-wrap">{product.description}</p>
@@ -344,14 +284,13 @@ export function ProductDetail({
                     </div>
                   )}
                 </Card>
-              </TabsContent>
-
-              {Object.keys(product.attributes).length > 0 && (
-                <TabsContent value="specifications" className="mt-4">
+              }
+              specifications={
+                attributeEntries.length > 0 ? (
                   <Card className="rounded-lg p-6">
                     <Table>
                       <TableBody>
-                        {Object.entries(product.attributes).map(([key, value]) => (
+                        {attributeEntries.map(([key, value]) => (
                           <TableRow key={key}>
                             <TableHead className="w-40 font-medium">{key}</TableHead>
                             <TableCell>{value}</TableCell>
@@ -360,11 +299,10 @@ export function ProductDetail({
                       </TableBody>
                     </Table>
                   </Card>
-                </TabsContent>
-              )}
-
-              {sortedVariants.length > 0 && (
-                <TabsContent value="variants" className="mt-4">
+                ) : null
+              }
+              variants={
+                sortedVariants.length > 0 ? (
                   <Card className="rounded-lg p-6">
                     <Table>
                       <TableHeader>
@@ -389,27 +327,38 @@ export function ProductDetail({
                       </TableBody>
                     </Table>
                   </Card>
-                </TabsContent>
-              )}
-            </Tabs>
+                ) : null
+              }
+            />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Related products */}
-      {related && related.length > 0 && (
-        <div className="mt-10">
-          <SectionHeader
-            title="Related Products"
-            subtitle="More from this category"
-          />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {related.slice(0, 8).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
-      )}
+export async function RelatedProductsSection({
+  categoryId,
+  excludeId,
+}: {
+  categoryId: string | null;
+  excludeId: string;
+}) {
+  if (!categoryId) return null;
+
+  const supabase = await createClient();
+  const related = await getRelatedProducts(supabase, categoryId, excludeId);
+
+  if (related.length === 0) return null;
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 mt-10">
+      <SectionHeader title="Related Products" subtitle="More from this category" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        {related.slice(0, 8).map((product) => (
+          <ProductCard key={product.id} product={product as ProductCardData} />
+        ))}
+      </div>
     </div>
   );
 }

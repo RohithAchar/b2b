@@ -43,50 +43,52 @@ export async function getNavigationCategories(supabase: SupabaseClient) {
 }
 
 // ---------------------------------------------------------------------------
-// Homepage data
+// Homepage data (split so sections can stream independently)
 // ---------------------------------------------------------------------------
 
-export async function getHomepageData(supabase: SupabaseClient) {
-  const [categoriesResult, productsResult] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id, name, slug, image_path")
-      .eq("is_active", true)
-      .is("parent_id", null)
-      .order("sort_order")
-      .order("name"),
-    supabase
-      .from("products")
-      .select(
-        "id, title, price_per_unit, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
-      )
-      .eq("status", "approved")
-      .order("created_at", { ascending: false })
-      .limit(12),
-  ]);
+export async function getHomeCategories(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from("categories")
+    .select("id, name, slug, image_path")
+    .eq("is_active", true)
+    .is("parent_id", null)
+    .order("sort_order")
+    .order("name");
 
-  const categories = categoriesResult.data ?? [];
-  const products = productsResult.data ?? [];
+  const categories = (data ?? []) as { id: string; name: string; slug: string; image_path: string | null }[];
 
   // Product counts per category (approved, subcategories rolled into parents).
-  const categoryIds = categories.map((c) => c.id as string);
-  const counts = await getCategoryProductCounts(supabase, categoryIds);
+  const counts = await getCategoryProductCounts(
+    supabase,
+    categories.map((c) => c.id),
+  );
 
+  return categories.map((c) => ({
+    ...c,
+    product_count: counts[c.id] ?? 0,
+  }));
+}
+
+export async function getHomeProducts(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from("products")
+    .select(
+      "id, title, price_per_unit, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+    )
+    .eq("status", "approved")
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  const products = data ?? [];
   const supplierMap = await fetchSupplierMap(
     supabase,
     products.map((p) => p.supplier_id as string),
   );
 
-  return {
-    categories: categories.map((c) => ({
-      ...c,
-      product_count: counts[c.id as string] ?? 0,
-    })),
-    products: products.map((p) => ({
-      ...p,
-      supplier: supplierMap.get(p.supplier_id as string) ?? null,
-    })),
-  };
+  return products.map((p) => ({
+    ...p,
+    supplier: supplierMap.get(p.supplier_id as string) ?? null,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +227,18 @@ export async function getCategoryProductCounts(
     counts[row.category_id] = row.product_count;
   }
   return counts;
+}
+
+export async function getCategoryProductCount(
+  supabase: SupabaseClient,
+  categoryId: string,
+): Promise<number> {
+  const { data } = await supabase
+    .from("category_product_counts")
+    .select("product_count")
+    .eq("category_id", categoryId)
+    .maybeSingle();
+  return (data as { product_count?: number } | null)?.product_count ?? 0;
 }
 
 // ---------------------------------------------------------------------------

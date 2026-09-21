@@ -1,13 +1,15 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getProduct,
-  getRelatedProducts,
-  getNavigationCategories,
-} from "@/lib/storefront";
+import { getProduct, getNavigationCategories } from "@/lib/storefront";
+import { getSessionUser } from "@/lib/auth/session";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
-import { ProductDetail } from "./product-detail";
+import {
+  ProductDetail,
+  RelatedProductsSection,
+} from "./product-detail";
+import { ProductDetailSkeleton, ProductGridSkeleton } from "@/components/storefront/skeletons";
 
 function getRootCategoryId(product: unknown): string | null {
   const p = product as { category?: unknown };
@@ -26,35 +28,40 @@ export default async function ProductPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [sessionUser, navCategories, product] = await Promise.all([
+    getSessionUser(supabase),
+    getNavigationCategories(supabase),
+    getProduct(supabase, id),
+  ]);
 
-  let userType: string | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_type")
-      .eq("id", user.id)
-      .maybeSingle();
-    userType = profile?.user_type ?? null;
-  }
-
-  const product = await getProduct(supabase, id);
   if (!product) notFound();
 
   const catId = getRootCategoryId(product);
-  const [navCategories, related] = await Promise.all([
-    getNavigationCategories(supabase),
-    catId ? getRelatedProducts(supabase, catId, id) : Promise.resolve([]),
-  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
-      <StorefrontHeader
-        user={user ? { email: user.email!, user_type: userType ?? "buyer" } : null}
-        categories={navCategories}
-      />
+      <StorefrontHeader user={sessionUser} categories={navCategories} />
       <main className="flex-1 bg-background">
-        <ProductDetail product={product as never} related={related as never} />
+        <Suspense
+          fallback={
+            <div className="mx-auto w-full max-w-7xl px-4 py-5">
+              <ProductDetailSkeleton />
+            </div>
+          }
+        >
+          <ProductDetail product={product as never} />
+        </Suspense>
+        {catId && (
+          <Suspense
+            fallback={
+              <div className="mx-auto w-full max-w-7xl px-4 mt-10">
+                <ProductGridSkeleton count={4} className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4" />
+              </div>
+            }
+          >
+            <RelatedProductsSection categoryId={catId} excludeId={id} />
+          </Suspense>
+        )}
       </main>
       <StorefrontFooter />
     </div>

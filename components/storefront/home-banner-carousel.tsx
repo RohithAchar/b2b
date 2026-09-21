@@ -47,13 +47,14 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
     <div>
       <Carousel setApi={setApi} opts={{ loop: true, align: "start" }}>
         <CarouselContent className="-ml-0">
-          {banners.map((banner) => {
+          {banners.map((banner, i) => {
             const slide = (
               <div className="relative h-56 w-full overflow-hidden rounded-lg border border-border bg-muted md:h-64">
                 <Image
                   src={publicImageUrl("banners", banner.image_path)}
                   alt={banner.title ?? "Banner"}
                   fill
+                  priority={i === 0}
                   sizes="(min-width: 1280px) 1216px, 100vw"
                   className="object-cover"
                 />

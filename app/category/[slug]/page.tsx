@@ -1,11 +1,16 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
-import { getCategoryBySlug } from "@/lib/storefront";
-import { getProducts } from "@/lib/storefront";
-import { getNavigationCategories } from "@/lib/storefront";
+import {
+  getCategoryBySlug,
+  getCategoryProductCount,
+  getProducts,
+  getNavigationCategories,
+} from "@/lib/storefront";
+import { getSessionUser } from "@/lib/auth/session";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -20,6 +25,82 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
+import { ProductGridSkeleton } from "@/components/storefront/skeletons";
+
+async function CategoryProductListings({
+  slug,
+  page,
+}: {
+  slug: string;
+  page: number;
+}) {
+  const supabase = await createClient();
+  const { products, totalPages } = await getProducts(supabase, {
+    categorySlug: slug,
+    page,
+    perPage: 24,
+  });
+
+  function buildPageUrl(p: number) {
+    return `/category/${slug}?page=${p}`;
+  }
+
+  return (
+    <>
+      {products.length === 0 ? (
+        <div className="py-16">
+          <Empty>
+            <EmptyTitle>No products in this category yet</EmptyTitle>
+            <EmptyDescription>
+              Suppliers haven&apos;t listed products here yet.
+            </EmptyDescription>
+            <Link href="/products">
+              <Button variant="outline" size="sm" className="mt-3">
+                Browse all products
+              </Button>
+            </Link>
+          </Empty>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product as ProductCardData} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination>
+            <PaginationContent>
+              {page > 1 && (
+                <PaginationItem>
+                  <PaginationPrevious href={buildPageUrl(page - 1)} />
+                </PaginationItem>
+              )}
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                const p = i + 1;
+                return (
+                  <PaginationItem key={p}>
+                    <PaginationLink href={buildPageUrl(p)} isActive={p === page}>
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              {page < totalPages && (
+                <PaginationItem>
+                  <PaginationNext href={buildPageUrl(page + 1)} />
+                </PaginationItem>
+              )}
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default async function CategoryPage({
   params,
@@ -33,39 +114,18 @@ export default async function CategoryPage({
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  let userType: string | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_type")
-      .eq("id", user.id)
-      .maybeSingle();
-    userType = profile?.user_type ?? null;
-  }
-
   const category = await getCategoryBySlug(supabase, slug);
   if (!category) notFound();
 
-  const { products, total, totalPages } = await getProducts(supabase, {
-    categorySlug: slug,
-    page,
-    perPage: 24,
-  });
-
-  const navCategories = await getNavigationCategories(supabase);
-
-  function buildPageUrl(p: number) {
-    return `/category/${slug}?page=${p}`;
-  }
+  const [sessionUser, navCategories, productCount] = await Promise.all([
+    getSessionUser(supabase),
+    getNavigationCategories(supabase),
+    getCategoryProductCount(supabase, category.id),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
-      <StorefrontHeader
-        user={user ? { email: user.email!, user_type: userType ?? "buyer" } : null}
-        categories={navCategories}
-      />
+      <StorefrontHeader user={sessionUser} categories={navCategories} />
 
       <main className="flex-1">
         <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -89,7 +149,7 @@ export default async function CategoryPage({
             <div>
               <h1 className="text-2xl font-bold tracking-tight">{category.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {total} product{total !== 1 ? "s" : ""} from verified suppliers
+                {productCount} product{productCount !== 1 ? "s" : ""} from verified suppliers
               </p>
             </div>
           </div>
@@ -115,58 +175,9 @@ export default async function CategoryPage({
             </div>
           )}
 
-          {/* Product grid */}
-          {products.length === 0 ? (
-            <div className="py-16">
-              <Empty>
-                <EmptyTitle>No products in this category yet</EmptyTitle>
-                <EmptyDescription>
-                  Suppliers haven&apos;t listed products here yet.
-                </EmptyDescription>
-                <Link href="/products">
-                  <Button variant="outline" size="sm" className="mt-3">
-                    Browse all products
-                  </Button>
-                </Link>
-              </Empty>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product as ProductCardData} />
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8">
-              <Pagination>
-                <PaginationContent>
-                  {page > 1 && (
-                    <PaginationItem>
-                      <PaginationPrevious href={buildPageUrl(page - 1)} />
-                    </PaginationItem>
-                  )}
-                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                    const p = i + 1;
-                    return (
-                      <PaginationItem key={p}>
-                        <PaginationLink href={buildPageUrl(p)} isActive={p === page}>
-                          {p}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-                  {page < totalPages && (
-                    <PaginationItem>
-                      <PaginationNext href={buildPageUrl(page + 1)} />
-                    </PaginationItem>
-                  )}
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
+          <Suspense fallback={<ProductGridSkeleton count={20} />}>
+            <CategoryProductListings slug={slug} page={page} />
+          </Suspense>
         </div>
       </main>
 

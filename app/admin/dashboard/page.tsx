@@ -24,43 +24,50 @@ import { createClient } from "@/lib/supabase/server";
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
 
-  const { count: pendingCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "pending");
-  const { count: verifiedCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "verified");
-  const { count: rejectedCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "rejected");
-  const { count: supplierCount } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("user_type", "supplier");
-
-  const { count: pendingProducts } = await supabase
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "pending");
-
-  const { data: waiting } = await supabase
-    .from("companies")
-    .select("id, business_name, contact_person, city, state, submitted_at")
-    .eq("kyb_status", "pending")
-    .order("submitted_at", { ascending: true, nullsFirst: true })
-    .limit(5);
-
-  const { data: recentDecisions } = await supabase
-    .from("companies")
-    .select(
-      "id, business_name, kyb_status, verified_at, reviewed_by, profiles!companies_reviewed_by_fkey(email)",
-    )
-    .in("kyb_status", ["verified", "rejected"])
-    .order("verified_at", { ascending: false })
-    .limit(5);
+  const [
+    { count: pendingCount },
+    { count: verifiedCount },
+    { count: rejectedCount },
+    { count: supplierCount },
+    { count: pendingProducts },
+    { data: waiting },
+    { data: recentDecisions },
+  ] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("kyb_status", "pending"),
+    supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("kyb_status", "verified"),
+    supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("kyb_status", "rejected"),
+    supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("user_type", "supplier"),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("companies")
+      .select("id, business_name, contact_person, city, state, submitted_at")
+      .eq("kyb_status", "pending")
+      .order("submitted_at", { ascending: true, nullsFirst: true })
+      .limit(5),
+    supabase
+      .from("companies")
+      .select(
+        "id, business_name, kyb_status, verified_at, reviewed_by, profiles!companies_reviewed_by_fkey(email)",
+      )
+      .in("kyb_status", ["verified", "rejected"])
+      .order("verified_at", { ascending: false })
+      .limit(5),
+  ]);
 
   return (
     <div className="flex w-full flex-col gap-4">

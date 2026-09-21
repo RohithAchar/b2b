@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProducts, getNavigationCategories } from "@/lib/storefront";
+import { getSessionUser } from "@/lib/auth/session";
 import { StorefrontHeader } from "@/components/layout/storefront-header";
 import { StorefrontFooter } from "@/components/layout/storefront-footer";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -18,6 +20,118 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
+import { ProductGridSkeleton } from "@/components/storefront/skeletons";
+
+function buildPageUrl(query: string, categorySlug: string, p: number) {
+  const sp = new URLSearchParams();
+  if (query) sp.set("q", query);
+  if (categorySlug) sp.set("category", categorySlug);
+  sp.set("page", String(p));
+  return `/products?${sp.toString()}`;
+}
+
+function buildCategoryLink(query: string, slug: string) {
+  const sp = new URLSearchParams();
+  sp.set("category", slug);
+  if (query) sp.set("q", query);
+  return `/products?${sp.toString()}`;
+}
+
+async function ProductListings({
+  query,
+  categorySlug,
+  activeFilter,
+  page,
+}: {
+  query: string;
+  categorySlug: string;
+  activeFilter: string | null;
+  page: number;
+}) {
+  const supabase = await createClient();
+  const { products, total, totalPages } = await getProducts(supabase, {
+    query,
+    categorySlug,
+    page,
+    perPage: 24,
+  });
+
+  return (
+    <>
+      {/* Results meta */}
+      <div className="mb-4 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">{total}</span>{" "}
+          product{total !== 1 ? "s" : ""} found
+          {query && <> for &ldquo;{query}&rdquo;</>}
+        </p>
+        {activeFilter && (
+          <Link
+            aria-label={`Remove ${activeFilter} filter`}
+            href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
+            className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
+          >
+            {activeFilter}
+            <span aria-hidden>×</span>
+          </Link>
+        )}
+      </div>
+
+      {/* Product grid */}
+      {products.length === 0 ? (
+        <div className="py-16">
+          <Empty>
+            <EmptyTitle>No products found</EmptyTitle>
+            <EmptyDescription>
+              Try a different search or clear the filters.
+            </EmptyDescription>
+            <Link href="/products">
+              <Button variant="outline" size="sm" className="mt-3">
+                Clear filters
+              </Button>
+            </Link>
+          </Empty>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product as ProductCardData} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination>
+            <PaginationContent>
+              {page > 1 && (
+                <PaginationItem>
+                  <PaginationPrevious href={buildPageUrl(query, categorySlug, page - 1)} />
+                </PaginationItem>
+              )}
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                const p = i + 1;
+                return (
+                  <PaginationItem key={p}>
+                    <PaginationLink href={buildPageUrl(query, categorySlug, p)} isActive={p === page}>
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              {page < totalPages && (
+                <PaginationItem>
+                  <PaginationNext href={buildPageUrl(query, categorySlug, page + 1)} />
+                </PaginationItem>
+              )}
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default async function ProductsPage({
   searchParams,
@@ -30,42 +144,10 @@ export default async function ProductsPage({
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  let userType: string | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_type")
-      .eq("id", user.id)
-      .maybeSingle();
-    userType = profile?.user_type ?? null;
-  }
-
-  const { products, total, totalPages } = await getProducts(supabase, {
-    query,
-    categorySlug,
-    page,
-    perPage: 24,
-  });
-
-  // Fetch categories for the nav rail + filter sidebar.
-  const navCategories = await getNavigationCategories(supabase);
-
-  function buildPageUrl(p: number) {
-    const sp = new URLSearchParams();
-    if (query) sp.set("q", query);
-    if (categorySlug) sp.set("category", categorySlug);
-    sp.set("page", String(p));
-    return `/products?${sp.toString()}`;
-  }
-
-  function buildCategoryLink(slug: string) {
-    const sp = new URLSearchParams();
-    sp.set("category", slug);
-    if (query) sp.set("q", query);
-    return `/products?${sp.toString()}`;
-  }
+  const [sessionUser, navCategories] = await Promise.all([
+    getSessionUser(supabase),
+    getNavigationCategories(supabase),
+  ]);
 
   const activeFilter = categorySlug
     ? (navCategories ?? []).find((c) => c.slug === categorySlug)?.name
@@ -73,10 +155,7 @@ export default async function ProductsPage({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <StorefrontHeader
-        user={user ? { email: user.email!, user_type: userType ?? "buyer" } : null}
-        categories={navCategories}
-      />
+      <StorefrontHeader user={sessionUser} categories={navCategories} />
 
       <main className="flex-1">
         <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -107,9 +186,7 @@ export default async function ProductsPage({
 
             {/* Category chips */}
             <div className="flex flex-wrap gap-1.5">
-              <Link
-                href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
-              >
+              <Link href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}>
                 <Button
                   variant={categorySlug ? "outline" : "default"}
                   size="sm"
@@ -120,7 +197,7 @@ export default async function ProductsPage({
                 </Button>
               </Link>
               {navCategories.map((cat) => (
-                <Link key={cat.id} href={buildCategoryLink(cat.slug)}>
+                <Link key={cat.id} href={buildCategoryLink(query, cat.slug)}>
                   <Button
                     variant={categorySlug === cat.slug ? "default" : "outline"}
                     size="sm"
@@ -134,77 +211,14 @@ export default async function ProductsPage({
             </div>
           </div>
 
-          {/* Results meta */}
-          <div className="mb-4 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{total}</span>{" "}
-              product{total !== 1 ? "s" : ""} found
-              {query && <> for &ldquo;{query}&rdquo;</>}
-            </p>
-            {activeFilter && (
-              <Link
-                aria-label={`Remove ${activeFilter} filter`}
-                href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
-                className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
-              >
-                {activeFilter}
-                <span aria-hidden>×</span>
-              </Link>
-            )}
-          </div>
-
-          {/* Product grid */}
-          {products.length === 0 ? (
-            <div className="py-16">
-              <Empty>
-                <EmptyTitle>No products found</EmptyTitle>
-                <EmptyDescription>
-                  Try a different search or clear the filters.
-                </EmptyDescription>
-                <Link href="/products">
-                  <Button variant="outline" size="sm" className="mt-3">
-                    Clear filters
-                  </Button>
-                </Link>
-              </Empty>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product as ProductCardData} />
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8">
-              <Pagination>
-                <PaginationContent>
-                  {page > 1 && (
-                    <PaginationItem>
-                      <PaginationPrevious href={buildPageUrl(page - 1)} />
-                    </PaginationItem>
-                  )}
-                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                    const p = i + 1;
-                    return (
-                      <PaginationItem key={p}>
-                        <PaginationLink href={buildPageUrl(p)} isActive={p === page}>
-                          {p}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-                  {page < totalPages && (
-                    <PaginationItem>
-                      <PaginationNext href={buildPageUrl(page + 1)} />
-                    </PaginationItem>
-                  )}
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
+          <Suspense fallback={<ProductGridSkeleton count={20} />}>
+            <ProductListings
+              query={query}
+              categorySlug={categorySlug}
+              activeFilter={activeFilter ?? null}
+              page={page}
+            />
+          </Suspense>
         </div>
       </main>
 
