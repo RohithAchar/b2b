@@ -157,7 +157,7 @@ export default async function HomePage() {
               actionLabel="All categories"
               actionHref="/products"
             />
-            <CategoryGridSkeleton count={6} />
+            <CategoryGridSkeleton count={8} />
           </section>
         }
       >

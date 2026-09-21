@@ -24,13 +24,13 @@ function CategoryTile({
   return (
     <Link href={`/category/${cat.slug}`} className="group">
       <Card className="group gap-1 !py-0 overflow-hidden border-border transition-shadow hover:shadow-md">
-        <div className="relative aspect-square w-full overflow-hidden bg-muted">
+        <div className="relative h-16 w-full overflow-hidden bg-muted">
           {cat.image_path ? (
             <Image
               src={publicImageUrl("category_images", cat.image_path)}
               alt={cat.name}
               fill
-              sizes="(min-width: 1024px) 16vw, (min-width: 640px) 25vw, 50vw"
+              sizes="(min-width: 1024px) 12.5vw, (min-width: 640px) 20vw, 25vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
           ) : (
@@ -41,9 +41,6 @@ function CategoryTile({
         </div>
         <div className="px-2 py-1.5">
           <p className="line-clamp-1 text-xs font-semibold">{cat.name}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {cat.product_count} item{cat.product_count !== 1 ? "s" : ""}
-          </p>
         </div>
       </Card>
     </Link>
@@ -102,7 +99,7 @@ export async function PopularCategoriesSection() {
           </Empty>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
           {categories.map((cat) => (
             <CategoryTile key={cat.id} cat={cat} />
           ))}
