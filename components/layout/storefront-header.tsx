@@ -9,6 +9,7 @@ import {
   Menu01Icon,
   Store01Icon,
 } from "@hugeicons/core-free-icons";
+import { AccountMenu } from "@/components/layout/account-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -150,21 +151,7 @@ export function StorefrontHeader({
           {/* Right actions */}
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {user ? (
-              <>
-                <Link
-                  href={dashboardHref(user.user_type)}
-                  className="hidden md:block"
-                >
-                  <Button variant="outline" size="sm">
-                    Dashboard
-                  </Button>
-                </Link>
-                <form action={signOut} className="hidden md:block">
-                  <Button variant="ghost" size="sm" type="submit">
-                    Sign out
-                  </Button>
-                </form>
-              </>
+              <AccountMenu user={user} />
             ) : (
               <>
                 <Link
