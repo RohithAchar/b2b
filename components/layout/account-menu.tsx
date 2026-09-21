@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
-import type { ReactNode } from "react";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
+import type { ReactElement, ReactNode } from "react"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Building02Icon,
   DashboardSquare01Icon,
   Logout01Icon,
   Package01Icon,
   ShieldCheckIcon,
-} from "@hugeicons/core-free-icons";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+} from "@hugeicons/core-free-icons"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,18 +20,21 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { signOut } from "@/lib/auth/actions";
+} from "@/components/ui/dropdown-menu"
+import { signOut } from "@/lib/auth/actions"
 
-type AccountUser = { email: string; user_type: string };
+type AccountUser = { email: string; user_type: string }
 
 function initials(value: string): string {
-  const name = value.includes("@") ? value.split("@")[0] : value;
-  const parts = name.replace(/[._-]+/g, " ").trim().split(/\s+/);
+  const name = value.includes("@") ? value.split("@")[0] : value
+  const parts = name
+    .replace(/[._-]+/g, " ")
+    .trim()
+    .split(/\s+/)
   if (parts.length > 1 && parts[0] && parts[parts.length - 1]) {
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
   }
-  return name.slice(0, 2).toUpperCase();
+  return name.slice(0, 2).toUpperCase()
 }
 
 function roleLabel(userType: string): string {
@@ -40,11 +43,14 @@ function roleLabel(userType: string): string {
       ? "Admin"
       : userType === "supplier"
         ? "Supplier"
-        : "Buyer";
-  return `${label} account`;
+        : "Buyer"
+  return `${label} account`
 }
 
-const ROLE_LINKS: Record<string, { label: string; href: string; icon: ReactNode }[]> = {
+const ROLE_LINKS: Record<
+  string,
+  { label: string; href: string; icon: ReactNode }[]
+> = {
   supplier: [
     {
       label: "Dashboard",
@@ -74,23 +80,45 @@ const ROLE_LINKS: Record<string, { label: string; href: string; icon: ReactNode 
       icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
     },
   ],
-};
+}
 
-export function AccountMenu({ user }: { user: AccountUser }) {
-  const fallback = user?.email ? initials(user.email) : "U";
-  const links = ROLE_LINKS[user?.user_type || ""] ?? [];
+export function AccountMenu({
+  user,
+  trigger,
+  children,
+  side = "bottom",
+}: {
+  user: AccountUser
+  trigger?: ReactElement
+  children?: ReactNode
+  side?: "top" | "bottom"
+}) {
+  const fallback = user?.email ? initials(user.email) : "U"
+  const links = ROLE_LINKS[user?.user_type || ""] ?? []
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon-sm" aria-label="Account" className="cursor-pointer" />}
+        render={
+          trigger ?? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Account"
+              className="cursor-pointer"
+            />
+          )
+        }
       >
-        <Avatar>
-          <AvatarFallback>{fallback}</AvatarFallback>
-        </Avatar>
+        {children ?? (
+          <Avatar>
+            <AvatarFallback>{fallback}</AvatarFallback>
+          </Avatar>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
+        side={side}
         sideOffset={4}
         className="min-w-56 rounded-lg"
       >
@@ -138,5 +166,5 @@ export function AccountMenu({ user }: { user: AccountUser }) {
         </form>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

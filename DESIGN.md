@@ -108,8 +108,45 @@ Dark mode: navy-tinted neutral darks (cool hue, no warm cast), same orange prima
 ## 5. Layout patterns
 
 ### Storefront header (`components/layout/storefront-header.tsx`)
-Three tiers: (1) logo + nav + auth actions, (2) full-width search, (3) horizontal
-category rail.
+Three tiers on desktop: (1) logo + nav + auth actions, (2) full-width search,
+(3) horizontal category rail. On mobile only tier 1 remains (menu + logo); the
+search tier, category rail and header auth actions are hidden because the
+[bottom navigation](#mobile-bottom-navigation) covers those destinations.
+
+### Mobile bottom navigation (`components/layout/storefront-bottom-nav.tsx`)
+Fixed, buyer/storefront-only tab bar. Rendered by
+`components/layout/storefront-shell.tsx`, which wraps every public storefront
+page (`/`, `/products`, `/category/[slug]`, `/products/[id]`). It is `lg:hidden`
+— desktop navigation is untouched. It is **separate from supplier/admin
+workspace navigation** and must not be added to `/supplier/*` or `/admin/*`.
+
+Five items, in order:
+
+| Item | Action | Active when |
+|---|---|---|
+| Home | `/` | `pathname === "/"` |
+| Categories | `/products` (existing category-discovery flow) | `/category/*`, or `/products` without `?q` |
+| Search | opens a bottom sheet reusing `StorefrontSearchForm` (submits to `/products?q=…`) | `/products` with `?q` |
+| Enquiries | inert placeholder (`aria-disabled`, `title="Coming soon"`) — no route, workflow or counts exist yet | never |
+| Account | signed in: existing `AccountMenu` (opens upward); signed out: `/auth/login` | `/auth/*` |
+
+- Icons come from the existing Hugeicons set (`Home01Icon`, `GridViewIcon`,
+  `Search01Icon`, `Message01Icon`, `UserCircleIcon`). No new icon library.
+- Active state is a semantic-token color shift only (`text-primary` vs
+  `text-muted-foreground`) — no pills, fills or gradients. Links set
+  `aria-current="page"`.
+- Semantic `<nav aria-label="Storefront">`; every item has a visible label and an
+  accessible name. The Enquiries placeholder is keyboard-reachable and announced
+  as disabled.
+- The bar is `fixed inset-x-0 bottom-0 z-40`; sheets/dropdowns (`z-50`) cover it.
+- Safe area: the bar adds `pb-(--safe-area-bottom)`; the interactive row is
+  `h-(--bottom-nav-height)`. Both vars live in `app/globals.css`.
+
+**Fixed mobile navigation must never overlap scrollable content.** The storefront
+shell reserves `pb-(--bottom-nav-offset)` (= nav height + safe-area inset) at the
+bottom of the page and clears it with `lg:pb-0`. Do not add per-page bottom
+padding; the shell is the single source of spacing so long lists, empty states,
+pagination, forms, the footer and product-detail actions all remain reachable.
 
 ### Footer (`components/layout/storefront-footer.tsx`)
 Alibaba-style dark navy band: `bg-brand-navy text-white`, white `Separator`, two

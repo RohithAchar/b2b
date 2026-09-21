@@ -84,6 +84,9 @@
     --brand-dark: #E85F00;
     --brand-amber: #FF9A00;
     --brand-navy: #0A1D3C;
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --bottom-nav-height: 3.5rem;
+    --bottom-nav-offset: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
     --sidebar: oklch(0.9722 -0.0013 359.58);
     --sidebar-foreground: oklch(0.2345 -0.0012 352.13);
     --sidebar-primary: #FF6A00;

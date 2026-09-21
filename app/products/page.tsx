@@ -1,16 +1,15 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getProducts, getNavigationCategories } from "@/lib/storefront";
-import { getSessionUser } from "@/lib/auth/session";
-import { StorefrontHeader } from "@/components/layout/storefront-header";
-import { StorefrontFooter } from "@/components/layout/storefront-footer";
-import { Breadcrumbs } from "@/components/layout/breadcrumbs";
-import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
-import { Search01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { Suspense } from "react"
+import Link from "next/link"
+import { createClient } from "@/lib/supabase/server"
+import { getProducts, getNavigationCategories } from "@/lib/storefront"
+import { getSessionUser } from "@/lib/auth/session"
+import { StorefrontShell } from "@/components/layout/storefront-shell"
+import { Breadcrumbs } from "@/components/layout/breadcrumbs"
+import { Button } from "@/components/ui/button"
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
+import { Input } from "@/components/ui/input"
+import { Search01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Pagination,
   PaginationContent,
@@ -18,23 +17,26 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination";
-import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
-import { ProductGridSkeleton } from "@/components/storefront/skeletons";
+} from "@/components/ui/pagination"
+import {
+  ProductCard,
+  type ProductCardData,
+} from "@/components/storefront/product-card"
+import { ProductGridSkeleton } from "@/components/storefront/skeletons"
 
 function buildPageUrl(query: string, categorySlug: string, p: number) {
-  const sp = new URLSearchParams();
-  if (query) sp.set("q", query);
-  if (categorySlug) sp.set("category", categorySlug);
-  sp.set("page", String(p));
-  return `/products?${sp.toString()}`;
+  const sp = new URLSearchParams()
+  if (query) sp.set("q", query)
+  if (categorySlug) sp.set("category", categorySlug)
+  sp.set("page", String(p))
+  return `/products?${sp.toString()}`
 }
 
 function buildCategoryLink(query: string, slug: string) {
-  const sp = new URLSearchParams();
-  sp.set("category", slug);
-  if (query) sp.set("q", query);
-  return `/products?${sp.toString()}`;
+  const sp = new URLSearchParams()
+  sp.set("category", slug)
+  if (query) sp.set("q", query)
+  return `/products?${sp.toString()}`
 }
 
 async function ProductListings({
@@ -43,32 +45,34 @@ async function ProductListings({
   activeFilter,
   page,
 }: {
-  query: string;
-  categorySlug: string;
-  activeFilter: string | null;
-  page: number;
+  query: string
+  categorySlug: string
+  activeFilter: string | null
+  page: number
 }) {
-  const supabase = await createClient();
+  const supabase = await createClient()
   const { products, total, totalPages } = await getProducts(supabase, {
     query,
     categorySlug,
     page,
     perPage: 24,
-  });
+  })
 
   return (
     <>
       {/* Results meta */}
       <div className="mb-4 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1">
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">{total}</span>{" "}
-          product{total !== 1 ? "s" : ""} found
+          <span className="font-semibold text-foreground">{total}</span> product
+          {total !== 1 ? "s" : ""} found
           {query && <> for &ldquo;{query}&rdquo;</>}
         </p>
         {activeFilter && (
           <Link
             aria-label={`Remove ${activeFilter} filter`}
-            href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}
+            href={
+              query ? `/products?q=${encodeURIComponent(query)}` : "/products"
+            }
             className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
           >
             {activeFilter}
@@ -95,7 +99,10 @@ async function ProductListings({
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product as ProductCardData} />
+            <ProductCard
+              key={product.id}
+              product={product as ProductCardData}
+            />
           ))}
         </div>
       )}
@@ -107,22 +114,29 @@ async function ProductListings({
             <PaginationContent>
               {page > 1 && (
                 <PaginationItem>
-                  <PaginationPrevious href={buildPageUrl(query, categorySlug, page - 1)} />
+                  <PaginationPrevious
+                    href={buildPageUrl(query, categorySlug, page - 1)}
+                  />
                 </PaginationItem>
               )}
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                const p = i + 1;
+                const p = i + 1
                 return (
                   <PaginationItem key={p}>
-                    <PaginationLink href={buildPageUrl(query, categorySlug, p)} isActive={p === page}>
+                    <PaginationLink
+                      href={buildPageUrl(query, categorySlug, p)}
+                      isActive={p === page}
+                    >
                       {p}
                     </PaginationLink>
                   </PaginationItem>
-                );
+                )
               })}
               {page < totalPages && (
                 <PaginationItem>
-                  <PaginationNext href={buildPageUrl(query, categorySlug, page + 1)} />
+                  <PaginationNext
+                    href={buildPageUrl(query, categorySlug, page + 1)}
+                  />
                 </PaginationItem>
               )}
             </PaginationContent>
@@ -130,99 +144,103 @@ async function ProductListings({
         </div>
       )}
     </>
-  );
+  )
 }
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; page?: string }>
 }) {
-  const params = await searchParams;
-  const query = params.q ?? "";
-  const categorySlug = params.category ?? "";
-  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const params = await searchParams
+  const query = params.q ?? ""
+  const categorySlug = params.category ?? ""
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1)
 
-  const supabase = await createClient();
+  const supabase = await createClient()
   const [sessionUser, navCategories] = await Promise.all([
     getSessionUser(supabase),
     getNavigationCategories(supabase),
-  ]);
+  ])
 
   const activeFilter = categorySlug
     ? (navCategories ?? []).find((c) => c.slug === categorySlug)?.name
-    : null;
+    : null
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <StorefrontHeader user={sessionUser} categories={navCategories} />
+    <StorefrontShell user={sessionUser} categories={navCategories}>
+      <div className="mx-auto w-full max-w-7xl px-4 py-5">
+        <Breadcrumbs
+          items={[{ label: "Home", href: "/" }, { label: "Products" }]}
+        />
 
-      <main className="flex-1">
-        <div className="mx-auto w-full max-w-7xl px-4 py-5">
-          <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Products" }]} />
-
-          {/* Search + category chips */}
-          <div className="mb-4 flex flex-col gap-3">
-            <form action="/products" method="get" className="flex gap-2">
-              {categorySlug && (
-                <input type="hidden" name="category" value={categorySlug} />
-              )}
-              <input type="hidden" name="page" value="1" />
-              <div className="relative flex-1">
-                <Input
-                  name="q"
-                  defaultValue={query}
-                  placeholder="Search products, suppliers or brands..."
-                  className="h-10 pr-9"
+        {/* Search + category chips */}
+        <div className="mb-4 flex flex-col gap-3">
+          <form action="/products" method="get" className="flex gap-2">
+            {categorySlug && (
+              <input type="hidden" name="category" value={categorySlug} />
+            )}
+            <input type="hidden" name="page" value="1" />
+            <div className="relative flex-1">
+              <Input
+                name="q"
+                defaultValue={query}
+                placeholder="Search products, suppliers or brands..."
+                className="h-10 pr-9"
+              />
+              <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  strokeWidth={2}
+                  className="size-4"
                 />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <HugeiconsIcon icon={Search01Icon} strokeWidth={2} className="size-4" />
-                </span>
-              </div>
-              <Button type="submit" size="lg">
-                Search
-              </Button>
-            </form>
+              </span>
+            </div>
+            <Button type="submit" size="lg">
+              Search
+            </Button>
+          </form>
 
-            {/* Category chips */}
-            <div className="flex flex-wrap gap-1.5">
-              <Link href={query ? `/products?q=${encodeURIComponent(query)}` : "/products"}>
+          {/* Category chips */}
+          <div className="flex flex-wrap gap-1.5">
+            <Link
+              href={
+                query ? `/products?q=${encodeURIComponent(query)}` : "/products"
+              }
+            >
+              <Button
+                variant={categorySlug ? "outline" : "default"}
+                size="sm"
+                nativeButton={false}
+                className="h-7 rounded-sm text-xs"
+              >
+                All
+              </Button>
+            </Link>
+            {navCategories.map((cat) => (
+              <Link key={cat.id} href={buildCategoryLink(query, cat.slug)}>
                 <Button
-                  variant={categorySlug ? "outline" : "default"}
+                  variant={categorySlug === cat.slug ? "default" : "outline"}
                   size="sm"
                   nativeButton={false}
                   className="h-7 rounded-sm text-xs"
                 >
-                  All
+                  {cat.name}
                 </Button>
               </Link>
-              {navCategories.map((cat) => (
-                <Link key={cat.id} href={buildCategoryLink(query, cat.slug)}>
-                  <Button
-                    variant={categorySlug === cat.slug ? "default" : "outline"}
-                    size="sm"
-                    nativeButton={false}
-                    className="h-7 rounded-sm text-xs"
-                  >
-                    {cat.name}
-                  </Button>
-                </Link>
-              ))}
-            </div>
+            ))}
           </div>
-
-          <Suspense fallback={<ProductGridSkeleton count={20} />}>
-            <ProductListings
-              query={query}
-              categorySlug={categorySlug}
-              activeFilter={activeFilter ?? null}
-              page={page}
-            />
-          </Suspense>
         </div>
-      </main>
 
-      <StorefrontFooter />
-    </div>
-  );
+        <Suspense fallback={<ProductGridSkeleton count={20} />}>
+          <ProductListings
+            query={query}
+            categorySlug={categorySlug}
+            activeFilter={activeFilter ?? null}
+            page={page}
+          />
+        </Suspense>
+      </div>
+    </StorefrontShell>
+  )
 }

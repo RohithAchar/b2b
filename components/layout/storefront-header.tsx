@@ -1,24 +1,19 @@
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Search01Icon,
-  Store01Icon,
-} from "@hugeicons/core-free-icons";
-import { NAV_LINKS } from "@/lib/nav";
-import { AccountMenu } from "@/components/layout/account-menu";
-import { MobileNav } from "@/components/layout/mobile-nav";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Link from "next/link"
+import { NAV_LINKS } from "@/lib/nav"
+import { AccountMenu } from "@/components/layout/account-menu"
+import { MobileNav } from "@/components/layout/mobile-nav"
+import { StorefrontSearchForm } from "@/components/storefront/storefront-search-form"
+import { Button } from "@/components/ui/button"
 
-type User = { email: string; user_type: string } | null;
-type NavCategory = { slug: string; name: string };
+type User = { email: string; user_type: string } | null
+type NavCategory = { slug: string; name: string }
 
 export function StorefrontHeader({
   user,
   categories = [],
 }: {
-  user: User;
-  categories?: NavCategory[];
+  user: User
+  categories?: NavCategory[]
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
@@ -51,16 +46,13 @@ export function StorefrontHeader({
             ))}
           </nav>
 
-          {/* Right actions */}
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* Right actions (desktop; mobile uses the bottom navigation) */}
+          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
             {user ? (
               <AccountMenu user={user} />
             ) : (
               <>
-                <Link
-                  href="/supplier/onboarding"
-                  className="hidden md:block"
-                >
+                <Link href="/supplier/onboarding" className="hidden md:block">
                   <Button variant="secondary" size="sm">
                     Become a Supplier
                   </Button>
@@ -74,43 +66,17 @@ export function StorefrontHeader({
         </div>
       </div>
 
-      {/* ---- Tier 2: search ---- */}
-      <div className="border-b border-border bg-background">
+      {/* ---- Tier 2: search (desktop) ---- */}
+      <div className="hidden border-b border-border bg-background lg:block">
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2.5">
-          <form action="/products" method="get" className="flex w-full items-center gap-2">
-            <input type="hidden" name="page" value="1" />
-            <div className="relative flex-1">
-              <Input
-                name="q"
-                placeholder="Search products, suppliers, brands or categories..."
-                className="h-10 border-border bg-card pl-9 shadow-none"
-              />
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <HugeiconsIcon icon={Search01Icon} strokeWidth={2} className="size-4" />
-              </span>
-            </div>
-            <Button type="submit" size="lg" className="shrink-0 px-6">
-              Search
-            </Button>
-            <Button
-              variant="ghost"
-              size="lg"
-              type="button"
-              className="hidden shrink-0 text-primary xl:inline-flex"
-              render={<Link href="/products" />}
-              nativeButton={false}
-            >
-              <HugeiconsIcon icon={Store01Icon} strokeWidth={2} />
-              Browse All
-            </Button>
-          </form>
+          <StorefrontSearchForm showBrowseAll />
         </div>
       </div>
 
-      {/* ---- Tier 3: category rail ---- */}
+      {/* ---- Tier 3: category rail (desktop) ---- */}
       {categories.length > 0 && (
-        <div className="bg-card">
-          <div className="no-scrollbar mx-auto flex max-w-7xl items-center gap-0.5 overflow-x-auto px-4 py-1.5">
+        <div className="hidden bg-card lg:block">
+          <div className="mx-auto no-scrollbar flex max-w-7xl items-center gap-0.5 overflow-x-auto px-4 py-1.5">
             <Link
               href="/products"
               className="shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
@@ -131,5 +97,5 @@ export function StorefrontHeader({
         </div>
       )}
     </header>
-  );
+  )
 }
