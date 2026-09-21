@@ -15,6 +15,8 @@ const REASONS: Record<string, string> = {
   "missing-code": "That login link was incomplete. Start again from login.",
   "exchange-failed":
     "That login link expired or was already used. Request a fresh code.",
+  "redirect-unresolved":
+    "Could not determine this session's address. Start again from login.",
 };
 
 type ErrorPageProps = {

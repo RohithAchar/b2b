@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/auth/profile";
+import { buildAuthCallbackUrl } from "@/lib/auth/origin";
 import { getSafeNextPath, LOGIN_PATH } from "@/lib/auth/paths";
 
 const emailSchema = z.object({
@@ -38,14 +39,17 @@ export async function requestOtp(
   }
 
   const supabase = await createClient();
-  const origin = (await headers()).get("origin");
+  const emailRedirectTo = buildAuthCallbackUrl(await headers(), next);
+  if (!emailRedirectTo) {
+    redirect("/auth/error?reason=redirect-unresolved");
+  }
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
     options: {
       shouldCreateUser: true,
       // Magic-link clicks land here too, so the callback must be allowlisted
       // in Supabase → URL Configuration → Redirect URLs.
-      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo,
     },
   });
 
@@ -102,14 +106,16 @@ export async function verifyOtp(
 
 export async function signInWithGoogle(formData: FormData): Promise<never> {
   const next = getSafeNextPath(formData.get("next")?.toString());
-  const origin = (await headers()).get("origin");
+  const redirectTo = buildAuthCallbackUrl(await headers(), next);
   const supabase = await createClient();
+
+  if (!redirectTo) {
+    redirect("/auth/error?reason=redirect-unresolved");
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
+    options: { redirectTo },
   });
 
   if (error || !data.url) {
