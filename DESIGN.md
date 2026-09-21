@@ -157,15 +157,38 @@ Image (square, `object-cover`) → title → **price** (bold `lg`, unit muted) �
 footer bar (`border-t bg-muted/30`): supplier name + verification shield + location
 | "Enquiry" outline button. `!gap-0 !py-0` card.
 
-### Category tile (`app/page.tsx` `CategoryTile`)
-Square `aspect-square` image, tight `px-2 py-1.5` caption (name `text-xs semibold`,
-count `text-[11px]`). `!gap-0 !py-0`.
+### Category tile (`components/storefront/home-sections.tsx` `CategoryTile`)
+Compact visual category tile used by the homepage "Popular Categories" navigation grid.
+Reduced-height image (`h-16`, `object-cover`) supports quick visual scanning without
+dominating the tile; the concise single-line category name (`text-xs semibold`) is the
+primary reading focus. No product count is shown — the homepage showcase is for
+navigation and discovery, not analytics. Rendered in a dense responsive grid
+(4 columns mobile → 5–6 tablet → 8 desktop). `!gap-0 !py-0`.
 
 ### Product detail (`app/products/[id]/product-detail.tsx`)
 2-column grid `lg:grid-cols-[minmax(0,1fr)_440px]`:
 - Left: square gallery (sticky `lg:sticky lg:top-4`) + thumbnails.
 - Right: title → price/MOQ card → quantity pricing → quick specs → supplier card →
   actions → **Description/Specifications/Variants tabs** (right column only).
+
+### Supplier dashboard sidebar (`app/supplier/dashboard/sidebar.tsx`)
+Supplier workspace navigation mirrors a modern seller dashboard hierarchy, ordered:
+Dashboard, Orders, Delivery, Products (expandable), Analytics, Payouts, Discounts,
+Audience, Appearance, Plugins, Settings (expandable).
+
+- **Products** is an expandable parent preserving the existing entries: **Products**
+  (`/supplier/dashboard/products`) and **Add product** (`/supplier/dashboard/products/new`);
+  it opens and highlights when any product route is active, including product edits.
+- **Settings** is an expandable parent holding the existing **Business profile**
+  (`/supplier/dashboard/business`) and **Verification** (`/supplier/dashboard/verification`)
+  entries so existing pages stay reachable.
+- Top-level items without a route yet (Orders, Delivery, Analytics, Payouts, Discounts,
+  Audience, Appearance, Plugins) render as **inert "Coming soon"** entries — `aria-disabled`,
+  no link, no invented route — matching the storefront Enquiries placeholder convention.
+- Icons come from the existing Hugeicons set; active state uses `isActive`/`data-active`
+  sidebar tokens. Collapse/expand uses the sidebar `Collapsible` + `SidebarMenuSub` pattern
+  (chevron rotates on the group's `data-open`). All header/footer/`SidebarRail` and
+  `collapsible="icon"` behavior is unchanged.
 
 ---
 
