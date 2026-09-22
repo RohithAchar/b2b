@@ -50,11 +50,12 @@ export function ProductGridSkeleton({
 export function CategoryTileSkeleton() {
   return (
     <Card className="gap-1 !py-0 overflow-hidden border-border">
-      <div className="relative h-16 w-full overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         <Skeleton className="absolute inset-0 rounded-none" />
       </div>
-      <div className="px-2 py-1.5">
-        <Skeleton className="h-3 w-2/3" />
+      <div className="px-2.5 py-2">
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="mt-1.5 h-3 w-1/2" />
       </div>
     </Card>
   );
@@ -68,10 +69,15 @@ export function CategoryGridSkeleton({
   return (
     <div
       aria-hidden
-      className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
+      className="-mx-4 flex gap-3 overflow-hidden px-4 no-scrollbar scroll-pl-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:scroll-pl-0 lg:grid-cols-8"
     >
       {Array.from({ length: count }, (_, i) => (
-        <CategoryTileSkeleton key={i} />
+        <div
+          key={i}
+          className="w-[40vw] min-w-[132px] flex-none md:w-auto md:min-w-0"
+        >
+          <CategoryTileSkeleton />
+        </div>
       ))}
     </div>
   );
