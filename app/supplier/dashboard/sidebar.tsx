@@ -151,7 +151,7 @@ export function SupplierSidebar({
                     isActive={productsListActive}
                   >
                     <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />
-                    <span>Products</span>
+                    <span>All products</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>

@@ -3,30 +3,33 @@ import { redirect } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, Package01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyTitle,
 } from "@/components/ui/empty";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { SearchInput } from "@/components/dashboard/search-input";
+import { ProductTable, type ProductRow } from "@/components/dashboard/product-table";
+import {
+  ProductToolbar,
+} from "@/components/dashboard/product-toolbar";
+import {
+  SORT_COLUMNS,
+  SORT_KEYS,
+  type SortKey,
+} from "@/components/dashboard/product-sort";
 import { cn } from "cn";
-import { ProductRowButtons } from "./row-buttons";
 
 const TABS = [
   { key: "all", label: "All" },
@@ -37,35 +40,58 @@ const TABS = [
 ] as const;
 
 const BASE = "/supplier/dashboard/products";
+const PER_PAGE = 25;
 
 type TabKey = (typeof TABS)[number]["key"];
+type StatusKey = Exclude<TabKey, "all">;
+
+const STATUS_KEYS: StatusKey[] = ["approved", "pending", "rejected", "draft"];
 
 function imageUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product_images/${path}`;
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-  });
+function categoryName(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    return (value[0] as { name?: string | null } | undefined)?.name ?? null;
+  }
+  return (value as { name?: string | null } | null)?.name ?? null;
+}
+
+function paginationItems(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const window = new Set([1, total, current - 1, current, current + 1]);
+  const items: (number | "…")[] = [];
+  let prev = 0;
+  for (const n of Array.from(window)
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b)) {
+    if (prev && n - prev > 1) items.push("…");
+    items.push(n);
+    prev = n;
+  }
+  return items;
 }
 
 export default async function SupplierProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; q?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    q?: string;
+    sort?: string;
+    page?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const active: TabKey =
-    params.tab === "approved" ||
-    params.tab === "pending" ||
-    params.tab === "rejected" ||
-    params.tab === "draft"
-      ? params.tab
-      : "all";
+  const active: TabKey = TABS.some((t) => t.key === params.tab)
+    ? (params.tab as TabKey)
+    : "all";
+  const activeSort: SortKey = SORT_KEYS.includes(params.sort as SortKey)
+    ? (params.sort as SortKey)
+    : "newest";
   const q = (params.q ?? "").trim();
+  const requestedPage = Number(params.page) > 0 ? Math.floor(Number(params.page)) : 1;
 
   const supabase = await createClient();
   const {
@@ -82,34 +108,63 @@ export default async function SupplierProductsPage({
 
   const verified = company.kyb_status === "verified";
 
-  const { data: statusRows } = await supabase
-    .from("products")
-    .select("status")
-    .eq("supplier_id", company.id);
-
   const counts: Record<TabKey, number> = {
-    all: statusRows?.length ?? 0,
+    all: 0,
     approved: 0,
     pending: 0,
     rejected: 0,
     draft: 0,
   };
-  for (const row of statusRows ?? []) {
-    if (row.status in counts) counts[row.status as TabKey] += 1;
+  for (const status of STATUS_KEYS) {
+    const { count } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id)
+      .eq("status", status);
+    counts[status] = count ?? 0;
+    counts.all += count ?? 0;
   }
 
-  let query = supabase
+  let countQuery = supabase
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .eq("supplier_id", company.id);
+  if (active !== "all") countQuery = countQuery.eq("status", active as StatusKey);
+  if (q) countQuery = countQuery.ilike("title", `%${q}%`);
+  const { count: total } = await countQuery;
+
+  const pageCount = Math.max(1, Math.ceil((total ?? 0) / PER_PAGE));
+  const page = Math.min(Math.max(requestedPage, 1), pageCount);
+
+  const hrefFor = (
+    tab: TabKey,
+    sortKey: SortKey,
+    pageNum: number,
+    search: string,
+  ) => {
+    const sp = new URLSearchParams();
+    if (tab !== "all") sp.set("tab", tab);
+    if (sortKey !== "newest") sp.set("sort", sortKey);
+    if (pageNum > 1) sp.set("page", String(pageNum));
+    if (search) sp.set("q", search);
+    const qs = sp.toString();
+    return qs ? `${BASE}?${qs}` : BASE;
+  };
+
+  if (requestedPage !== page) redirect(hrefFor(active, activeSort, page, q));
+
+  const sort = SORT_COLUMNS[activeSort];
+  let dataQuery = supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, stock_qty, status, rejection_note, created_at",
+      "id, title, price_per_unit, unit, moq, stock_qty, status, rejection_note, category:category_id(name)",
     )
     .eq("supplier_id", company.id);
-
-  if (active !== "all") query = query.eq("status", active);
-  if (q) query = query.ilike("title", `%${q}%`);
-  query = query.order("created_at", { ascending: false });
-
-  const { data: products } = await query;
+  if (active !== "all") dataQuery = dataQuery.eq("status", active as StatusKey);
+  if (q) dataQuery = dataQuery.ilike("title", `%${q}%`);
+  const { data: products } = await dataQuery
+    .order(sort.column, { ascending: sort.ascending })
+    .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
   const ids = (products ?? []).map((p) => p.id);
   const covers = new Map<string, string>();
@@ -124,11 +179,29 @@ export default async function SupplierProductsPage({
     }
   }
 
+  const rows: ProductRow[] = (products ?? []).map((p) => ({
+    id: p.id,
+    title: p.title,
+    cover: covers.get(p.id) ? imageUrl(covers.get(p.id)!) : null,
+    category: categoryName(p.category),
+    rejectionNote: p.rejection_note,
+    price: Number(p.price_per_unit ?? 0),
+    unit: p.unit ?? "",
+    moq: p.moq,
+    stock: Number(p.stock_qty ?? 0),
+    status: p.status,
+  }));
+
+  const searchActive = Boolean(q) || active !== "all";
+  const tableKey = hrefFor(active, activeSort, page, q);
+  const rangeFrom = rows.length > 0 ? (page - 1) * PER_PAGE + 1 : 0;
+  const rangeTo = (page - 1) * PER_PAGE + rows.length;
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Products</h1>
+          <h1 className="text-xl font-bold tracking-tight">All products</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {verified
               ? "Manage listings, track approvals and fix returns."
@@ -138,14 +211,14 @@ export default async function SupplierProductsPage({
         {verified ? (
           <Button render={<Link href={`${BASE}/new`} />} nativeButton={false}>
             <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
-            Add product
+            Add new product
           </Button>
         ) : null}
       </div>
 
       <Card className="!gap-0 !py-0">
         <CardHeader className="border-b border-border px-5 py-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {TABS.map((t) => {
                 const activeTab = active === t.key;
@@ -153,9 +226,7 @@ export default async function SupplierProductsPage({
                   <Button
                     key={t.key}
                     render={
-                      <Link
-                        href={`${BASE}?tab=${t.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
-                      />
+                      <Link href={hrefFor(t.key, activeSort, page, q)} />
                     }
                     nativeButton={false}
                     variant={activeTab ? "default" : "outline"}
@@ -169,25 +240,31 @@ export default async function SupplierProductsPage({
                 );
               })}
             </div>
-            <form action={BASE} className="w-full xl:w-auto">
-              <SearchInput
-                name="q"
-                placeholder="Search products…"
-                defaultValue={q}
-                className="w-full xl:w-72"
-              />
-            </form>
+            <ProductToolbar
+              baseHref={BASE}
+              tab={active}
+              q={q}
+              sort={activeSort}
+            />
           </div>
         </CardHeader>
         <CardContent className="!px-0">
-          {!products || products.length === 0 ? (
-            <Empty className={cn("!border-0", q || active !== "all" ? "!py-10" : "")}>
-              {q || active !== "all" ? (
+          {rows.length === 0 ? (
+            <Empty className={cn("!border-0", searchActive ? "!py-10" : "")}>
+              {searchActive ? (
                 <>
                   <EmptyTitle>Nothing found</EmptyTitle>
                   <EmptyDescription>
-                    No {active === "all" ? "" : `${active} `}products match your search.
+                    No products match your current filters.
                   </EmptyDescription>
+                  <Button
+                    render={<Link href={BASE} />}
+                    nativeButton={false}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Clear filters
+                  </Button>
                 </>
               ) : (
                 <>
@@ -202,94 +279,80 @@ export default async function SupplierProductsPage({
                       ? "Create your first draft to get started."
                       : "Products unlock once your business is verified."}
                   </EmptyDescription>
+                  {verified ? (
+                    <Button
+                      render={<Link href={`${BASE}/new`} />}
+                      nativeButton={false}
+                    >
+                      <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+                      Add new product
+                    </Button>
+                  ) : null}
                 </>
               )}
-              {verified ? (
-                <Button render={<Link href={`${BASE}/new`} />} nativeButton={false}>
-                  <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
-                  Add product
-                </Button>
-              ) : null}
             </Empty>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="hidden md:table-cell">MOQ</TableHead>
-                  <TableHead className="hidden lg:table-cell">Stock</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="relative hidden size-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted sm:block">
-                          {covers.get(p.id) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={imageUrl(covers.get(p.id)!)}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : null}
-                        </span>
-                        <div className="min-w-0">
-                          <Link
-                            href={`${BASE}/${p.id}/edit`}
-                            className="block max-w-56 truncate font-medium hover:underline lg:max-w-72"
-                          >
-                            {p.title}
-                          </Link>
-                          {p.status === "rejected" && p.rejection_note ? (
-                            <span className="block max-w-56 truncate text-xs text-destructive lg:max-w-72">
-                              {p.rejection_note}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap tabular-nums">
-                      ₹{Number(p.price_per_unit)} / {p.unit}
-                    </TableCell>
-                    <TableCell className="hidden tabular-nums md:table-cell">
-                      {p.moq}
-                    </TableCell>
-                    <TableCell className="hidden tabular-nums lg:table-cell">
-                      {p.stock_qty}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status="product" value={p.status} />
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
-                      {formatDate(p.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          render={<Link href={`${BASE}/${p.id}/edit`} />}
-                          nativeButton={false}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Edit
-                        </Button>
-                        <ProductRowButtons
-                          productId={p.id}
-                          status={p.status}
-                          verified={verified}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <ProductTable
+                key={tableKey}
+                products={rows}
+                baseHref={BASE}
+                verified={verified}
+              />
+              <div className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm tabular-nums text-muted-foreground">
+                  Showing {rangeFrom}–{rangeTo} of {total ?? 0}
+                </p>
+                {pageCount > 1 ? (
+                  <Pagination className="sm:justify-end">
+                    <PaginationContent>
+                      <PaginationItem>
+                        {page > 1 ? (
+                          <PaginationPrevious
+                            href={hrefFor(active, activeSort, page - 1, q)}
+                          />
+                        ) : (
+                          <PaginationPrevious
+                            href={hrefFor(active, activeSort, 1, q)}
+                            aria-disabled="true"
+                            className="pointer-events-none opacity-50"
+                          />
+                        )}
+                      </PaginationItem>
+                      {paginationItems(page, pageCount).map((item, index) =>
+                        item === "…" ? (
+                          <PaginationItem key={`ellipsis-${index}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={item}>
+                            <PaginationLink
+                              href={hrefFor(active, activeSort, item, q)}
+                              isActive={item === page}
+                            >
+                              {item}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ),
+                      )}
+                      <PaginationItem>
+                        {page < pageCount ? (
+                          <PaginationNext
+                            href={hrefFor(active, activeSort, page + 1, q)}
+                          />
+                        ) : (
+                          <PaginationNext
+                            href={hrefFor(active, activeSort, pageCount, q)}
+                            aria-disabled="true"
+                            className="pointer-events-none opacity-50"
+                          />
+                        )}
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                ) : null}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
