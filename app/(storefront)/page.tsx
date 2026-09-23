@@ -3,9 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { publicImageUrl } from "@/lib/storage"
-import { getHomeBanners, getNavigationCategories } from "@/lib/storefront"
-import { getSessionUser } from "@/lib/auth/session"
-import { StorefrontShell } from "@/components/layout/storefront-shell"
+import { getHomeBanners } from "@/lib/storefront"
 import { Button } from "@/components/ui/button"
 import { SectionHeader } from "@/components/storefront/section-header"
 import {
@@ -118,17 +116,13 @@ function CompactHero() {
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const [sessionUser, banners, navCategories] = await Promise.all([
-    getSessionUser(supabase),
-    getHomeBanners(supabase),
-    getNavigationCategories(supabase),
-  ])
+  const banners = await getHomeBanners(supabase)
 
   const heroBanners = banners.filter((b) => b.slot === "hero")
   const promoBanner = banners.find((b) => b.slot === "promo")
 
   return (
-    <StorefrontShell user={sessionUser} categories={navCategories}>
+    <>
       {/* Hero */}
       <section className="border-b border-border">
         <div className="mx-auto w-full max-w-7xl px-4 py-4">
@@ -219,6 +213,6 @@ export default async function HomePage() {
       >
         <VerifiedSuppliersSection />
       </Suspense>
-    </StorefrontShell>
+    </>
   )
 }

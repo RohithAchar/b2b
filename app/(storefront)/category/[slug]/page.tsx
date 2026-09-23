@@ -8,10 +8,7 @@ import {
   getCategoryBySlug,
   getCategoryProductCount,
   getProducts,
-  getNavigationCategories,
 } from "@/lib/storefront"
-import { getSessionUser } from "@/lib/auth/session"
-import { StorefrontShell } from "@/components/layout/storefront-shell"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
@@ -125,68 +122,60 @@ export default async function CategoryPage({
   const category = await getCategoryBySlug(supabase, slug)
   if (!category) notFound()
 
-  const [sessionUser, navCategories, productCount] = await Promise.all([
-    getSessionUser(supabase),
-    getNavigationCategories(supabase),
-    getCategoryProductCount(supabase, category.id),
-  ])
+  const productCount = await getCategoryProductCount(supabase, category.id)
 
   return (
-    <StorefrontShell user={sessionUser} categories={navCategories}>
-      <div className="mx-auto w-full max-w-7xl px-4 py-5">
-        <Breadcrumbs
-          items={[{ label: "Home", href: "/" }, { label: category.name }]}
-        />
+    <div className="mx-auto w-full max-w-7xl px-4 py-5">
+      <Breadcrumbs
+        items={[{ label: "Home", href: "/" }, { label: category.name }]}
+      />
 
-        {/* Category header */}
-        <div className="mb-5 flex items-center gap-4 border-b border-border pb-4">
-          {category.image_path && (
-            <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-              <Image
-                src={publicImageUrl("category_images", category.image_path)}
-                alt={category.name}
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {category.name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {productCount} product{productCount !== 1 ? "s" : ""} from
-              verified suppliers
-            </p>
-          </div>
-        </div>
-
-        {/* Subcategories */}
-        {category.subcategories.length > 0 && (
-          <div className="mb-5 flex flex-wrap gap-1.5">
-            <span className="mr-1 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Sub-categories:
-            </span>
-            {category.subcategories.map((sub) => (
-              <Link key={sub.id} href={`/category/${sub.slug}`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  nativeButton={false}
-                  className="h-7 rounded-sm text-xs"
-                >
-                  {sub.name}
-                </Button>
-              </Link>
-            ))}
+      {/* Category header */}
+      <div className="mb-5 flex items-center gap-4 border-b border-border pb-4">
+        {category.image_path && (
+          <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+            <Image
+              src={publicImageUrl("category_images", category.image_path)}
+              alt={category.name}
+              fill
+              sizes="64px"
+              className="object-cover"
+            />
           </div>
         )}
-
-        <Suspense fallback={<ProductGridSkeleton count={20} />}>
-          <CategoryProductListings slug={slug} page={page} />
-        </Suspense>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{category.name}</h1>
+          <p className="text-sm text-muted-foreground">
+            {productCount} product{productCount !== 1 ? "s" : ""} from verified
+            suppliers
+          </p>
+        </div>
       </div>
-    </StorefrontShell>
+
+      {/* Subcategories */}
+      {category.subcategories.length > 0 && (
+        <div className="mb-5 flex flex-wrap gap-1.5">
+          <span className="mr-1 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Sub-categories:
+          </span>
+          {category.subcategories.map((sub) => (
+            <Link key={sub.id} href={`/category/${sub.slug}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                className="h-7 rounded-sm text-xs"
+              >
+                {sub.name}
+              </Button>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <Suspense fallback={<ProductGridSkeleton count={20} />}>
+        <CategoryProductListings slug={slug} page={page} />
+      </Suspense>
+    </div>
   )
 }

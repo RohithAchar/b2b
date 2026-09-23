@@ -2,12 +2,13 @@ import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
-import { getProduct, getNavigationCategories } from "@/lib/storefront"
-import { getSessionUser } from "@/lib/auth/session"
+import { getProduct } from "@/lib/storefront"
 import { publicImageUrl } from "@/lib/storage"
-import { resolveProductMetaDescription, resolveProductMetaTitle } from "@/lib/product-meta"
+import {
+  resolveProductMetaDescription,
+  resolveProductMetaTitle,
+} from "@/lib/product-meta"
 import { SITE_NAME } from "@/lib/site"
-import { StorefrontShell } from "@/components/layout/storefront-shell"
 import { ProductDetail, RelatedProductsSection } from "./product-detail"
 import {
   ProductDetailSkeleton,
@@ -38,8 +39,11 @@ export async function generateMetadata({
   const description = resolveProductMetaDescription(product)
   const seoImagePath =
     (product.seo_image_path as string | null) ??
-    ((product.images as { path: string }[] | null)?.[0]?.path ?? null)
-  const image = seoImagePath ? publicImageUrl("product_images", seoImagePath) : undefined
+    (product.images as { path: string }[] | null)?.[0]?.path ??
+    null
+  const image = seoImagePath
+    ? publicImageUrl("product_images", seoImagePath)
+    : undefined
 
   return {
     title,
@@ -69,18 +73,14 @@ export default async function ProductPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const [sessionUser, navCategories, product] = await Promise.all([
-    getSessionUser(supabase),
-    getNavigationCategories(supabase),
-    getProduct(supabase, id),
-  ])
+  const product = await getProduct(supabase, id)
 
   if (!product) notFound()
 
   const catId = getRootCategoryId(product)
 
   return (
-    <StorefrontShell user={sessionUser} categories={navCategories}>
+    <>
       <Suspense
         fallback={
           <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -104,6 +104,6 @@ export default async function ProductPage({
           <RelatedProductsSection categoryId={catId} excludeId={id} />
         </Suspense>
       )}
-    </StorefrontShell>
+    </>
   )
 }
