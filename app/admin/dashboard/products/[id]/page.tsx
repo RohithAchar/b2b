@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { stripHtml } from "@/lib/supplier/rich-text";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
   Breadcrumb,
@@ -133,7 +134,7 @@ export default async function AdminProductReviewPage({
           <Separator />
           <Field>
             <FieldLabel>Description</FieldLabel>
-            <FieldDescription>{product.description}</FieldDescription>
+            <FieldDescription>{stripHtml(product.description)}</FieldDescription>
           </Field>
           <Field>
             <FieldLabel>Facts</FieldLabel>

@@ -167,6 +167,7 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
         sample_available, sample_price, lead_time_days, gst_rate,
         attributes, certifications, packaging_details, warranty_return,
         youtube_url, youtube_id, created_at, supplier_id,
+        seo_title, seo_description, seo_image_path,
         category:category_id(id, name, slug),
         images:product_images(id, path, sort, alt),
         variants:product_variants(id, label, attrs, seller_sku, price, moq, stock_qty, sort)

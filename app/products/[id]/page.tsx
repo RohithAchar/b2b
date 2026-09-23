@@ -1,8 +1,12 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { getProduct, getNavigationCategories } from "@/lib/storefront"
 import { getSessionUser } from "@/lib/auth/session"
+import { publicImageUrl } from "@/lib/storage"
+import { resolveProductMetaDescription, resolveProductMetaTitle } from "@/lib/product-meta"
+import { SITE_NAME } from "@/lib/site"
 import { StorefrontShell } from "@/components/layout/storefront-shell"
 import { ProductDetail, RelatedProductsSection } from "./product-detail"
 import {
@@ -18,6 +22,44 @@ function getRootCategoryId(product: unknown): string | null {
     return first?.id ?? null
   }
   return (p.category as { id?: string }).id ?? null
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const product = await getProduct(supabase, id)
+  if (!product) return {}
+
+  const title = resolveProductMetaTitle(product)
+  const description = resolveProductMetaDescription(product)
+  const seoImagePath =
+    (product.seo_image_path as string | null) ??
+    ((product.images as { path: string }[] | null)?.[0]?.path ?? null)
+  const image = seoImagePath ? publicImageUrl("product_images", seoImagePath) : undefined
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/products/${id}` },
+    openGraph: {
+      title,
+      description,
+      url: `/products/${id}`,
+      siteName: SITE_NAME,
+      type: "website",
+      ...(image ? { images: [{ url: image, alt: title }] } : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  }
 }
 
 export default async function ProductPage({

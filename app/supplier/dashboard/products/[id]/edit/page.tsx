@@ -26,7 +26,7 @@ export default async function EditSupplierProductPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, status",
+      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status",
     )
     .eq("id", id)
     .eq("supplier_id", company.id)
@@ -70,6 +70,9 @@ export default async function EditSupplierProductPage({
     packaging_details: product.packaging_details,
     warranty_return: product.warranty_return,
     youtube_url: product.youtube_url,
+    seo_title: product.seo_title,
+    seo_description: product.seo_description,
+    seo_image_path: product.seo_image_path,
     status: product.status,
     images: images ?? [],
     variants: (variants ?? []).map((v) => {

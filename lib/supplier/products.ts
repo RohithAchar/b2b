@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { isSupportedImageType, sniffImageType } from "@/lib/storage";
+import {
+  DESCRIPTION_MAX_HTML_CHARS,
+  DESCRIPTION_MIN_TEXT_CHARS,
+  MAX_SEO_DESCRIPTION_CHARS,
+  MAX_SEO_TITLE_CHARS,
+  plainTextLength,
+} from "@/lib/supplier/rich-text";
 
 export const PRODUCT_UNITS = ["pcs", "kg", "box", "mtr", "ltr"] as const;
 export const PRODUCT_GST_RATES = [0, 5, 12, 18, 28] as const;
@@ -9,6 +16,14 @@ export const MAX_PRODUCT_IMAGES = 8;
 export const MIN_PRODUCT_IMAGES = 3;
 export const MAX_PRODUCT_IMAGE_BYTES = 2 * 1024 * 1024;
 export const MAX_VARIANTS = 20;
+
+// SEO size constants live in rich-text.ts (imported by client + tests).
+export {
+  MAX_SEO_TITLE_CHARS,
+  MAX_SEO_DESCRIPTION_CHARS,
+  SEO_TITLE_RECOMMENDED_CHARS,
+  SEO_DESCRIPTION_RECOMMENDED_CHARS,
+} from "@/lib/supplier/rich-text";
 
 const YOUTUBE_ID_RE = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/;
 
@@ -68,7 +83,15 @@ export const productSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{4,8}$/, "HSN must be 4-8 digits."),
-  description: z.string().trim().min(50, "Description needs at least 50 characters.").max(5000),
+  description: z
+    .string()
+    .trim()
+    .min(1, "Description is required.")
+    .max(DESCRIPTION_MAX_HTML_CHARS)
+    .refine(
+      (v) => plainTextLength(v) >= DESCRIPTION_MIN_TEXT_CHARS,
+      `Description needs at least ${DESCRIPTION_MIN_TEXT_CHARS} characters of text.`,
+    ),
   unit: z.enum(PRODUCT_UNITS),
   price_per_unit: z.coerce.number().positive("Price must be positive."),
   moq: z.coerce.number().int().min(1, "MOQ must be at least 1."),
@@ -92,6 +115,8 @@ export const productSchema = z.object({
       (v) => v === "" || extractYoutubeId(v) !== null,
       "Enter a valid YouTube link (watch / youtu.be / embed / shorts).",
     ),
+  seo_title: z.string().trim().max(MAX_SEO_TITLE_CHARS).optional().default(""),
+  seo_description: z.string().trim().max(MAX_SEO_DESCRIPTION_CHARS).optional().default(""),
 });
 
 export type ProductInput = z.input<typeof productSchema>;

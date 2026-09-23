@@ -1,53 +1,20 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useActionState,
+  type FormEvent,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Add01Icon,
-  ArrowRight01Icon,
-  Delete02Icon,
-  Image01Icon,
-} from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Attachment,
-  AttachmentActions,
-  AttachmentAction,
-  AttachmentContent,
-  AttachmentDescription,
-  AttachmentGroup,
-  AttachmentMedia,
-  AttachmentTitle,
-} from "@/components/ui/attachment";
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-  NativeSelectOptGroup,
-} from "@/components/ui/native-select";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { FormSection } from "@/components/dashboard/form-section";
+import { FieldError } from "@/components/ui/field";
 import {
   createProduct,
   updateProduct,
@@ -55,45 +22,28 @@ import {
 } from "@/lib/supplier/product-actions";
 import {
   MAX_PRODUCT_IMAGES,
-  PRODUCT_GST_RATES,
-  PRODUCT_UNITS,
+  MIN_PRODUCT_IMAGES,
+  MAX_VARIANTS,
   extractYoutubeId,
-  youtubeThumbUrl,
-  type ProductVariantValues,
 } from "@/lib/supplier/products";
-
-export type CategoryOption = {
-  id: string;
-  name: string;
-  parentName: string | null;
-};
-
-export type ExistingVariant = ProductVariantValues & { id?: string };
-
-export type ExistingProduct = {
-  id: string;
-  title: string;
-  category_id: string;
-  brand: string | null;
-  seller_sku: string;
-  hsn_code: string;
-  description: string;
-  unit: string;
-  price_per_unit: number;
-  moq: number;
-  stock_qty: number;
-  negotiable: boolean;
-  sample_available: boolean;
-  sample_price: number | null;
-  lead_time_days: number;
-  gst_rate: number | null;
-  packaging_details: string | null;
-  warranty_return: string | null;
-  youtube_url: string | null;
-  status: string;
-  images: { id: string; path: string }[];
-  variants: ExistingVariant[];
-};
+import { fieldIdForMessage } from "@/lib/supplier/form-errors";
+import {
+  DESCRIPTION_MIN_TEXT_CHARS,
+  defaultSeoDescription,
+  defaultSeoTitle,
+  plainTextLength,
+} from "@/lib/supplier/rich-text";
+import { ProductInformationSection } from "./product-information-section";
+import { ProductMediaSection } from "./product-media-section";
+import { PricingSection } from "./pricing-section";
+import { InventorySection } from "./inventory-section";
+import { ShippingTaxSection } from "./shipping-tax-section";
+import { VariantsSection } from "./variants-section";
+import { ProductSeoSection } from "./product-seo-section";
+import { ProductReadiness } from "./product-readiness";
+import { ProductFormActions, ProductFormStickyActions } from "./product-form-actions";
+import { ProductFormSectionNav, ProductFormSectionTabs } from "./product-form-navigation";
+import type { CategoryGroup, CategoryOption, ExistingProduct, ExistingVariant } from "./product-form-types";
 
 const initialState: ProductActionState = { ok: false, message: "" };
 
@@ -111,6 +61,23 @@ function newVariant(): ExistingVariant {
     moq: null,
     stock_qty: 0,
   };
+}
+
+function loadDraft(key: string): Map<string, string> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const m = new Map<string, string>();
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "string") m.set(k, v);
+    }
+    return m;
+  } catch {
+    return null;
+  }
 }
 
 export function ProductForm({
@@ -132,8 +99,24 @@ export function ProductForm({
       : updateProduct.bind(null, product?.id ?? "");
   const [state, action, pending] = useActionState(boundAction, initialState);
   const [invalidField, setInvalidField] = useState<{ id: string; message: string } | null>(null);
+  // Render-phase adjustment: when a server action returns an error, attach it
+  // to the offending input by resolving the message to a field id. The
+  // previous-action-state pattern is the React-sanctioned way to react to a
+  // state change without an effect watching form state.
+  const [prevActionState, setPrevActionState] = useState(state);
+  if (state !== prevActionState) {
+    setPrevActionState(state);
+    if (state.ok) {
+      setInvalidField(null);
+    } else if (state.message) {
+      const fieldId = fieldIdForMessage(state.message);
+      if (fieldId) setInvalidField({ id: fieldId, message: state.message });
+    }
+  }
+  const [pendingAction, setPendingAction] = useState<"draft" | "submit" | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const seoImageInputRef = useRef<HTMLInputElement>(null);
   // Submission gate: the browser never POSTs unless our own code sets this
   // flag after explicit validation. Any stray submit (wrong button type,
   // Enter key, extension) is intercepted below and routed to validation.
@@ -147,13 +130,60 @@ export function ProductForm({
   const [hasVariants, setHasVariants] = useState((product?.variants?.length ?? 0) > 0);
   const [variants, setVariants] = useState<ExistingVariant[]>(product?.variants ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [removedImagePaths, setRemovedImagePaths] = useState<string[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [youtubeUrl, setYoutubeUrl] = useState(product?.youtube_url ?? "");
   const objectUrlsRef = useRef<string[]>([]);
 
+  const [seoFile, setSeoFile] = useState<File | null>(null);
+  const [seoPreview, setSeoPreview] = useState<string | null>(null);
+  const [seoImageCleared, setSeoImageCleared] = useState(false);
+  const seoObjectUrlRef = useRef<string | null>(null);
+
+  // Draft persistence: text fields survive a full reload. Files, cropped
+  // images and variant rows are browser-side objects and cannot be restored,
+  // so they are intentionally excluded.
+  const draftKey = `b2b:pf:${mode}:${product?.id ?? "new"}`;
+
+  const initialFormValues = useMemo(() => {
+    const m = new Map<string, string>();
+    if (product) {
+      const set = (key: string, value: string | number | null | undefined) => {
+        if (value === null || value === undefined) return;
+        m.set(key, String(value));
+      };
+      set("title", product.title);
+      set("category_id", product.category_id);
+      set("brand", product.brand);
+      set("seller_sku", product.seller_sku);
+      set("hsn_code", product.hsn_code);
+      set("description", product.description);
+      set("unit", product.unit);
+      set("price_per_unit", product.price_per_unit);
+      set("moq", product.moq);
+      set("stock_qty", product.stock_qty);
+      set("lead_time_days", product.lead_time_days);
+      set("gst_rate", product.gst_rate);
+      set("packaging_details", product.packaging_details);
+      set("warranty_return", product.warranty_return);
+      set("youtube_url", product.youtube_url);
+      set("seo_title", product.seo_title);
+      set("seo_description", product.seo_description);
+    }
+    return m;
+  }, [product]);
+
+  const [formValues, setFormValues] = useState<Map<string, string>>(() => {
+    const draft = loadDraft(draftKey);
+    return draft ?? initialFormValues;
+  });
+
+  const [seoTitleTouched, setSeoTitleTouched] = useState(false);
+  const [seoDescriptionTouched, setSeoDescriptionTouched] = useState(false);
+
   const youtubeId = useMemo(() => extractYoutubeId(youtubeUrl), [youtubeUrl]);
   const existingImages = useMemo(() => product?.images ?? [], [product]);
-  const totalImages = existingImages.length + newFiles.length;
+  const totalImages = existingImages.length - removedImagePaths.length + newFiles.length;
   const canAddMore = totalImages < MAX_PRODUCT_IMAGES;
 
   const variantsJson = useMemo(() => {
@@ -179,27 +209,99 @@ export function ProductForm({
     [hasVariants, variants],
   );
 
-  function onImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files ?? []);
-    const seen = new Set(newFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`));
-    const merged = [
-      ...newFiles,
-      ...picked.filter((f) => !seen.has(`${f.name}:${f.size}:${f.lastModified}`)),
-    ].slice(0, MAX_PRODUCT_IMAGES);
-    for (const url of objectUrlsRef.current) URL.revokeObjectURL(url);
-    const urls = merged.map((f) => URL.createObjectURL(f));
-    objectUrlsRef.current = urls;
-    // Keep the file input in sync with the full staged set so the form POST
-    // carries every chosen image, not just the latest pick.
-    const dt = new DataTransfer();
-    for (const f of merged) dt.items.add(f);
-    if (fileInputRef.current) fileInputRef.current.files = dt.files;
-    setPreviewUrls(urls);
-    setNewFiles(merged);
+  const grouped = useMemo<CategoryGroup[]>(() => {
+    const parents = categories.filter((c) => !c.parentName);
+    return parents.map((parent) => ({
+      parent,
+      children: categories.filter((c) => c.parentName === parent.name),
+    }));
+  }, [categories]);
+
+  function setFormValue(key: string, value: string) {
+    setFormValues((prev) => {
+      if (Object.is(prev.get(key), value)) return prev;
+      const next = new Map(prev);
+      next.set(key, value);
+      return next;
+    });
+    if (invalidField?.id === key) setInvalidField(null);
   }
 
-  function removeStaged(index: number) {
-    const files = newFiles.filter((_, i) => i !== index);
+  // Persist text fields to sessionStorage (debounced).
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      try {
+        window.sessionStorage.setItem(draftKey, JSON.stringify(Object.fromEntries(formValues)));
+      } catch {
+        // storage unavailable — ignore
+      }
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [formValues, draftKey]);
+
+  // Clear the draft once a save succeeds.
+  useEffect(() => {
+    if (state.ok) {
+      try {
+        window.sessionStorage.removeItem(draftKey);
+      } catch {
+        // ignore
+      }
+    }
+  }, [state.ok, draftKey]);
+
+  // Route every field error to one scroll/focus path so client-side and
+  // server-side errors behave identically. Hidden inputs (like #images) have
+  // no focusable target, so scroll to their visible field wrapper instead.
+  useEffect(() => {
+    if (!invalidField) return;
+    const el = document.getElementById(invalidField.id);
+    const wrap = el?.closest('[data-slot="field"]') ?? el;
+    wrap?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLSelectElement
+    ) {
+      if (!el.disabled && !el.hidden) el.focus({ preventScroll: true });
+    }
+  }, [invalidField]);
+
+  // Auto-fill SEO fields from the title/description until the supplier types
+  // into the SEO fields themselves. Computed during render (never via an
+  // effect) and handed to the SEO section so its controlled inputs, counters
+  // and submitted FormData all reflect the effective value.
+  const seoValues = useMemo(() => {
+    const next = new Map(formValues);
+    if (!seoTitleTouched) {
+      const seo = next.get("seo_title") ?? "";
+      if (seo === "") next.set("seo_title", defaultSeoTitle(next.get("title") ?? ""));
+    }
+    if (!seoDescriptionTouched) {
+      const seo = next.get("seo_description") ?? "";
+      if (seo === "") next.set("seo_description", defaultSeoDescription(next.get("description") ?? ""));
+    }
+    return next;
+  }, [formValues, seoTitleTouched, seoDescriptionTouched]);
+
+  function handleSeoTitleChange(value: string) {
+    setFormValue("seo_title", value);
+    setSeoTitleTouched(true);
+  }
+
+  function handleSeoDescriptionChange(value: string) {
+    setFormValue("seo_description", value);
+    setSeoDescriptionTouched(true);
+  }
+
+  function regenerateSeo() {
+    setFormValue("seo_title", defaultSeoTitle(formValues.get("title") ?? ""));
+    setFormValue("seo_description", defaultSeoDescription(formValues.get("description") ?? ""));
+    setSeoTitleTouched(false);
+    setSeoDescriptionTouched(false);
+  }
+
+  function commitStagedFiles(files: File[]) {
     const dt = new DataTransfer();
     for (const f of files) dt.items.add(f);
     if (fileInputRef.current) fileInputRef.current.files = dt.files;
@@ -210,9 +312,88 @@ export function ProductForm({
     setNewFiles(files);
   }
 
+  function addFiles(files: File[]) {
+    if (files.length === 0) return;
+    const seen = new Set(newFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`));
+    const merged = [
+      ...newFiles,
+      ...files.filter((f) => !seen.has(`${f.name}:${f.size}:${f.lastModified}`)),
+    ].slice(0, MAX_PRODUCT_IMAGES);
+    commitStagedFiles(merged);
+  }
+
+  function removeStaged(index: number) {
+    commitStagedFiles(newFiles.filter((_, i) => i !== index));
+  }
+
+  function replaceStaged(index: number, file: File) {
+    commitStagedFiles(newFiles.map((f, i) => (i === index ? file : f)));
+  }
+
+  function removeExisting(path: string) {
+    setRemovedImagePaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+  }
+
+  function replaceExisting(path: string, file: File) {
+    removeExisting(path);
+    commitStagedFiles([...newFiles, file].slice(0, MAX_PRODUCT_IMAGES));
+  }
+
+  function onSeoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    syncSeoInput(file);
+    if (seoObjectUrlRef.current) URL.revokeObjectURL(seoObjectUrlRef.current);
+    seoObjectUrlRef.current = null;
+    if (!file) {
+      setSeoPreview(null);
+      setSeoFile(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    seoObjectUrlRef.current = url;
+    setSeoPreview(url);
+    setSeoFile(file);
+    setSeoImageCleared(false);
+  }
+
+  function syncSeoInput(file: File | null) {
+    const dt = new DataTransfer();
+    if (file) dt.items.add(file);
+    if (seoImageInputRef.current) seoImageInputRef.current.files = dt.files;
+  }
+
+  function removeSeoImage() {
+    if (seoObjectUrlRef.current) URL.revokeObjectURL(seoObjectUrlRef.current);
+    seoObjectUrlRef.current = null;
+    syncSeoInput(null);
+    setSeoPreview(null);
+    setSeoFile(null);
+    setSeoImageCleared(true);
+  }
+
+  function applySeoCrop(file: File) {
+    if (seoObjectUrlRef.current) URL.revokeObjectURL(seoObjectUrlRef.current);
+    const url = URL.createObjectURL(file);
+    seoObjectUrlRef.current = url;
+    syncSeoInput(file);
+    setSeoFile(file);
+    setSeoPreview(url);
+    setSeoImageCleared(false);
+  }
+
   function updateVariant(index: number, patch: Partial<ExistingVariant>) {
     setVariants((prev) => prev.map((v, i) => (i === index ? { ...v, ...patch } : v)));
   }
+
+  function handleHasVariantsChange(value: boolean) {
+    setHasVariants(value);
+    if (value && variants.length === 0) setVariants([newVariant()]);
+  }
+
+  const addVariant = () =>
+    setVariants((prev) => (prev.length >= MAX_VARIANTS ? prev : [...prev, newVariant()]));
+  const removeLastVariant = () => setVariants((prev) => prev.slice(0, -1));
 
   function controlKey(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
     return el.id || el.getAttribute("aria-label") || el.name;
@@ -220,8 +401,6 @@ export function ProductForm({
 
   function pinpoint(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement) {
     setInvalidField({ id: controlKey(el), message: el.validationMessage });
-    el.focus();
-    el.scrollIntoView({ block: "center" });
   }
 
   function firstInvalidIn(root: Element | null): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null {
@@ -254,485 +433,226 @@ export function ProductForm({
     }
   }
 
-  const grouped = useMemo(() => {
-    const parents = categories.filter((c) => !c.parentName);
-    return parents.map((p) => ({
-      parent: p,
-      children: categories.filter((c) => c.parentName === p.name),
-    }));
-  }, [categories]);
+  // Rich-text descriptions need a custom length check because the browser
+  // cannot count visible text inside HTML.
+  function validateDescription(): boolean {
+    const text = plainTextLength(formValues.get("description") ?? "");
+    if (text >= DESCRIPTION_MIN_TEXT_CHARS) return true;
+    setInvalidField({
+      id: "description",
+      message: `Description needs at least ${DESCRIPTION_MIN_TEXT_CHARS} characters of text.`,
+    });
+    return false;
+  }
+
+  function onFormSubmit(e: FormEvent<HTMLFormElement>) {
+    const form = formRef.current;
+    // Second pass: our own code explicitly allowed this POST.
+    if (allowSubmitRef.current) {
+      allowSubmitRef.current = false;
+      return;
+    }
+    // First pass: intercept EVERY submit — no POST leaves the browser
+    // without passing explicit validation below.
+    e.preventDefault();
+    if (!form) return;
+    if (!validateDescription()) return;
+    if (autoSubmitRef.current && totalImages < MIN_PRODUCT_IMAGES) {
+      setInvalidField({
+        id: "images",
+        message: `Add at least ${MIN_PRODUCT_IMAGES} images before submitting.`,
+      });
+      return;
+    }
+    const bad = firstInvalidIn(form);
+    if (bad) {
+      pinpoint(bad);
+      return;
+    }
+    if (autoSubmitRef.current) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "auto_submit";
+      input.value = "1";
+      form.appendChild(input);
+    }
+    // Explicitly allowed: re-submit programmatically so the POST goes
+    // through the second pass above.
+    allowSubmitRef.current = true;
+    try {
+      form.requestSubmit();
+    } catch {
+      allowSubmitRef.current = false;
+    }
+  }
+
+  function requestSave(kind: "draft" | "submit") {
+    if (pending) return;
+    autoSubmitRef.current = kind === "submit";
+    setPendingAction(kind);
+    formRef.current?.requestSubmit();
+  }
+
+  const statusAlert = state.message ? (
+    <Alert variant={state.ok ? "default" : "destructive"}>
+      <AlertTitle>{state.ok ? "Saved" : "Check the form"}</AlertTitle>
+      <AlertDescription>
+        {state.message}
+        {state.ok ? (
+          <>
+            {" "}
+            <Link href="/supplier/dashboard/products" className="underline underline-offset-4 hover:text-primary">
+              View products
+            </Link>
+          </>
+        ) : null}
+      </AlertDescription>
+    </Alert>
+  ) : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <div className="grid min-w-0 gap-0.5">
-          <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-        <Button
-          render={<Link href="/supplier/dashboard/products" />}
-          nativeButton={false}
-          variant="outline"
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+      <div>
+        <Link
+          href="/supplier/dashboard/products"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          Cancel
-        </Button>
+          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+          All products
+        </Link>
+        <h1 className="mt-1 text-xl font-bold tracking-tight">{title}</h1>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       <form
         ref={formRef}
         action={action}
         onChangeCapture={clearInvalidForEvent}
-        onSubmit={(e) => {
-          const form = formRef.current;
-          // Second pass: our own code explicitly allowed this POST.
-          if (allowSubmitRef.current) {
-            allowSubmitRef.current = false;
-            return;
-          }
-          // First pass: intercept EVERY submit — no POST leaves the browser
-          // without passing explicit validation below.
-          e.preventDefault();
-          if (!form) return;
-          const bad = firstInvalidIn(form);
-          if (bad) {
-            pinpoint(bad);
-            return;
-          }
-          if (autoSubmitRef.current) {
-            const input = document.createElement("input");
-            input.type = "hidden";
-            input.name = "auto_submit";
-            input.value = "1";
-            form.appendChild(input);
-          }
-          // Explicitly allowed: re-submit programmatically so the POST goes
-          // through the second pass above.
-          allowSubmitRef.current = true;
-          try {
-            form.requestSubmit();
-          } catch {
-            allowSubmitRef.current = false;
-          }
-        }}
+        onSubmit={onFormSubmit}
       >
         <input type="hidden" name="wizard_complete" value="1" />
         <input type="hidden" name="variants_json" value={variantsJson} />
-        <div className="grid grid-cols-1 gap-4 @3xl/content:grid-cols-[minmax(0,1fr)_280px]">
+        <input type="hidden" name="seo_image_clear" value={seoImageCleared ? "1" : ""} />
+        <input type="hidden" name="removed_image_paths" value={JSON.stringify(removedImagePaths)} />
+
+        <ProductFormSectionTabs />
+
+        <div className="grid grid-cols-1 items-start gap-4 @3xl/content:grid-cols-[minmax(0,1fr)_300px] @5xl/content:grid-cols-[176px_minmax(0,1fr)_300px]">
+          <nav
+            aria-label="Product sections"
+            className="hidden @5xl/content:sticky @5xl/content:top-4 @5xl/content:block"
+          >
+            <ProductFormSectionNav />
+          </nav>
+
           <div className="flex min-w-0 flex-col gap-4">
-            <FormSection
-              id="basic"
-              title="Basic information"
-              description="What buyers see first — make the title specific, like IndiaMART listings."
-            >
-              <FieldSet>
-                <FieldLegend>Listing</FieldLegend>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="title">Product title</FieldLabel>
-                    <Input id="title" name="title" required minLength={10} maxLength={140} aria-invalid={invalidFor("title")} defaultValue={product?.title ?? ""} placeholder="Cotton school socks, ankle length" />
-                    <FieldDescription>10–140 characters.</FieldDescription>
-                    {errorFor("title")}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="category_id">Subcategory</FieldLabel>
-                    <NativeSelect id="category_id" name="category_id" required aria-invalid={invalidFor("category_id")} defaultValue={product?.category_id ?? ""}>
-                      <NativeSelectOption value="" disabled>Pick a subcategory</NativeSelectOption>
-                      {grouped.map((g) => (
-                        <NativeSelectOptGroup key={g.parent.id} label={g.parent.name}>
-                          {g.children.map((c) => (
-                            <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>
-                          ))}
-                        </NativeSelectOptGroup>
-                      ))}
-                    </NativeSelect>
-                    {errorFor("category_id")}
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-              <FieldSet>
-                <FieldLegend>Identification</FieldLegend>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="brand">Brand (optional)</FieldLabel>
-                    <Input id="brand" name="brand" maxLength={60} defaultValue={product?.brand ?? ""} />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="seller_sku">Your SKU</FieldLabel>
-                    <Input id="seller_sku" name="seller_sku" required pattern="[A-Za-z0-9-_]{3,30}" aria-invalid={invalidFor("seller_sku")} defaultValue={product?.seller_sku ?? ""} placeholder="SCK-ANK-001" />
-                    <FieldDescription>Unique per product. Variants use their own SKUs.</FieldDescription>
-                    {errorFor("seller_sku")}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="hsn_code">HSN code</FieldLabel>
-                    <Input id="hsn_code" name="hsn_code" required pattern="\d{4,8}" inputMode="numeric" aria-invalid={invalidFor("hsn_code")} defaultValue={product?.hsn_code ?? ""} placeholder="6115" />
-                    <FieldDescription>4–8 digits, as printed on your GST invoice.</FieldDescription>
-                    {errorFor("hsn_code")}
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-              <FieldSet className="grid gap-4 col-span-full">
-                <Field>
-                  <FieldLabel htmlFor="description">Description</FieldLabel>
-                  <Textarea id="description" name="description" required minLength={50} rows={6} aria-invalid={invalidFor("description")} defaultValue={product?.description ?? ""} placeholder="Material, sizes, packaging, certifications…" />
-                  <FieldDescription>At least 50 characters — material, sizes, packaging, certifications.</FieldDescription>
-                  {errorFor("description")}
-                </Field>
-              </FieldSet>
-            </FormSection>
-
-            <FormSection
-              id="pricing"
-              title="Pricing"
-              description="Base price plus GST applies to the whole listing unless variants override it."
-            >
-              <FieldSet>
-                <FieldLegend>Price</FieldLegend>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="unit">Selling unit</FieldLabel>
-                    <NativeSelect id="unit" name="unit" required aria-invalid={invalidFor("unit")} defaultValue={product?.unit ?? "pcs"}>
-                      {PRODUCT_UNITS.map((u) => (
-                        <NativeSelectOption key={u} value={u}>{u}</NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                    {errorFor("unit")}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="price_per_unit">Base price (₹ per unit)</FieldLabel>
-                    <Input id="price_per_unit" name="price_per_unit" required type="number" min={0.01} step="0.01" aria-invalid={invalidFor("price_per_unit")} defaultValue={product?.price_per_unit ?? ""} />
-                    <FieldDescription>Variants can override this with their own absolute price.</FieldDescription>
-                    {errorFor("price_per_unit")}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="gst_rate">GST rate (%)</FieldLabel>
-                    <NativeSelect id="gst_rate" name="gst_rate" required aria-invalid={invalidFor("gst_rate")} defaultValue={product?.gst_rate != null ? String(product.gst_rate) : ""}>
-                      <NativeSelectOption value="" disabled>Select rate</NativeSelectOption>
-                      {PRODUCT_GST_RATES.map((r) => (
-                        <NativeSelectOption key={r} value={String(r)}>{r}%</NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                    {errorFor("gst_rate")}
-                  </Field>
-                  <Field orientation="horizontal">
-                    <Switch id="negotiable-switch" checked={negotiable} onCheckedChange={setNegotiable} />
-                    <FieldLabel htmlFor="negotiable-switch">Price negotiable</FieldLabel>
-                    <input type="hidden" name="negotiable" value={negotiable ? "1" : ""} />
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-              <FieldSet>
-                <FieldLegend>Inventory and fulfilment</FieldLegend>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="moq">Minimum order quantity</FieldLabel>
-                    <Input id="moq" name="moq" required type="number" min={1} step="1" aria-invalid={invalidFor("moq")} defaultValue={product?.moq ?? ""} />
-                    <FieldDescription>MOQ filters out irrelevant enquiries.</FieldDescription>
-                    {errorFor("moq")}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="stock_qty">Stock on hand</FieldLabel>
-                    <Input id="stock_qty" name="stock_qty" type="number" min={0} step="1" aria-invalid={invalidFor("stock_qty")} defaultValue={product?.stock_qty ?? 0} />
-                    {errorFor("stock_qty")}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="lead_time_days">Lead time (days)</FieldLabel>
-                    <Input id="lead_time_days" name="lead_time_days" required type="number" min={1} max={90} step="1" aria-invalid={invalidFor("lead_time_days")} defaultValue={product?.lead_time_days ?? ""} placeholder="15" />
-                    {errorFor("lead_time_days")}
-                  </Field>
-                  <Field orientation="horizontal">
-                    <Switch id="sample-switch" checked={sampleAvailable} onCheckedChange={setSampleAvailable} />
-                    <FieldLabel htmlFor="sample-switch">Offer sample</FieldLabel>
-                    <input type="hidden" name="sample_available" value={sampleAvailable ? "1" : ""} />
-                  </Field>
-                  {sampleAvailable ? (
-                    <Field>
-                      <FieldLabel htmlFor="sample_price">Sample price (₹)</FieldLabel>
-                      <Input id="sample_price" name="sample_price" type="number" min={0.01} step="0.01" aria-invalid={invalidFor("sample_price")} defaultValue={product?.sample_price ?? ""} />
-                      {errorFor("sample_price")}
-                    </Field>
-                  ) : null}
-                </FieldGroup>
-              </FieldSet>
-            </FormSection>
-
-            <FormSection
-              id="photos"
-              title="Photos"
-              description="JPG, PNG or WEBP, under 2 MB each. Add 3–8 images — the first image is the cover."
-              columns={1}
-            >
-              <Field>
-                <FieldLabel htmlFor="images">Product images</FieldLabel>
-                <input ref={fileInputRef} id="images" name="images" type="file" accept=".jpg,.jpeg,.png,.webp" multiple hidden onChange={onImagesChange} />
-                {totalImages === 0 ? (
-                  <FieldDescription>
-                    No images yet — add at least 3 clear photos before submitting for approval.
-                  </FieldDescription>
-                ) : (
-                  <FieldDescription>
-                    {totalImages} of {MAX_PRODUCT_IMAGES} images
-                    {totalImages < 3 ? ` — add at least ${3 - totalImages} more` : null}
-                  </FieldDescription>
-                )}
-              </Field>
-              <AttachmentGroup>
-                {existingImages.map((img, i) => (
-                  <Attachment key={img.id} orientation="vertical" state="done">
-                    <AttachmentMedia variant="image">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={productImageUrl(img.path)} alt={`Product image ${i + 1}`} />
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>{i === 0 ? "Cover" : `Image ${i + 1}`}</AttachmentTitle>
-                      <AttachmentDescription>Saved</AttachmentDescription>
-                    </AttachmentContent>
-                  </Attachment>
-                ))}
-                {newFiles.map((file, i) => (
-                  <Attachment key={`${file.name}-${i}`} orientation="vertical" state="done">
-                    <AttachmentActions>
-                      <AttachmentAction
-                        type="button"
-                        aria-label={`Remove ${file.name}`}
-                        onClick={() => removeStaged(i)}
-                      >
-                        <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                      </AttachmentAction>
-                    </AttachmentActions>
-                    <AttachmentMedia variant="image">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={previewUrls[i]} alt={`New upload ${i + 1}`} />
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>
-                        {existingImages.length + i === 0 ? "Cover" : `Image ${existingImages.length + i + 1}`}
-                      </AttachmentTitle>
-                      <AttachmentDescription>
-                        {file.name} · {Math.max(1, Math.round(file.size / 1024))} KB
-                      </AttachmentDescription>
-                    </AttachmentContent>
-                  </Attachment>
-                ))}
-                {canAddMore ? (
-                  <Attachment orientation="vertical" state="idle">
-                    <AttachmentMedia>
-                      <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>Add images</AttachmentTitle>
-                      <AttachmentDescription>{MAX_PRODUCT_IMAGES - totalImages} slots left</AttachmentDescription>
-                    </AttachmentContent>
-                    <AttachmentActions>
-                      <AttachmentAction type="button" aria-label="Add images" onClick={() => fileInputRef.current?.click()}>
-                        <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
-                      </AttachmentAction>
-                    </AttachmentActions>
-                  </Attachment>
-                ) : null}
-              </AttachmentGroup>
-            </FormSection>
-
-            <FormSection
-              id="video-variants"
-              title="Video and variants"
-              description="A YouTube walkthrough and size/pack/colour variants are optional but convert better."
-            >
-              <FieldSet>
-                <FieldLegend>Video (optional)</FieldLegend>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="youtube_url">YouTube link</FieldLabel>
-                    <Input id="youtube_url" name="youtube_url" type="url" maxLength={200} aria-invalid={invalidFor("youtube_url")} value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" />
-                    <FieldDescription>Link only — we never upload video files.</FieldDescription>
-                    {errorFor("youtube_url")}
-                  </Field>
-                  {youtubeId ? (
-                    <Field>
-                      <FieldLabel>Video preview</FieldLabel>
-                      <AttachmentGroup>
-                        <Attachment orientation="horizontal" state="done">
-                          <AttachmentMedia variant="image">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={youtubeThumbUrl(youtubeId)} alt="YouTube preview" />
-                          </AttachmentMedia>
-                          <AttachmentContent>
-                            <AttachmentTitle>Video attached</AttachmentTitle>
-                            <AttachmentDescription>{youtubeId}</AttachmentDescription>
-                          </AttachmentContent>
-                          <AttachmentActions>
-                            <AttachmentAction
-                              aria-label="Watch video on YouTube"
-                              render={<a href={youtubeUrl} target="_blank" rel="noopener noreferrer" />}
-                              nativeButton={false}
-                            >
-                              <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-                            </AttachmentAction>
-                          </AttachmentActions>
-                        </Attachment>
-                      </AttachmentGroup>
-                    </Field>
-                  ) : null}
-                </FieldGroup>
-              </FieldSet>
-              <FieldSet>
-                <FieldLegend>Variants</FieldLegend>
-                <FieldGroup>
-                  <Field orientation="horizontal">
-                    <Switch id="variants-switch" checked={hasVariants} onCheckedChange={(v) => { setHasVariants(v); if (v && variants.length === 0) setVariants([newVariant()]); }} />
-                    <FieldLabel htmlFor="variants-switch">Size, pack, colour variants</FieldLabel>
-                  </Field>
-                  {hasVariants ? (
-                    <Field>
-                      <FieldDescription>Each variant has its own absolute price, SKU, MOQ and stock. Empty MOQ uses the base MOQ.</FieldDescription>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Label</TableHead>
-                            <TableHead>Attribute</TableHead>
-                            <TableHead>SKU</TableHead>
-                            <TableHead>Price ₹</TableHead>
-                            <TableHead>MOQ</TableHead>
-                            <TableHead>Stock</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {variants.map((v, i) => (
-                            <TableRow key={i}>
-                              <TableCell>
-                                <Input id={`variant-${i}-label`} aria-label={`Variant ${i + 1} label`} required={hasVariants} aria-invalid={invalidFor(`variant-${i}-label`)} value={v.label} onChange={(e) => updateVariant(i, { label: e.target.value })} placeholder="500ml – Pack of 12" />
-                              </TableCell>
-                              <TableCell>
-                                <Input id={`variant-${i}-attr`} aria-label={`Variant ${i + 1} attribute`} value={`${v.attr_key ?? ""}${v.attr_value ? `: ${v.attr_value}` : ""}`} onChange={(e) => {
-                                  const [k, ...rest] = e.target.value.split(":");
-                                  updateVariant(i, { attr_key: (k ?? "").trim(), attr_value: rest.join(":").trim() });
-                                }} placeholder="size: 500ml" />
-                              </TableCell>
-                              <TableCell>
-                                <Input id={`variant-${i}-sku`} aria-label={`Variant ${i + 1} SKU`} required={hasVariants} pattern="[A-Za-z0-9-_]{3,30}" aria-invalid={invalidFor(`variant-${i}-sku`)} value={v.seller_sku} onChange={(e) => updateVariant(i, { seller_sku: e.target.value })} />
-                              </TableCell>
-                              <TableCell>
-                                <Input id={`variant-${i}-price`} aria-label={`Variant ${i + 1} price`} required={hasVariants} type="number" min={0.01} step="0.01" aria-invalid={invalidFor(`variant-${i}-price`)} value={v.price || ""} onChange={(e) => updateVariant(i, { price: Number(e.target.value) })} />
-                              </TableCell>
-                              <TableCell>
-                                <Input id={`variant-${i}-moq`} aria-label={`Variant ${i + 1} MOQ`} type="number" min={1} step="1" aria-invalid={invalidFor(`variant-${i}-moq`)} value={v.moq ?? ""} onChange={(e) => updateVariant(i, { moq: e.target.value === "" ? null : Number(e.target.value) })} placeholder="base" />
-                              </TableCell>
-                              <TableCell>
-                                <Input id={`variant-${i}-stock`} aria-label={`Variant ${i + 1} stock`} type="number" min={0} step="1" aria-invalid={invalidFor(`variant-${i}-stock`)} value={v.stock_qty} onChange={(e) => updateVariant(i, { stock_qty: Number(e.target.value) })} />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      {invalidField?.id.startsWith("variant-") ? (
-                        <FieldError>{invalidField.message}</FieldError>
-                      ) : null}
-                      <ButtonGroup>
-                        <Button type="button" variant="outline" onClick={() => setVariants((p) => (p.length >= 20 ? p : [...p, newVariant()]))}>Add variant</Button>
-                        {variants.length > 1 ? (
-                          <Button type="button" variant="ghost" onClick={() => setVariants((p) => p.slice(0, -1))}>Remove last</Button>
-                        ) : null}
-                      </ButtonGroup>
-                    </Field>
-                  ) : null}
-                </FieldGroup>
-              </FieldSet>
-            </FormSection>
-
-            <FormSection
-              id="shipping"
-              title="Packaging and shipping"
-              description="Optional details buyers appreciate before ordering."
-              columns={1}
-            >
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="packaging_details">Packaging details (optional)</FieldLabel>
-                  <Textarea id="packaging_details" name="packaging_details" rows={3} defaultValue={product?.packaging_details ?? ""} />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="warranty_return">Warranty and returns (optional)</FieldLabel>
-                  <Textarea id="warranty_return" name="warranty_return" rows={3} defaultValue={product?.warranty_return ?? ""} />
-                </Field>
-              </FieldGroup>
-            </FormSection>
+            <ProductInformationSection
+              grouped={grouped}
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+              formValues={formValues}
+              onValueChange={setFormValue}
+            />
+            <ProductMediaSection
+              fileInputRef={fileInputRef}
+              onFilesPicked={addFiles}
+              existingImages={existingImages}
+              newFiles={newFiles}
+              previewUrls={previewUrls}
+              removedImagePaths={removedImagePaths}
+              totalImages={totalImages}
+              canAddMore={canAddMore}
+              onRemoveStaged={removeStaged}
+              onRemoveExisting={removeExisting}
+              onReplaceStaged={replaceStaged}
+              onReplaceExisting={replaceExisting}
+              productImageUrl={productImageUrl}
+              youtubeUrl={youtubeUrl}
+              onYoutubeChange={setYoutubeUrl}
+              youtubeId={youtubeId}
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+            />
+            <PricingSection
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+              formValues={formValues}
+              onValueChange={setFormValue}
+              negotiable={negotiable}
+              onNegotiableChange={setNegotiable}
+            />
+            <InventorySection
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+              formValues={formValues}
+              onValueChange={setFormValue}
+              sampleAvailable={sampleAvailable}
+              onSampleAvailableChange={setSampleAvailable}
+            />
+            <ShippingTaxSection
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+              formValues={formValues}
+              onValueChange={setFormValue}
+            />
+            <VariantsSection
+              invalidFor={invalidFor}
+              invalidField={invalidField}
+              hasVariants={hasVariants}
+              onHasVariantsChange={handleHasVariantsChange}
+              variants={variants}
+              onUpdateVariant={updateVariant}
+              addVariant={addVariant}
+              removeLastVariant={removeLastVariant}
+            />
+            <ProductSeoSection
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+              product={product}
+              formValues={seoValues}
+              seoTitleTouched={seoTitleTouched}
+              seoDescriptionTouched={seoDescriptionTouched}
+              onSeoTitleChange={handleSeoTitleChange}
+              onSeoDescriptionChange={handleSeoDescriptionChange}
+              onRegenerateSeo={regenerateSeo}
+              seoFile={seoFile}
+              seoPreview={seoPreview}
+              seoImageCleared={seoImageCleared}
+              seoImageInputRef={seoImageInputRef}
+              onSeoFileChange={onSeoFileChange}
+              onSeoImageRemove={removeSeoImage}
+              onSeoCropApplied={applySeoCrop}
+              productImageUrl={productImageUrl}
+            />
+            <div className="@3xl/content:hidden">{statusAlert}</div>
           </div>
 
-          <aside className="flex h-fit flex-col gap-4 @3xl/content:sticky @3xl/content:top-4">
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-sm font-medium">Listing summary</p>
-              <div className="mt-3 flex flex-col gap-3">
-                <div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Photos</span>
-                    <span className={totalImages >= 3 ? "font-medium text-success" : "font-medium"}>
-                      {totalImages} / {MAX_PRODUCT_IMAGES}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full ${totalImages >= 3 ? "bg-success" : "bg-foreground/20"}`}
-                      style={{ width: `${Math.min(100, (totalImages / MAX_PRODUCT_IMAGES) * 100)}%` }}
-                    />
-                  </div>
-                  {totalImages < 3 ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Add {3 - totalImages} more to submit.
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Variants</span>
-                  <span className="font-medium">{listedVariants.length}</span>
-                </div>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {mode === "create"
-                  ? "Drafts are private until you submit. Submissions go to moderation."
-                  : "Only draft or returned products can be edited here."}
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  autoSubmitRef.current = true;
-                  formRef.current?.requestSubmit();
-                }}
-              >
-                {pending ? "Saving…" : "Save and submit for approval"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                onClick={() => {
-                  autoSubmitRef.current = false;
-                  formRef.current?.requestSubmit();
-                }}
-              >
-                Save draft
-              </Button>
-            </div>
-            {state.message ? (
-              <Alert variant={state.ok ? "default" : "destructive"}>
-                <AlertTitle>{state.ok ? "Saved" : "Check the form"}</AlertTitle>
-                <AlertDescription>
-                  {state.message}
-                  {state.ok ? (
-                    <>
-                      {" "}
-                      <Link href="/supplier/dashboard/products" className="underline underline-offset-4 hover:text-primary">
-                        View products
-                      </Link>
-                    </>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+          <aside className="hidden flex-col gap-4 @3xl/content:sticky @3xl/content:top-4 @3xl/content:flex">
+            <ProductReadiness
+              formValues={formValues}
+              totalImages={totalImages}
+              variantCount={listedVariants.length}
+            />
+            <ProductFormActions
+              pending={pending}
+              pendingAction={pendingAction}
+              onSaveDraft={() => requestSave("draft")}
+              onSaveSubmit={() => requestSave("submit")}
+            />
+            <div className="hidden @3xl/content:block">{statusAlert}</div>
           </aside>
         </div>
+
+        <ProductFormStickyActions
+          pending={pending}
+          pendingAction={pendingAction}
+          onSaveDraft={() => requestSave("draft")}
+          onSaveSubmit={() => requestSave("submit")}
+        />
       </form>
     </div>
   );
 }
+
+// Kept for import compatibility with server pages.
+export type { ExistingProduct } from "./product-form-types";

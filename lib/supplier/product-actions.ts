@@ -10,6 +10,8 @@ import {
   productVariantSchema,
   validateProductImageFile,
 } from "@/lib/supplier/products";
+import { defaultSeoDescription, defaultSeoTitle } from "@/lib/supplier/rich-text";
+import { sanitizeRichText } from "@/lib/supplier/sanitize";
 
 export type ProductActionState = {
   ok: boolean;
@@ -34,9 +36,12 @@ async function uploadProductImage(
   userId: string,
   productId: string,
   file: File,
+  folder: string | null = null,
 ): Promise<string> {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${userId}/${productId}_${Date.now()}_${safeName}`;
+  const path = folder
+    ? `${userId}/${folder}/${productId}_${Date.now()}_${safeName}`
+    : `${userId}/${productId}_${Date.now()}_${safeName}`;
   const { error } = await supabase.storage
     .from("product_images")
     .upload(path, file, { contentType: file.type, upsert: false });
@@ -151,6 +156,18 @@ function parseVariants(raw: string | null): ParsedVariant[] | { error: string } 
   return out;
 }
 
+function parseRemovedPaths(raw: string | null): string[] {
+  if (!raw || raw.trim() === "") return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((p): p is string => typeof p === "string" && p.length > 0);
+}
+
 async function collectImages(formData: FormData): Promise<File[] | { error: string }> {
   const files = formData
     .getAll("images")
@@ -163,6 +180,21 @@ async function collectImages(formData: FormData): Promise<File[] | { error: stri
     if (err) return { error: `Image ${f.name}: ${err}` };
   }
   return files;
+}
+
+async function collectSeoFile(
+  formData: FormData,
+): Promise<{ seoFile: File | null } | { error: string }> {
+  const raw = formData.get("seo_image");
+  if (!(raw instanceof File) || raw.size === 0) return { seoFile: null };
+  const err = await validateProductImageFile(raw);
+  if (err) return { error: `Search image: ${err}` };
+  return { seoFile: raw };
+}
+
+function seoText(v: string | undefined | null): string | null {
+  const s = v?.trim() ?? "";
+  return s === "" ? null : s;
 }
 
 async function submitForApproval(
@@ -221,6 +253,8 @@ export async function createProduct(
     packaging_details: formData.get("packaging_details") ?? "",
     warranty_return: formData.get("warranty_return") ?? "",
     youtube_url: formData.get("youtube_url") ?? "",
+    seo_title: formData.get("seo_title") ?? "",
+    seo_description: formData.get("seo_description") ?? "",
   });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
@@ -230,6 +264,8 @@ export async function createProduct(
   if (!Array.isArray(variantsOrErr)) return { ok: false, message: variantsOrErr.error };
   const imagesOrErr = await collectImages(formData);
   if (!Array.isArray(imagesOrErr)) return { ok: false, message: imagesOrErr.error };
+  const seoChoice = await collectSeoFile(formData);
+  if ("error" in seoChoice) return { ok: false, message: seoChoice.error };
 
   const sku = parsed.data.seller_sku.toUpperCase();
   const { data: skuClash } = await supabase
@@ -249,7 +285,7 @@ export async function createProduct(
       supplier_id: supplierId,
       category_id: parsed.data.category_id,
       title: parsed.data.title.trim(),
-      description: parsed.data.description.trim(),
+      description: sanitizeRichText(parsed.data.description),
       brand: parsed.data.brand?.trim() ? parsed.data.brand.trim() : null,
       seller_sku: sku,
       hsn_code: parsed.data.hsn_code.trim(),
@@ -266,6 +302,8 @@ export async function createProduct(
       warranty_return: parsed.data.warranty_return?.trim() ? parsed.data.warranty_return.trim() : null,
       youtube_url: youtubeUrl,
       youtube_id: youtubeId,
+      seo_title: seoText(parsed.data.seo_title) ?? defaultSeoTitle(parsed.data.title),
+      seo_description: seoText(parsed.data.seo_description) ?? defaultSeoDescription(parsed.data.description),
       status: "draft",
     })
     .select("id")
@@ -281,11 +319,20 @@ export async function createProduct(
   // Upload images to storage first so a failed upload never leaves DB rows
   // behind, then publish the DB rows through the atomic replacement RPCs.
   let uploadedPaths: string[] = [];
+  let seoUploadedPath: string | null = null;
   try {
     uploadedPaths = await uploadImages(supabase, user.id, product.id, imagesOrErr);
+    if (seoChoice.seoFile) {
+      seoUploadedPath = await uploadProductImage(supabase, user.id, product.id, seoChoice.seoFile, "seo");
+    }
   } catch (err) {
     console.error("createProduct image upload failed:", err);
-    await rollbackCreatedProduct(supabase, supplierId, product.id, uploadedPaths);
+    await rollbackCreatedProduct(
+      supabase,
+      supplierId,
+      product.id,
+      seoUploadedPath ? [...uploadedPaths, seoUploadedPath] : uploadedPaths,
+    );
     return { ok: false, message: "Could not upload product images. Make sure the files are valid and try again." };
   }
 
@@ -307,6 +354,18 @@ export async function createProduct(
     console.error("createProduct variants failed:", variantsError);
     await rollbackCreatedProduct(supabase, supplierId, product.id, uploadedPaths);
     return { ok: false, message: rpcMessage(variantsError, "Could not save variants. Try again.") };
+  }
+
+  if (seoChoice.seoFile && seoUploadedPath) {
+    const { error: seoUpdateError } = await supabase.from("products").update({
+      seo_image_path: seoUploadedPath,
+    })
+      .eq("id", product.id);
+    if (seoUpdateError) {
+      console.error("createProduct seo path update failed:", seoUpdateError);
+      await rollbackCreatedProduct(supabase, supplierId, product.id, [...uploadedPaths, seoUploadedPath]);
+      return { ok: false, message: "Could not save search image. Try again." };
+    }
   }
 
   revalidatePath("/supplier/dashboard/products");
@@ -337,7 +396,7 @@ export async function updateProduct(
 
   const { data: existing } = await supabase
     .from("products")
-    .select("id, supplier_id, status")
+    .select("id, supplier_id, status, seo_image_path")
     .eq("id", productId)
     .maybeSingle();
   if (!existing || existing.supplier_id !== supplierId) {
@@ -366,6 +425,8 @@ export async function updateProduct(
     packaging_details: formData.get("packaging_details") ?? "",
     warranty_return: formData.get("warranty_return") ?? "",
     youtube_url: formData.get("youtube_url") ?? "",
+    seo_title: formData.get("seo_title") ?? "",
+    seo_description: formData.get("seo_description") ?? "",
   });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
@@ -373,6 +434,10 @@ export async function updateProduct(
 
   const imagesOrErr = await collectImages(formData);
   if (!Array.isArray(imagesOrErr)) return { ok: false, message: imagesOrErr.error };
+
+  const seoChoice = await collectSeoFile(formData);
+  if ("error" in seoChoice) return { ok: false, message: seoChoice.error };
+  const seoClear = formData.get("seo_image_clear") === "1";
 
   const variantsOrErr = parseVariants(nullIfEmpty(formData.get("variants_json")));
   if (!Array.isArray(variantsOrErr)) return { ok: false, message: variantsOrErr.error };
@@ -382,7 +447,11 @@ export async function updateProduct(
     .select("path")
     .eq("product_id", productId);
   const existingPaths = (existingImageRows ?? []).map((i) => i.path as string);
-  if (existingPaths.length + imagesOrErr.length > MAX_PRODUCT_IMAGES) {
+const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths") ?? "")).filter(
+  (p) => existingPaths.includes(p),
+);
+  const keptPaths = existingPaths.filter((p) => !removedPaths.includes(p));
+  if (keptPaths.length + imagesOrErr.length > MAX_PRODUCT_IMAGES) {
     return {
       ok: false,
       message: `Products can have up to ${MAX_PRODUCT_IMAGES} images total. Remove some before adding more.`,
@@ -391,12 +460,26 @@ export async function updateProduct(
 
   const youtubeUrl = parsed.data.youtube_url?.trim() ? parsed.data.youtube_url.trim() : null;
 
+  // Resolve the SEO image to one value BEFORE the single save below so the
+  // product row always reflects the final choice (new / cleared / unchanged).
+  let newSeoPath: string | null = null;
+  if (seoChoice.seoFile) {
+    try {
+      newSeoPath = await uploadProductImage(supabase, user.id, productId, seoChoice.seoFile, "seo");
+    } catch (err) {
+      console.error("updateProduct seo upload failed:", err);
+      return { ok: false, message: "Could not upload search image. No changes were saved.", productId };
+    }
+  }
+  const oldSeoPath = existing.seo_image_path ?? null;
+  const seoImagePath = newSeoPath ?? (seoClear ? null : oldSeoPath);
+
   const { error: updateError, data: updatedRows } = await supabase
     .from("products")
     .update({
       category_id: parsed.data.category_id,
       title: parsed.data.title.trim(),
-      description: parsed.data.description.trim(),
+      description: sanitizeRichText(parsed.data.description),
       brand: parsed.data.brand?.trim() ? parsed.data.brand.trim() : null,
       hsn_code: parsed.data.hsn_code.trim(),
       unit: parsed.data.unit,
@@ -412,6 +495,9 @@ export async function updateProduct(
       warranty_return: parsed.data.warranty_return?.trim() ? parsed.data.warranty_return.trim() : null,
       youtube_url: youtubeUrl,
       youtube_id: youtubeUrl ? extractYoutubeId(youtubeUrl) : null,
+      seo_title: seoText(parsed.data.seo_title) ?? defaultSeoTitle(parsed.data.title),
+      seo_description: seoText(parsed.data.seo_description) ?? defaultSeoDescription(parsed.data.description),
+      seo_image_path: seoImagePath,
     })
     .eq("id", productId)
     .select("id");
@@ -420,10 +506,16 @@ export async function updateProduct(
     if (updateError.code === "23505") {
       return { ok: false, message: "You already use this SKU on another product." };
     }
+    if (newSeoPath) await removeStoredPaths(supabase, [newSeoPath]);
     return { ok: false, message: "Could not save. Try again." };
   }
   if (!updatedRows || updatedRows.length === 0) {
+    if (newSeoPath) await removeStoredPaths(supabase, [newSeoPath]);
     return { ok: false, message: "Product not found." };
+  }
+  // The new value is persisted; the old stored file can be deleted now.
+  if (oldSeoPath && oldSeoPath !== seoImagePath) {
+    await removeStoredPaths(supabase, [oldSeoPath]);
   }
 
   // Cumulative image cap is enforced above; upload the new files before any
@@ -438,12 +530,15 @@ export async function updateProduct(
 
   const { error: imageRowsError } = await supabase.rpc("replace_product_images", {
     p_product_id: productId,
-    p_paths: [...existingPaths, ...newPaths],
+    p_paths: [...keptPaths, ...newPaths],
   });
   if (imageRowsError) {
     await removeStoredPaths(supabase, newPaths);
     console.error("updateProduct image rows failed:", imageRowsError);
     return { ok: false, message: rpcMessage(imageRowsError, "Cannot add that many images."), productId };
+  }
+  if (removedPaths.length > 0) {
+    await removeStoredPaths(supabase, removedPaths);
   }
 
   const { error: variantsError } = await supabase.rpc("replace_product_variants", {

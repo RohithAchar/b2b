@@ -37,7 +37,7 @@ export default async function NewSupplierProductPage() {
     <ProductForm
       mode="create"
       categories={options}
-      title="New product"
+      title="Add new product"
       description="Save as draft, then submit for approval from the product list."
     />
   );

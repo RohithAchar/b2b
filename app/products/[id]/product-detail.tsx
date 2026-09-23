@@ -6,6 +6,7 @@ import {
   PinLocation01Icon,
 } from "@hugeicons/core-free-icons";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { publicImageUrl } from "@/lib/storage";
 import { getRelatedProducts } from "@/lib/storefront";
 import { Card } from "@/components/ui/card";
@@ -269,7 +270,10 @@ export function ProductDetail({ product }: { product: Product }) {
               description={
                 <Card className="rounded-lg p-6">
                   <div className="prose prose-sm max-w-none text-sm">
-                    <p className="whitespace-pre-wrap">{product.description}</p>
+                    <div
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichText(product.description) }}
+                      className="[&_a]:break-all [&_a]:text-primary [&_a]:underline"
+                    />
                   </div>
                   {product.packaging_details && (
                     <div className="mt-5">

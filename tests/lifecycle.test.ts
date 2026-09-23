@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { plainTextLength } from "../lib/supplier/rich-text";
 
 // Local dev stack only — never the remote project. Start it with `pnpm dlx
 // supabase start` (ports override in supabase/config.toml when another stack
@@ -415,6 +416,31 @@ describe.skipIf(!available)("product lifecycle hardening", () => {
       expect((error?.message ?? "").toLowerCase()).toContain("images");
       expect(await readStatus(fx.adminClient, pid)).toBe("pending");
     });
+
+    it("submit counts visible text and rejects a tag-only description", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-VAL-${++seq}-P`, {
+        description: "<p><strong>&nbsp;</strong></p>",
+      });
+      await addImages(pid, 3);
+      const { error } = await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
+      expect((error?.message ?? "").toLowerCase()).toContain("description");
+      expect(await readStatus(fx.adminClient, pid)).toBe("draft");
+    });
+
+    it("submit accepts rich HTML when the visible text clears the minimum", async () => {
+      const html =
+        "<p>Wholesale cotton fabric rolls in plain weave, ideal for premium school</p>" +
+        "<p>uniform collections.</p>";
+      expect(plainTextLength(html)).toBeGreaterThanOrEqual(50);
+      expect(html.length).toBeGreaterThan(plainTextLength(html));
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-VAL-${++seq}-P`, {
+        description: html,
+      });
+      await addImages(pid, 3);
+      const { error } = await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
+      expect(error).toBeNull();
+      expect(await readStatus(fx.adminClient, pid)).toBe("pending");
+    });
   });
 
   describe("audit logging actor", () => {
@@ -575,6 +601,91 @@ describe.skipIf(!available)("product lifecycle hardening", () => {
       expect(subErr).toBeNull();
       const { error: appErr } = await fx.adminClient.rpc("approve_kyb", { p_company_id: companyId });
       expect(appErr).toBeNull();
+    });
+  });
+
+  describe("product SEO fields", () => {
+    it("supplier persists seo title, description and image path on a draft", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-SEO-${++seq}-P`);
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({
+          seo_title: "Keyword School Uniform Socks",
+          seo_description:
+            "Wholesale cotton school socks from a verified Indian manufacturer, MOQ 10 pairs.",
+          seo_image_path: `test/${pid}/seo/cover.jpg`,
+        })
+        .eq("id", pid);
+      expect(error).toBeNull();
+      const { data } = await service
+        .from("products")
+        .select("seo_title, seo_description, seo_image_path")
+        .eq("id", pid)
+        .maybeSingle();
+      expect(data).toMatchObject({
+        seo_title: "Keyword School Uniform Socks",
+        seo_description:
+          "Wholesale cotton school socks from a verified Indian manufacturer, MOQ 10 pairs.",
+        seo_image_path: `test/${pid}/seo/cover.jpg`,
+      });
+    });
+
+    it("supplier can clear the seo image path back to null", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-SEO-${++seq}-P`);
+      await fx.supplierClient
+        .from("products")
+        .update({ seo_image_path: `test/${pid}/seo/old.jpg` })
+        .eq("id", pid);
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ seo_image_path: null })
+        .eq("id", pid);
+      expect(error).toBeNull();
+      const { data } = await service
+        .from("products")
+        .select("seo_image_path")
+        .eq("id", pid)
+        .maybeSingle();
+      expect((data as { seo_image_path: string | null }).seo_image_path).toBeNull();
+    });
+
+    it("another verified supplier cannot change someone else's seo fields", async () => {
+      const email = `seo-other-${Date.now()}@lifecycle.test`;
+      const uid = await makeUser(email, "supplier");
+      createdUsers.push(uid);
+      const otherCompanyId = await makeCompany(uid, "verified");
+      const pid = await makeProduct(otherCompanyId, fx.categoryId, `LK-SEO-${++seq}-P`);
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ seo_title: "Should not be allowed" })
+        .eq("id", pid);
+      expect(error).not.toBeNull();
+    });
+
+    it("seo image path never satisfies the gallery minimum for submission", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-SEO-${++seq}-P`);
+      await fx.supplierClient
+        .from("products")
+        .update({ seo_image_path: `test/${pid}/seo/cover.jpg` })
+        .eq("id", pid);
+      const { error } = await fx.supplierClient.rpc("submit_product_for_approval", {
+        p_product_id: pid,
+      });
+      expect((error?.message ?? "").toLowerCase()).toContain("images");
+      expect(await readStatus(fx.adminClient, pid)).toBe("draft");
+    });
+
+    it("supplier cannot edit seo fields on an approved product", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-SEO-${++seq}-P`);
+      await addImages(pid, 3);
+      await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
+      await fx.adminClient.rpc("approve_product", { p_product_id: pid });
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ seo_title: "Late edit" })
+        .eq("id", pid);
+      expect(error).not.toBeNull();
+      expect(await readStatus(fx.adminClient, pid)).toBe("approved");
     });
   });
 });

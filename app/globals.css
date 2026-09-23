@@ -148,4 +148,7 @@
     html {
         @apply font-sans;
     }
+    :where(button, [role="button"], summary, label[for]):not(:disabled) {
+        cursor: pointer;
+    }
 }
