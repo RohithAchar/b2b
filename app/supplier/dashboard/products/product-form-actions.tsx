@@ -7,17 +7,21 @@ export function ProductFormActions({
   pendingAction,
   onSaveDraft,
   onSaveSubmit,
+  showSubmit = true,
 }: {
   pending: boolean;
   pendingAction: "draft" | "submit" | null;
   onSaveDraft: () => void;
   onSaveSubmit: () => void;
+  showSubmit?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <Button type="button" disabled={pending} onClick={onSaveSubmit}>
-        {pending && pendingAction === "submit" ? "Submitting…" : "Save & submit for approval"}
-      </Button>
+      {showSubmit ? (
+        <Button type="button" disabled={pending} onClick={onSaveSubmit}>
+          {pending && pendingAction === "submit" ? "Submitting…" : "Save & submit for approval"}
+        </Button>
+      ) : null}
       <Button type="button" variant="outline" disabled={pending} onClick={onSaveDraft}>
         {pending && pendingAction === "draft" ? "Saving…" : "Save draft"}
       </Button>
@@ -30,19 +34,23 @@ export function ProductFormStickyActions({
   pendingAction,
   onSaveDraft,
   onSaveSubmit,
+  showSubmit = true,
 }: {
   pending: boolean;
   pendingAction: "draft" | "submit" | null;
   onSaveDraft: () => void;
   onSaveSubmit: () => void;
+  showSubmit?: boolean;
 }) {
   return (
     <div className="@3xl/content:hidden">
       <div className="sticky bottom-0 z-10 -mx-4 mt-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex flex-col gap-2">
-          <Button type="button" disabled={pending} onClick={onSaveSubmit}>
-            {pending && pendingAction === "submit" ? "Submitting…" : "Save & submit for approval"}
-          </Button>
+          {showSubmit ? (
+            <Button type="button" disabled={pending} onClick={onSaveSubmit}>
+              {pending && pendingAction === "submit" ? "Submitting…" : "Save & submit for approval"}
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" disabled={pending} onClick={onSaveDraft}>
             {pending && pendingAction === "draft" ? "Saving…" : "Save draft"}
           </Button>

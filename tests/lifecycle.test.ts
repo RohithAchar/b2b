@@ -554,16 +554,21 @@ describe.skipIf(!available)("product lifecycle hardening", () => {
       expect(count).toBe(2);
     });
 
-    it("is only allowed on draft or rejected products", async () => {
+    it("replaces images on approved products (live edits)", async () => {
       const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-IMG-${++seq}-P`);
       await addImages(pid, 3);
       await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
       await fx.adminClient.rpc("approve_product", { p_product_id: pid });
       const { error } = await fx.supplierClient.rpc("replace_product_images", {
         p_product_id: pid,
-        p_paths: ["test/a.jpg"],
+        p_paths: ["test/a.jpg", "test/b.jpg"],
       });
-      expect(error?.message).toContain("editable");
+      expect(error).toBeNull();
+      const { count } = await service
+        .from("product_images")
+        .select("id", { count: "exact", head: true })
+        .eq("product_id", pid);
+      expect(count).toBe(2);
     });
   });
 
@@ -675,7 +680,7 @@ describe.skipIf(!available)("product lifecycle hardening", () => {
       expect(await readStatus(fx.adminClient, pid)).toBe("draft");
     });
 
-    it("supplier cannot edit seo fields on an approved product", async () => {
+    it("supplier can edit seo fields on an approved product (stays approved)", async () => {
       const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-SEO-${++seq}-P`);
       await addImages(pid, 3);
       await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
@@ -684,7 +689,181 @@ describe.skipIf(!available)("product lifecycle hardening", () => {
         .from("products")
         .update({ seo_title: "Late edit" })
         .eq("id", pid);
-      expect(error).not.toBeNull();
+      expect(error).toBeNull();
+      const { data } = await service
+        .from("products")
+        .select("seo_title, status")
+        .eq("id", pid)
+        .maybeSingle();
+      expect(data).toMatchObject({ seo_title: "Late edit", status: "approved" });
+    });
+  });
+
+  describe("live product editing, hide/show and admin take-down", () => {
+    const anon = createClient(URL, ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    async function makeLiveProduct(prefix: string): Promise<string> {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `${prefix}-${++seq}-P`);
+      await addImages(pid, 3);
+      await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
+      await fx.adminClient.rpc("approve_product", { p_product_id: pid });
+      return pid;
+    }
+
+    async function readHidden(productId: string) {
+      const { data } = await service
+        .from("products")
+        .select("is_hidden")
+        .eq("id", productId)
+        .maybeSingle();
+      return (data as { is_hidden: boolean } | null)?.is_hidden ?? null;
+    }
+
+    it("supplier edits an approved product in place (status stays approved)", async () => {
+      const pid = await makeLiveProduct("LK-LIVE-EDIT");
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ title: "Edited live title", price_per_unit: 125 })
+        .eq("id", pid);
+      expect(error).toBeNull();
+      const { data } = await service
+        .from("products")
+        .select("status, title, price_per_unit")
+        .eq("id", pid)
+        .maybeSingle();
+      expect(data).toMatchObject({
+        status: "approved",
+        title: "Edited live title",
+        price_per_unit: 125,
+      });
+    });
+
+    it("supplier can replace variants on an approved product", async () => {
+      const pid = await makeLiveProduct("LK-LIVE-VAR");
+      const { error } = await fx.supplierClient.rpc("replace_product_variants", {
+        p_product_id: pid,
+        p_variants: [
+          { label: "Red", attrs: {}, seller_sku: "LK-VAR-NEW1", price: 11, moq: 1, stock_qty: 5 },
+        ],
+      });
+      expect(error).toBeNull();
+      const { count } = await service
+        .from("product_variants")
+        .select("id", { count: "exact", head: true })
+        .eq("product_id", pid);
+      expect(count).toBe(1);
+    });
+
+    it("guard still blocks the supplier from changing status on an approved product", async () => {
+      const pid = await makeLiveProduct("LK-LIVE-GUARD");
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ status: "pending" })
+        .eq("id", pid);
+      expect(error?.message).toContain("administrator");
+      expect(await readStatus(fx.adminClient, pid)).toBe("approved");
+    });
+
+    it("pending products still cannot be edited", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-LIVE-PEND-${++seq}-P`);
+      await addImages(pid, 3);
+      await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
+      const { data, error } = await fx.supplierClient
+        .from("products")
+        .update({ title: "Should fail" })
+        .eq("id", pid)
+        .select("id");
+      expect(error).toBeNull();
+      expect((data ?? []).length).toBe(0);
+      const { data: row } = await service
+        .from("products")
+        .select("title")
+        .eq("id", pid)
+        .maybeSingle();
+      expect((row as { title: string }).title).not.toBe("Should fail");
+    });
+
+    it("supplier hides an approved product and it leaves the public storefront", async () => {
+      const pid = await makeLiveProduct("LK-HIDE");
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ is_hidden: true })
+        .eq("id", pid);
+      expect(error).toBeNull();
+      expect(await readHidden(pid)).toBe(true);
+      const { data: anonData } = await anon
+        .from("products")
+        .select("id")
+        .eq("id", pid)
+        .eq("status", "approved")
+        .maybeSingle();
+      expect(anonData).toBeNull();
+    });
+
+    it("supplier can show a hidden product again", async () => {
+      const pid = await makeLiveProduct("LK-UNHIDE");
+      await fx.supplierClient.from("products").update({ is_hidden: true }).eq("id", pid);
+      const { error } = await fx.supplierClient
+        .from("products")
+        .update({ is_hidden: false })
+        .eq("id", pid);
+      expect(error).toBeNull();
+      expect(await readHidden(pid)).toBe(false);
+      const { data } = await anon
+        .from("products")
+        .select("id")
+        .eq("id", pid)
+        .eq("status", "approved")
+        .maybeSingle();
+      expect(data?.id).toBe(pid);
+    });
+
+    it("admin takes down a live product to draft", async () => {
+      const pid = await makeLiveProduct("LK-TAKEDOWN");
+      const { error } = await fx.adminClient.rpc("unpublish_product", { p_product_id: pid });
+      expect(error).toBeNull();
+      expect(await readStatus(fx.adminClient, pid)).toBe("draft");
+      const { data: anonData } = await anon
+        .from("products")
+        .select("id")
+        .eq("id", pid)
+        .eq("status", "approved")
+        .maybeSingle();
+      expect(anonData).toBeNull();
+    });
+
+    it("taken-down product can be re-edited, resubmitted and re-approved", async () => {
+      const pid = await makeLiveProduct("LK-RELIST");
+      await fx.adminClient.rpc("unpublish_product", { p_product_id: pid });
+      const { error: editErr } = await fx.supplierClient
+        .from("products")
+        .update({ title: "Relisted after take-down" })
+        .eq("id", pid);
+      expect(editErr).toBeNull();
+      const { error: subErr } = await fx.supplierClient.rpc("submit_product_for_approval", {
+        p_product_id: pid,
+      });
+      expect(subErr).toBeNull();
+      const { error: appErr } = await fx.adminClient.rpc("approve_product", { p_product_id: pid });
+      expect(appErr).toBeNull();
+      expect(await readStatus(fx.adminClient, pid)).toBe("approved");
+    });
+
+    it("unpublish only works on approved products", async () => {
+      const pid = await makeProduct(fx.companyId, fx.categoryId, `LK-TD-BAD-${++seq}-P`);
+      await addImages(pid, 3);
+      await fx.supplierClient.rpc("submit_product_for_approval", { p_product_id: pid });
+      const { error } = await fx.adminClient.rpc("unpublish_product", { p_product_id: pid });
+      expect(error?.message).toContain("not live");
+      expect(await readStatus(fx.adminClient, pid)).toBe("pending");
+    });
+
+    it("unpublish is admin-only", async () => {
+      const pid = await makeLiveProduct("LK-TD-ADMIN");
+      const { error } = await fx.supplierClient.rpc("unpublish_product", { p_product_id: pid });
+      expect(error?.message).toContain("Admin only");
       expect(await readStatus(fx.adminClient, pid)).toBe("approved");
     });
   });

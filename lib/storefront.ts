@@ -76,6 +76,7 @@ export async function getHomeProducts(supabase: SupabaseClient) {
       "id, title, price_per_unit, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
     )
     .eq("status", "approved")
+    .eq("is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(12);
 
@@ -113,7 +114,8 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
       "id, title, price_per_unit, unit, moq, negotiable, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
       { count: "exact" },
     )
-    .eq("status", "approved");
+    .eq("status", "approved")
+    .eq("is_hidden", false);
 
   if (query) {
     qb = qb.textSearch("title", query, { type: "websearch" });
@@ -175,6 +177,7 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
     )
     .eq("id", productId)
     .eq("status", "approved")
+    .eq("is_hidden", false)
     .maybeSingle();
 
   if (!data) return null;
@@ -332,6 +335,7 @@ export async function getRelatedProducts(
       "id, title, price_per_unit, unit, moq, supplier_id, images:product_images(path, sort)",
     )
     .eq("status", "approved")
+    .eq("is_hidden", false)
     .eq("category_id", categoryId)
     .neq("id", excludeProductId)
     .order("created_at", { ascending: false })

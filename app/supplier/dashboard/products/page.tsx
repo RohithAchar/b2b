@@ -157,7 +157,7 @@ export default async function SupplierProductsPage({
   let dataQuery = supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, stock_qty, status, rejection_note, category:category_id(name)",
+      "id, title, price_per_unit, unit, moq, stock_qty, status, is_hidden, rejection_note, category:category_id(name)",
     )
     .eq("supplier_id", company.id);
   if (active !== "all") dataQuery = dataQuery.eq("status", active as StatusKey);
@@ -190,6 +190,7 @@ export default async function SupplierProductsPage({
     moq: p.moq,
     stock: Number(p.stock_qty ?? 0),
     status: p.status,
+    is_hidden: p.is_hidden ?? false,
   }));
 
   const searchActive = Boolean(q) || active !== "all";

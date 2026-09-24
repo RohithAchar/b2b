@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { ProductForm, type ExistingProduct } from "../../product-form";
 
 export default async function EditSupplierProductPage({
@@ -26,12 +29,31 @@ export default async function EditSupplierProductPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status",
+      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
     )
     .eq("id", id)
     .eq("supplier_id", company.id)
     .maybeSingle();
   if (!product) notFound();
+
+  if (product.status === "pending") {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 pt-8">
+        <Alert>
+          <AlertTitle>Under review</AlertTitle>
+          <AlertDescription>
+            “{product.title}” is being reviewed and cannot be edited right now.
+            If anything needs fixing, it will come back with a note.
+          </AlertDescription>
+        </Alert>
+        <div>
+          <Button render={<Link href="/supplier/dashboard/products" />} variant="outline">
+            Back to products
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const { data: images } = await supabase
     .from("product_images")
@@ -104,7 +126,13 @@ export default async function EditSupplierProductPage({
         };
       })}
       title="Edit product"
-      description="Only draft or returned products can be edited."
+      description={
+        product.status === "approved"
+          ? product.is_hidden
+            ? "This listing is hidden from the storefront. Changes save instantly and it stays hidden."
+            : "Changes go live immediately."
+          : "Edits save instantly. Submit for review when you are ready to publish."
+      }
     />
   );
 }

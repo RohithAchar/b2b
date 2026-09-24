@@ -72,3 +72,38 @@ export async function rejectProduct(
   revalidatePath("/admin/dashboard/products");
   return { ok: true, message: "Sent back with note." };
 }
+
+export async function unpublishProduct(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const { supabase } = await requireAdmin();
+  const parsed = idSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) return { ok: false, message: "Invalid product." };
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("status")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+  if (!product) return { ok: false, message: "Product not found." };
+  if (product.status !== "approved") {
+    return { ok: false, message: "Only live products can be taken down." };
+  }
+
+  const { error } = await supabase.rpc("unpublish_product", {
+    p_product_id: parsed.data.id,
+  });
+
+  if (error) {
+    console.error("unpublishProduct failed:", error);
+    return { ok: false, message: error.message || "Could not take down. Try again." };
+  }
+  revalidatePath("/admin/dashboard/products");
+  revalidatePath(`/admin/dashboard/products/${parsed.data.id}`);
+  revalidatePath("/supplier/dashboard/products");
+  revalidatePath("/products");
+  revalidatePath(`/products/${parsed.data.id}`);
+  revalidatePath("/category/[slug]");
+  return { ok: true, message: "Product taken down. The supplier can edit it and resubmit to relist." };
+}

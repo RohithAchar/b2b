@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { youtubeThumbUrl } from "@/lib/supplier/products";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ProductDecisionForm } from "./decision-form";
 
@@ -70,7 +71,7 @@ export default async function AdminProductReviewPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, description, brand, seller_sku, hsn_code, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, attributes, certifications, packaging_details, warranty_return, youtube_url, youtube_id, status, rejection_note, supplier:supplier_id(business_name, city, state)",
+      "id, title, description, brand, seller_sku, hsn_code, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, attributes, certifications, packaging_details, warranty_return, youtube_url, youtube_id, status, is_hidden, rejection_note, supplier:supplier_id(business_name, city, state)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -119,7 +120,14 @@ export default async function AdminProductReviewPage({
           {product.unit} — MOQ {product.moq}
         </CardDescription>
         <CardAction>
-          <StatusBadge status="product" value={product.status} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status="product" value={product.status} />
+            {product.status === "approved" && product.is_hidden ? (
+              <Badge variant="outline" className="text-muted-foreground">
+                Hidden by supplier
+              </Badge>
+            ) : null}
+          </div>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -219,7 +227,7 @@ export default async function AdminProductReviewPage({
             </Field>
           ) : null}
           <Separator />
-          <ProductDecisionForm productId={product.id} />
+          <ProductDecisionForm productId={product.id} status={product.status ?? "draft"} />
         </FieldGroup>
       </CardContent>
     </Card>

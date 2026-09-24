@@ -402,8 +402,8 @@ export async function updateProduct(
   if (!existing || existing.supplier_id !== supplierId) {
     return { ok: false, message: "Product not found." };
   }
-  if (existing.status === "approved" || existing.status === "pending") {
-    return { ok: false, message: "Only draft or returned products can be edited." };
+  if (existing.status === "pending") {
+    return { ok: false, message: "This product is under review and cannot be edited right now." };
   }
 
   const parsed = productSchema.safeParse({
@@ -551,7 +551,10 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
   }
 
   revalidatePath("/supplier/dashboard/products");
-  if (boolOf(formData.get("auto_submit"))) {
+  revalidatePath("/products");
+  revalidatePath(`/products/${productId}`);
+  revalidatePath("/category/[slug]");
+  if (boolOf(formData.get("auto_submit")) && existing.status !== "approved") {
     const res = await submitForApproval(supabase, supplierId, productId);
     if (!res.ok) return { ok: false, message: res.message, productId };
     revalidatePath("/admin/dashboard/products");
@@ -630,4 +633,50 @@ export async function deleteProduct(productId: string): Promise<ProductActionSta
   }
   revalidatePath("/supplier/dashboard/products");
   return { ok: true, message: "Deleted." };
+}
+
+async function setHidden(productId: string, hidden: boolean): Promise<ProductActionState> {
+  const { supabase, user } = await requireUser();
+
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
+  if (!supplierId) return { ok: false, message: "Only verified suppliers can manage products." };
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, supplier_id, status")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product || product.supplier_id !== supplierId) {
+    return { ok: false, message: "Product not found." };
+  }
+  if (product.status !== "approved") {
+    return { ok: false, message: "Only live products can be hidden or shown." };
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({ is_hidden: hidden })
+    .eq("id", productId)
+    .eq("supplier_id", supplierId)
+    .eq("status", "approved");
+  if (error) {
+    console.error(`${hidden ? "hide" : "unhide"}Product failed:`, error);
+    return { ok: false, message: "Could not update the listing. Try again." };
+  }
+  revalidatePath("/supplier/dashboard/products");
+  revalidatePath("/products");
+  revalidatePath(`/products/${productId}`);
+  revalidatePath("/category/[slug]");
+  return {
+    ok: true,
+    message: hidden ? "Listing hidden from the storefront." : "Listing is live again.",
+  };
+}
+
+export async function hideProduct(productId: string): Promise<ProductActionState> {
+  return setHidden(productId, true);
+}
+
+export async function unhideProduct(productId: string): Promise<ProductActionState> {
+  return setHidden(productId, false);
 }

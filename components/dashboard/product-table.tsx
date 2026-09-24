@@ -4,13 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Delete02Icon,
-  Edit01Icon,
-  MoreHorizontalIcon,
-  SendIcon,
-  ViewIcon,
-} from "@hugeicons/core-free-icons";
+import { Delete02Icon, Edit01Icon, EyeIcon, EyeOffIcon, MoreHorizontalIcon, SendIcon, ViewIcon } from "@hugeicons/core-free-icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -41,7 +36,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { deleteProduct, submitProduct } from "@/lib/supplier/product-actions";
+import { deleteProduct, hideProduct, submitProduct, unhideProduct } from "@/lib/supplier/product-actions";
 
 export type ProductRow = {
   id: string;
@@ -54,18 +49,21 @@ export type ProductRow = {
   moq: number | null;
   stock: number;
   status: string;
+  is_hidden: boolean;
 };
 
 function ProductRowMenu({
   productId,
   title,
   status,
+  isHidden,
   verified,
   baseHref,
 }: {
   productId: string;
   title: string;
   status: string;
+  isHidden: boolean;
   verified: boolean;
   baseHref: string;
 }) {
@@ -110,6 +108,27 @@ function ProductRowMenu({
       }
     });
 
+  const toggleVisibility = () =>
+    start(async () => {
+      const result = isHidden
+        ? await unhideProduct(productId)
+        : await hideProduct(productId);
+      if (result.ok) {
+        toast.add({
+          type: "success",
+          title: isHidden ? "Listing live" : "Listing hidden",
+          description: result.message,
+        });
+        router.refresh();
+      } else {
+        toast.add({
+          type: "error",
+          title: "Could not update listing",
+          description: result.message,
+        });
+      }
+    });
+
   return (
     <>
       <DropdownMenu>
@@ -131,15 +150,26 @@ function ProductRowMenu({
                 <HugeiconsIcon icon={ViewIcon} strokeWidth={2} />
                 View
               </DropdownMenuItem>
+              <DropdownMenuItem render={<Link href={`${baseHref}/${productId}/edit`} />}>
+                <HugeiconsIcon icon={Edit01Icon} strokeWidth={2} />
+                Edit
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={pending} onClick={toggleVisibility}>
+                <HugeiconsIcon icon={isHidden ? EyeIcon : EyeOffIcon} strokeWidth={2} />
+                {isHidden ? "Show listing" : "Hide listing"}
+              </DropdownMenuItem>
             </>
-          ) : null}
-          <DropdownMenuItem render={<Link href={`${baseHref}/${productId}/edit`} />}>
-            <HugeiconsIcon icon={Edit01Icon} strokeWidth={2} />
-            Edit
-          </DropdownMenuItem>
-          {editable ? (
+          ) : status === "pending" ? (
+            <DropdownMenuItem disabled>
+              Under review
+            </DropdownMenuItem>
+          ) : editable ? (
             <>
+              <DropdownMenuItem render={<Link href={`${baseHref}/${productId}/edit`} />}>
+                <HugeiconsIcon icon={Edit01Icon} strokeWidth={2} />
+                Edit
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem disabled={pending} onClick={submit}>
                 <HugeiconsIcon icon={SendIcon} strokeWidth={2} />
@@ -315,7 +345,14 @@ export function ProductTable({
                 )}
               </TableCell>
               <TableCell>
-                <StatusBadge status="product" value={p.status} />
+                <div className="flex items-center gap-2">
+                  <StatusBadge status="product" value={p.status} />
+                  {p.is_hidden ? (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Hidden
+                    </Badge>
+                  ) : null}
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex justify-end">
@@ -323,6 +360,7 @@ export function ProductTable({
                     productId={p.id}
                     title={p.title}
                     status={p.status}
+                    isHidden={p.is_hidden}
                     verified={verified}
                     baseHref={baseHref}
                   />
