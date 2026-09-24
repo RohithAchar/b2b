@@ -8,12 +8,14 @@ export function ProductFormActions({
   onSaveDraft,
   onSaveSubmit,
   showSubmit = true,
+  saveLabel = "Save draft",
 }: {
   pending: boolean;
   pendingAction: "draft" | "submit" | null;
   onSaveDraft: () => void;
   onSaveSubmit: () => void;
   showSubmit?: boolean;
+  saveLabel?: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -23,7 +25,7 @@ export function ProductFormActions({
         </Button>
       ) : null}
       <Button type="button" variant="outline" disabled={pending} onClick={onSaveDraft}>
-        {pending && pendingAction === "draft" ? "Saving…" : "Save draft"}
+        {pending && pendingAction === "draft" ? "Saving…" : saveLabel}
       </Button>
     </div>
   );
@@ -35,12 +37,14 @@ export function ProductFormStickyActions({
   onSaveDraft,
   onSaveSubmit,
   showSubmit = true,
+  saveLabel = "Save draft",
 }: {
   pending: boolean;
   pendingAction: "draft" | "submit" | null;
   onSaveDraft: () => void;
   onSaveSubmit: () => void;
   showSubmit?: boolean;
+  saveLabel?: string;
 }) {
   return (
     <div className="@3xl/content:hidden">
@@ -52,7 +56,7 @@ export function ProductFormStickyActions({
             </Button>
           ) : null}
           <Button type="button" variant="outline" disabled={pending} onClick={onSaveDraft}>
-            {pending && pendingAction === "draft" ? "Saving…" : "Save draft"}
+            {pending && pendingAction === "draft" ? "Saving…" : saveLabel}
           </Button>
         </div>
       </div>

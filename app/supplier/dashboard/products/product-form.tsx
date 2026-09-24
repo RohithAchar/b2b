@@ -98,6 +98,7 @@ export function ProductForm({
       ? createProduct
       : updateProduct.bind(null, product?.id ?? "");
   const showSubmit = product?.status !== "approved";
+  const saveLabel = product?.status === "approved" ? "Save changes" : "Save draft";
   const [state, action, pending] = useActionState(boundAction, initialState);
   const [invalidField, setInvalidField] = useState<{ id: string; message: string } | null>(null);
   // Render-phase adjustment: when a server action returns an error, attach it
@@ -640,6 +641,7 @@ export function ProductForm({
               onSaveDraft={() => requestSave("draft")}
               onSaveSubmit={() => requestSave("submit")}
               showSubmit={showSubmit}
+              saveLabel={saveLabel}
             />
             <div className="hidden @3xl/content:block">{statusAlert}</div>
           </aside>
@@ -651,6 +653,7 @@ export function ProductForm({
           onSaveDraft={() => requestSave("draft")}
           onSaveSubmit={() => requestSave("submit")}
           showSubmit={showSubmit}
+          saveLabel={saveLabel}
         />
       </form>
     </div>
