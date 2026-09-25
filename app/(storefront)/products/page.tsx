@@ -19,12 +19,17 @@ import {
 } from "@/components/storefront/product-card"
 import { ProductGridSkeleton } from "@/components/storefront/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  ProductsFilterBar,
-  buildPageUrl,
-} from "@/components/storefront/products-filter-bar"
+import { ProductsFilterBar } from "@/components/storefront/products-filter-bar"
 
 type SearchParams = { q?: string; category?: string; page?: string }
+
+function buildPageUrl(query: string, categorySlug: string, p: number) {
+  const sp = new URLSearchParams()
+  if (query) sp.set("q", query)
+  if (categorySlug) sp.set("category", categorySlug)
+  sp.set("page", String(p))
+  return `/products?${sp.toString()}`
+}
 
 function FilterBarSkeleton() {
   return (

@@ -8,14 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Search01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
-export function buildPageUrl(query: string, categorySlug: string, p: number) {
-  const sp = new URLSearchParams()
-  if (query) sp.set("q", query)
-  if (categorySlug) sp.set("category", categorySlug)
-  sp.set("page", String(p))
-  return `/products?${sp.toString()}`
-}
-
 export function buildCategoryLink(query: string, slug: string) {
   const sp = new URLSearchParams()
   sp.set("category", slug)
@@ -58,31 +50,32 @@ export function ProductsFilterBar() {
 
       {/* Category chips */}
       <div className="flex flex-wrap gap-1.5">
-        <Link
-          href={
-            query ? `/products?q=${encodeURIComponent(query)}` : "/products"
+        <Button
+          variant={categorySlug ? "outline" : "default"}
+          size="sm"
+          nativeButton={false}
+          className="h-7 rounded-sm text-xs"
+          render={
+            <Link
+              href={
+                query ? `/products?q=${encodeURIComponent(query)}` : "/products"
+              }
+            />
           }
         >
+          All
+        </Button>
+        {categories.map((cat) => (
           <Button
-            variant={categorySlug ? "outline" : "default"}
+            key={cat.id}
+            variant={categorySlug === cat.slug ? "default" : "outline"}
             size="sm"
             nativeButton={false}
             className="h-7 rounded-sm text-xs"
+            render={<Link href={buildCategoryLink(query, cat.slug)} />}
           >
-            All
+            {cat.name}
           </Button>
-        </Link>
-        {categories.map((cat) => (
-          <Link key={cat.id} href={buildCategoryLink(query, cat.slug)}>
-            <Button
-              variant={categorySlug === cat.slug ? "default" : "outline"}
-              size="sm"
-              nativeButton={false}
-              className="h-7 rounded-sm text-xs"
-            >
-              {cat.name}
-            </Button>
-          </Link>
         ))}
       </div>
     </div>
