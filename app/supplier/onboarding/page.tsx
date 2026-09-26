@@ -12,13 +12,24 @@ export default async function OnboardingPage() {
     redirect("/auth/login");
   }
 
-  const { data: company } = await supabase
+  const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
       "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, logo_path, kyb_status",
     )
     .eq("owner_id", user.id)
     .maybeSingle();
+
+  // Throwing rather than redirecting: a failed read would otherwise bounce
+  // between this page and /supplier/status indefinitely.
+  if (companyError) {
+    console.error(
+      "Supplier onboarding company query failed:",
+      companyError.code,
+      companyError.message,
+    );
+    throw companyError;
+  }
 
   if (company?.kyb_status === "verified") {
     redirect("/supplier/status");

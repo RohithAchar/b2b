@@ -3,17 +3,18 @@ import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
 import { publicImageUrl } from "@/lib/storage";
+import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export type ProductCardData = {
   id: string;
   title: string;
-  price_per_unit: number;
   unit: string;
   moq: number;
   negotiable?: boolean;
   images?: { path: string; sort: number }[] | null;
+  pricing: CustomerPrices | null;
   supplier?: {
     business_name?: string;
     city?: string;
@@ -67,12 +68,18 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         <div className="flex flex-col gap-1 max-sm:px-2 px-3 max-sm:py-2 py-2.5">
           <p className="line-clamp-1 text-sm font-medium">{product.title}</p>
 
-          <p className="text-lg font-bold tracking-tight text-foreground">
-            {formatPrice(product.price_per_unit)}
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              / {product.unit}
-            </span>
-          </p>
+          {product.pricing ? (
+            <p className="text-lg font-bold tracking-tight text-foreground">
+              {formatPrice(product.pricing.customer_price)}
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                / {product.unit}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-muted-foreground">
+              Price on request
+            </p>
+          )}
 
           <p className="text-xs font-medium text-foreground/70">
             MOQ: <span className="font-semibold">{product.moq}</span>{" "}

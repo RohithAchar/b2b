@@ -215,7 +215,7 @@ export async function submitKyb(
 }
 
 /**
- * Edit-anytime business profile: logo, company name, contact name.
+ * Edit-anytime business profile: logo, company name, contact name, margin.
  * Column whitelist — kyb_status, documents, tax and bank fields are
  * untouched, so edits never trigger re-verification.
  */
@@ -228,6 +228,7 @@ export async function updateBusinessProfile(
   const parsed = businessProfileSchema.safeParse({
     business_name: formData.get("business_name"),
     contact_person: formData.get("contact_person"),
+    margin_pct: formData.get("margin_pct"),
   });
   if (!parsed.success) {
     return {
@@ -274,6 +275,7 @@ export async function updateBusinessProfile(
     .update({
       business_name: parsed.data.business_name,
       contact_person: parsed.data.contact_person,
+      margin_pct: parsed.data.margin_pct,
       logo_path: logoPath,
     })
     .eq("owner_id", user.id);

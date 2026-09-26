@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { sniffSupportedDoc, isSupportedImageType, sniffImageType } from "@/lib/storage";
+import { MAX_MARGIN_PCT } from "@/lib/pricing";
 
 const upper = (v: string) => v.trim().toUpperCase();
 
@@ -81,10 +82,25 @@ export const KYB_STEP_FIELDS = [
 ] as const;
 
 // Editable-anytime business profile: same rules, no status change.
-export const businessProfileSchema = kybSchema.pick({
-  business_name: true,
-  contact_person: true,
-});
+export const marginPctSchema = z
+  .string()
+  .trim()
+  .min(1, "Margin is required.")
+  .refine((v) => Number.isFinite(Number(v)), "Enter a number.")
+  .refine(
+    (v) => Number(v) >= 0 && Number(v) <= MAX_MARGIN_PCT,
+    `Enter a margin between 0 and ${MAX_MARGIN_PCT}.`,
+  )
+  .transform((v) => Number(v));
+
+export const businessProfileSchema = kybSchema
+  .pick({
+    business_name: true,
+    contact_person: true,
+  })
+  .extend({
+    margin_pct: marginPctSchema,
+  });
 
 export const MAX_DOC_BYTES = 10 * 1024 * 1024;
 

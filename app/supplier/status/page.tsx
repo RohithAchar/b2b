@@ -39,11 +39,22 @@ export default async function SupplierStatusPage() {
     redirect("/auth/login");
   }
 
-  const { data: company } = await supabase
+  const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("business_name, kyb_status, rejection_note")
     .eq("owner_id", user.id)
     .maybeSingle();
+
+  // Throwing rather than redirecting: on a failed read this page and
+  // /supplier/onboarding would bounce off each other forever.
+  if (companyError) {
+    console.error(
+      "Supplier status company query failed:",
+      companyError.code,
+      companyError.message,
+    );
+    throw companyError;
+  }
 
   if (!company) {
     redirect("/supplier/onboarding");

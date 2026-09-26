@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { fetchCustomerPricing } from "@/lib/pricing-data";
 import { KpiStat } from "@/components/dashboard/kpi-stat";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/attention-panel";
 import { ProfileCompletionCard, profileChecklist } from "@/components/dashboard/profile-completion";
@@ -61,13 +62,24 @@ export default async function SupplierOverviewPage() {
     redirect(LOGIN_PATH);
   }
 
-  const { data: company } = await supabase
+  const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
-      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, logo_path, submitted_at",
+      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, logo_path, submitted_at, margin_pct",
     )
     .eq("owner_id", user.id)
     .maybeSingle();
+
+  // See app/supplier/dashboard/business/page.tsx: a failed read must not be
+  // mistaken for a missing company.
+  if (companyError) {
+    console.error(
+      "Supplier overview company query failed:",
+      companyError.code,
+      companyError.message,
+    );
+    throw companyError;
+  }
 
   if (!company) {
     redirect("/supplier/onboarding");
@@ -108,10 +120,18 @@ export default async function SupplierOverviewPage() {
 
   const { data: recent } = await supabase
     .from("products")
-    .select("id, title, price_per_unit, unit, moq, stock_qty, status, created_at")
+    .select("id, title, unit, moq, stock_qty, status, created_at")
     .eq("supplier_id", company.id)
     .order("created_at", { ascending: false })
     .limit(6);
+
+  const recentPricing = await fetchCustomerPricing(
+    supabase,
+    (recent ?? []).map((p) => ({
+      id: p.id as string,
+      margin_pct: company.margin_pct,
+    })),
+  );
 
   const checklist = profileChecklist(company);
   const missingCount = checklist.items.filter((i) => !i.done).length;
@@ -325,7 +345,7 @@ export default async function SupplierOverviewPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="hidden tabular-nums sm:table-cell">
-                      ₹{Number(p.price_per_unit)} / {p.unit}
+                      ₹{recentPricing.get(p.id)?.customer_price ?? 0} / {p.unit}
                     </TableCell>
                     <TableCell className="hidden tabular-nums md:table-cell">{p.moq}</TableCell>
                     <TableCell className="hidden tabular-nums md:table-cell">{p.stock_qty}</TableCell>

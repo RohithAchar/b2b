@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { publicImageUrl } from "@/lib/storage";
 import { getRelatedProducts } from "@/lib/storefront";
+import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,13 +39,10 @@ type Product = {
   seller_sku: string;
   hsn_code: string;
   unit: string;
-  price_per_unit: number;
   moq: number;
   stock_qty: number;
-  price_slabs: { min_qty: number; price: number }[];
   negotiable: boolean;
   sample_available: boolean;
-  sample_price: number | null;
   lead_time_days: number;
   gst_rate: number | null;
   attributes: Record<string, string>;
@@ -57,7 +55,8 @@ type Product = {
   category: { id: string; name: string; slug: string } | null;
   supplier: { id: string; business_name: string; city: string; state: string; logo_path: string | null } | null;
   images: { id: string; path: string; sort: number; alt: string | null }[];
-  variants: { id: string; label: string; attrs: Record<string, string>; seller_sku: string; price: number; moq: number | null; stock_qty: number; sort: number }[];
+  variants: { id: string; label: string; attrs: Record<string, string>; seller_sku: string; moq: number | null; stock_qty: number; sort: number }[];
+  pricing: CustomerPrices | null;
 };
 
 function SpecItem({ label, value }: { label: string; value: React.ReactNode }) {
@@ -73,10 +72,21 @@ function SpecItem({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function ProductDetail({ product }: { product: Product }) {
   const images: GalleryImage[] = [...product.images].sort((a, b) => a.sort - b.sort);
-  const sortedVariants = [...product.variants].sort((a, b) => a.sort - b.sort);
   const supplier = product.supplier;
   const attributeEntries = Object.entries(product.attributes);
-  const slabs = [...product.price_slabs].sort((a, b) => a.min_qty - b.min_qty);
+
+  // Customer prices are derived server-side and arrive in `pricing`; the base
+  // price and the supplier's margin are never fetched here.
+  const pricing = product.pricing;
+  const slabs = [...(pricing?.customer_price_slabs ?? [])].sort(
+    (a, b) => a.min_qty - b.min_qty,
+  );
+  const variantPrices = new Map(
+    (pricing?.customer_variant_prices ?? []).map((v) => [v.id, v.customer_price]),
+  );
+  const sortedVariants = [...product.variants]
+    .map((v) => ({ ...v, customer_price: variantPrices.get(v.id) }))
+    .sort((a, b) => a.sort - b.sort);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -125,7 +135,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="text-3xl font-bold tracking-tight text-foreground">
-                {formatPrice(product.price_per_unit)}
+                {pricing ? formatPrice(pricing.customer_price) : "Price on request"}
               </span>
               <span className="text-sm text-muted-foreground">
                 / {product.unit}
@@ -152,8 +162,8 @@ export function ProductDetail({ product }: { product: Product }) {
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-foreground">
                   {product.sample_available
-                    ? product.sample_price
-                      ? formatPrice(product.sample_price)
+                    ? pricing?.customer_sample_price
+                      ? formatPrice(pricing.customer_sample_price)
                       : "Available"
                     : "Not available"}
                 </p>
@@ -322,7 +332,11 @@ export function ProductDetail({ product }: { product: Product }) {
                         {sortedVariants.map((v) => (
                           <TableRow key={v.id}>
                             <TableCell className="font-medium">{v.label}</TableCell>
-                            <TableCell className="font-semibold">{formatPrice(v.price)}</TableCell>
+                            <TableCell className="font-semibold">
+                              {v.customer_price != null
+                                ? formatPrice(v.customer_price)
+                                : "—"}
+                            </TableCell>
                             <TableCell>{v.moq ?? product.moq}+</TableCell>
                             <TableCell>{v.stock_qty}</TableCell>
                             <TableCell className="text-muted-foreground">{v.seller_sku}</TableCell>

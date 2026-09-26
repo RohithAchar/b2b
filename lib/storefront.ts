@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CustomerPrices } from "@/lib/pricing";
 
 type StorefrontSupplier = {
   id: string;
@@ -24,6 +25,59 @@ async function fetchSupplierMap(
   for (const s of (data ?? []) as StorefrontSupplier[]) {
     map.set(s.id, s);
   }
+
+  return map;
+}
+
+type StorefrontPriceRow = {
+  product_id: string;
+  customer_price: number;
+  customer_sample_price: number | null;
+  customer_price_slabs: CustomerPrices["customer_price_slabs"];
+  customer_variant_prices: CustomerPrices["customer_variant_prices"];
+};
+
+/**
+ * Base prices and supplier margins are private, so customer prices come from the
+ * storefront_prices view (which computes them) rather than from products. The
+ * view filters on the same approved / not-hidden condition as the product
+ * queries, so every product the storefront can see has a pricing row.
+ */
+async function fetchCustomerPriceMap(
+  supabase: SupabaseClient,
+  ids: (string | null | undefined)[],
+): Promise<Map<string, CustomerPrices>> {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id))] as string[];
+  const map = new Map<string, CustomerPrices>();
+  if (unique.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("storefront_prices")
+    .select(
+      "product_id, customer_price, customer_sample_price, customer_price_slabs, customer_variant_prices",
+    )
+    .in("product_id", unique);
+
+  if (error) {
+    // Degrade to "Price on request" rather than failing the page, but make the
+    // cause visible: a missing storefront_prices view looks like empty data.
+    console.error(
+      "fetchCustomerPriceMap failed:",
+      error.code,
+      error.message,
+    );
+  }
+
+  for (const row of (data ?? []) as StorefrontPriceRow[]) {
+    map.set(row.product_id, {
+      customer_price: Number(row.customer_price),
+      customer_sample_price:
+        row.customer_sample_price == null ? null : Number(row.customer_sample_price),
+      customer_price_slabs: row.customer_price_slabs ?? [],
+      customer_variant_prices: row.customer_variant_prices ?? [],
+    });
+  }
+
   return map;
 }
 
@@ -73,7 +127,7 @@ export async function getHomeProducts(supabase: SupabaseClient) {
   const { data } = await supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+      "id, title, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
     )
     .eq("status", "approved")
     .eq("is_hidden", false)
@@ -81,14 +135,19 @@ export async function getHomeProducts(supabase: SupabaseClient) {
     .limit(12);
 
   const products = data ?? [];
-  const supplierMap = await fetchSupplierMap(
-    supabase,
-    products.map((p) => p.supplier_id as string),
-  );
+  const ids = products.map((p) => p.id as string);
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      products.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(supabase, ids),
+  ]);
 
   return products.map((p) => ({
     ...p,
     supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    pricing: priceMap.get(p.id as string) ?? null,
   }));
 }
 
@@ -111,7 +170,7 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   let qb = supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, negotiable, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+      "id, title, unit, moq, negotiable, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
       { count: "exact" },
     )
     .eq("status", "approved")
@@ -138,15 +197,23 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
 
   const { data, count } = await qb;
 
-  const supplierMap = await fetchSupplierMap(
-    supabase,
-    (data ?? []).map((p) => p.supplier_id as string),
-  );
+  const rows = data ?? [];
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      rows.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(
+      supabase,
+      rows.map((p) => p.id as string),
+    ),
+  ]);
 
   return {
-    products: (data ?? []).map((p) => ({
+    products: rows.map((p) => ({
       ...p,
       supplier: supplierMap.get(p.supplier_id as string) ?? null,
+      pricing: priceMap.get(p.id as string) ?? null,
     })),
     total: count ?? 0,
     page,
@@ -165,14 +232,14 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
     .select(
       `
         id, title, description, brand, seller_sku, hsn_code, unit,
-        price_per_unit, moq, stock_qty, price_slabs, negotiable,
-        sample_available, sample_price, lead_time_days, gst_rate,
+        moq, stock_qty, negotiable,
+        sample_available, lead_time_days, gst_rate,
         attributes, certifications, packaging_details, warranty_return,
         youtube_url, youtube_id, created_at, supplier_id,
         seo_title, seo_description, seo_image_path,
         category:category_id(id, name, slug),
         images:product_images(id, path, sort, alt),
-        variants:product_variants(id, label, attrs, seller_sku, price, moq, stock_qty, sort)
+        variants:product_variants(id, label, attrs, seller_sku, moq, stock_qty, sort)
       `,
     )
     .eq("id", productId)
@@ -182,8 +249,16 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
 
   if (!data) return null;
 
-  const supplierMap = await fetchSupplierMap(supabase, [data.supplier_id as string]);
-  return { ...data, supplier: supplierMap.get(data.supplier_id as string) ?? null };
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(supabase, [data.supplier_id as string]),
+    fetchCustomerPriceMap(supabase, [data.id as string]),
+  ]);
+
+  return {
+    ...data,
+    supplier: supplierMap.get(data.supplier_id as string) ?? null,
+    pricing: priceMap.get(data.id as string) ?? null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -332,7 +407,7 @@ export async function getRelatedProducts(
   const { data } = await supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, supplier_id, images:product_images(path, sort)",
+      "id, title, unit, moq, supplier_id, images:product_images(path, sort)",
     )
     .eq("status", "approved")
     .eq("is_hidden", false)
@@ -342,13 +417,20 @@ export async function getRelatedProducts(
     .limit(8);
 
   const rows = data ?? [];
-  const supplierMap = await fetchSupplierMap(
-    supabase,
-    rows.map((p) => p.supplier_id as string),
-  );
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      rows.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(
+      supabase,
+      rows.map((p) => p.id as string),
+    ),
+  ]);
 
   return rows.map((p) => ({
     ...p,
     supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    pricing: priceMap.get(p.id as string) ?? null,
   }));
 }

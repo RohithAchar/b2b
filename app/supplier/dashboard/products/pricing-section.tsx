@@ -27,7 +27,7 @@ export function PricingSection({
     <FormSection
       id="pricing"
       title="Pricing"
-      description="Base price plus GST applies to the whole listing unless variants override it."
+      description="Buyers see your base price plus the margin set in Business profile. GST applies on top unless variants override it."
     >
       <FieldSet>
         <FieldLegend>Price</FieldLegend>
@@ -44,7 +44,7 @@ export function PricingSection({
           <Field>
             <FieldLabel htmlFor="price_per_unit">Base price (₹ per unit)</FieldLabel>
             <Input id="price_per_unit" name="price_per_unit" required type="number" min={0.01} step="0.01" aria-invalid={invalidFor("price_per_unit")} value={v("price_per_unit")} onChange={(e) => onValueChange("price_per_unit", e.target.value)} />
-            <FieldDescription>Variants can override this with their own absolute price.</FieldDescription>
+            <FieldDescription>Variants can override this with their own absolute price. Margin is added to variant prices too.</FieldDescription>
             {errorFor("price_per_unit")}
           </Field>
           <Field orientation="horizontal">

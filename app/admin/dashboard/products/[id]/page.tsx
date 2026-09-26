@@ -41,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
+import { fetchCustomerPricing } from "@/lib/pricing-data";
 import { youtubeThumbUrl } from "@/lib/supplier/products";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -71,7 +72,7 @@ export default async function AdminProductReviewPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, description, brand, seller_sku, hsn_code, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, attributes, certifications, packaging_details, warranty_return, youtube_url, youtube_id, status, is_hidden, rejection_note, supplier:supplier_id(business_name, city, state)",
+      "id, title, description, brand, seller_sku, hsn_code, unit, moq, stock_qty, negotiable, sample_available, lead_time_days, gst_rate, attributes, certifications, packaging_details, warranty_return, youtube_url, youtube_id, status, is_hidden, rejection_note, supplier:supplier_id(business_name, city, state, margin_pct)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -84,17 +85,25 @@ export default async function AdminProductReviewPage({
     .order("sort");
   const { data: variants } = await supabase
     .from("product_variants")
-    .select("id, label, attrs, seller_sku, price, moq, stock_qty")
+    .select("id, label, attrs, seller_sku, moq, stock_qty")
     .eq("product_id", id)
     .order("sort");
 
   const rawSupplier = product.supplier as
-    | { business_name: string; city: string; state: string }
-    | { business_name: string; city: string; state: string }[]
+    | { business_name: string; city: string; state: string; margin_pct: number | null }
+    | { business_name: string; city: string; state: string; margin_pct: number | null }[]
     | null;
   const supplier = Array.isArray(rawSupplier)
     ? (rawSupplier[0] ?? null)
     : rawSupplier;
+
+  // Base prices and margins are private to the supplier, so they are resolved
+  // through the supplier_prices view (admins pass its is_admin branch).
+  const pricing = (
+    await fetchCustomerPricing(supabase, [
+      { id: product.id as string, margin_pct: supplier?.margin_pct ?? null },
+    ])
+  ).get(product.id as string);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
@@ -116,7 +125,7 @@ export default async function AdminProductReviewPage({
         <CardTitle>{product.title}</CardTitle>
         <CardDescription>
           {supplier?.business_name ?? "—"} — {supplier?.city ?? ""},{" "}
-          {supplier?.state ?? ""} — ₹{Number(product.price_per_unit)} /{" "}
+          {supplier?.state ?? ""} — ₹{pricing?.customer_price ?? 0} /{" "}
           {product.unit} — MOQ {product.moq}
         </CardDescription>
         <CardAction>
@@ -167,7 +176,7 @@ export default async function AdminProductReviewPage({
                 label="Sample"
                 value={
                   product.sample_available
-                    ? `Yes${product.sample_price ? ` — ₹${Number(product.sample_price)}` : ""}`
+                    ? `Yes${pricing?.customer_sample_price ? ` — ₹${pricing.customer_sample_price}` : ""}`
                     : "No"
                 }
               />
@@ -217,7 +226,7 @@ export default async function AdminProductReviewPage({
                     <TableRow key={v.id}>
                       <TableCell>{v.label}</TableCell>
                       <TableCell>{v.seller_sku}</TableCell>
-                      <TableCell>{Number(v.price)}</TableCell>
+                      <TableCell>{pricing?.variant_prices.get(v.id) ?? 0}</TableCell>
                       <TableCell>{v.moq ?? "base"}</TableCell>
                       <TableCell>{v.stock_qty}</TableCell>
                     </TableRow>

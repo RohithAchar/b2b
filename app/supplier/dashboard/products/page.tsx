@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { fetchCustomerPricing } from "@/lib/pricing-data";
 import { ProductTable, type ProductRow } from "@/components/dashboard/product-table";
 import {
   ProductToolbar,
@@ -99,11 +100,21 @@ export default async function SupplierProductsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(LOGIN_PATH);
 
-  const { data: company } = await supabase
+  const { data: company, error: companyError } = await supabase
     .from("companies")
-    .select("id, kyb_status")
+    .select("id, kyb_status, margin_pct")
     .eq("owner_id", user.id)
     .maybeSingle();
+  // See app/supplier/dashboard/business/page.tsx: a failed read must not be
+  // mistaken for a missing company.
+  if (companyError) {
+    console.error(
+      "Supplier products company query failed:",
+      companyError.code,
+      companyError.message,
+    );
+    throw companyError;
+  }
   if (!company) redirect("/supplier/onboarding");
 
   const verified = company.kyb_status === "verified";
@@ -157,7 +168,7 @@ export default async function SupplierProductsPage({
   let dataQuery = supabase
     .from("products")
     .select(
-      "id, title, price_per_unit, unit, moq, stock_qty, status, is_hidden, rejection_note, category:category_id(name)",
+      "id, title, unit, moq, stock_qty, status, is_hidden, rejection_note, category:category_id(name)",
     )
     .eq("supplier_id", company.id);
   if (active !== "all") dataQuery = dataQuery.eq("status", active as StatusKey);
@@ -167,6 +178,10 @@ export default async function SupplierProductsPage({
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
   const ids = (products ?? []).map((p) => p.id);
+  const pricing = await fetchCustomerPricing(
+    supabase,
+    ids.map((id) => ({ id, margin_pct: company.margin_pct })),
+  );
   const covers = new Map<string, string>();
   if (ids.length > 0) {
     const { data: images } = await supabase
@@ -185,7 +200,7 @@ export default async function SupplierProductsPage({
     cover: covers.get(p.id) ? imageUrl(covers.get(p.id)!) : null,
     category: categoryName(p.category),
     rejectionNote: p.rejection_note,
-    price: Number(p.price_per_unit ?? 0),
+    price: pricing.get(p.id)?.customer_price ?? 0,
     unit: p.unit ?? "",
     moq: p.moq,
     stock: Number(p.stock_qty ?? 0),

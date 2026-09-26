@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
@@ -20,6 +21,7 @@ import {
   updateBusinessProfile,
   type KybActionState,
 } from "@/lib/supplier/actions";
+import { MAX_MARGIN_PCT } from "@/lib/pricing";
 
 const initialState: KybActionState = { ok: false, message: "" };
 
@@ -27,10 +29,12 @@ export function BusinessProfileForm({
   businessName,
   contactPerson,
   logoPath,
+  marginPct,
 }: {
   businessName: string;
   contactPerson: string;
   logoPath: string | null;
+  marginPct: number;
 }) {
   const [state, action, pending] = useActionState(
     updateBusinessProfile,
@@ -107,6 +111,24 @@ export function BusinessProfileForm({
             minLength={2}
             defaultValue={contactPerson}
           />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="margin_pct">Margin on base price (%)</FieldLabel>
+          <Input
+            id="margin_pct"
+            name="margin_pct"
+            required
+            type="number"
+            min={0}
+            max={MAX_MARGIN_PCT}
+            step="0.01"
+            defaultValue={marginPct}
+          />
+          <FieldDescription>
+            Buyers see base price plus this margin. A base price of ₹100 with a
+            10% margin is listed at ₹110. Applies to every product, including
+            quantity pricing and variants.
+          </FieldDescription>
         </Field>
         {state.message ? (
           <Alert variant={state.ok ? "default" : "destructive"}>

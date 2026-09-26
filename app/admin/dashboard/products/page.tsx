@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
+import { fetchCustomerPricing } from "@/lib/pricing-data";
 import { SearchInput } from "@/components/dashboard/search-input";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 
@@ -29,6 +30,12 @@ function supplierName(s: unknown): string {
   if (Array.isArray(s))
     return (s[0] as { business_name?: string } | undefined)?.business_name ?? "—";
   return (s as { business_name?: string } | null)?.business_name ?? "—";
+}
+
+function supplierMarginPct(s: unknown): number | null {
+  const row = Array.isArray(s) ? s[0] : s;
+  const value = (row as { margin_pct?: number | null } | null | undefined)?.margin_pct;
+  return value == null ? null : Number(value);
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -61,13 +68,20 @@ export default async function AdminProductsPage({
 
   let query = supabase
     .from("products")
-    .select("id, title, price_per_unit, unit, moq, status, submitted_at, supplier:supplier_id(business_name)")
+    .select("id, title, unit, moq, status, submitted_at, supplier:supplier_id(business_name, margin_pct)")
     .eq("status", activeTabValue)
     .order("submitted_at", { ascending: true, nullsFirst: true });
   if (q) query = query.ilike("title", `%${q}%`);
   const { data: products } = await query;
 
   const ids = (products ?? []).map((p) => p.id);
+  const pricing = await fetchCustomerPricing(
+    supabase,
+    (products ?? []).map((p) => ({
+      id: p.id as string,
+      margin_pct: supplierMarginPct(p.supplier),
+    })),
+  );
   const covers = new Map<string, string>();
   if (ids.length > 0) {
     const { data: images } = await supabase
@@ -145,7 +159,7 @@ export default async function AdminProductsPage({
                 <ItemContent>
                   <ItemTitle>{p.title}</ItemTitle>
                   <ItemDescription>
-                    {supplierName(p.supplier)} — ₹{Number(p.price_per_unit)} /{" "}
+                    {supplierName(p.supplier)} — ₹{pricing.get(p.id)?.customer_price ?? 0} /{" "}
                     {p.unit} — MOQ {p.moq}
                     {p.submitted_at
                       ? ` — submitted ${formatDate(p.submitted_at)}`

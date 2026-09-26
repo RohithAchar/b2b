@@ -29,7 +29,7 @@ export default async function EditSupplierProductPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, price_per_unit, moq, stock_qty, negotiable, sample_available, sample_price, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
+      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, moq, stock_qty, negotiable, sample_available, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
     )
     .eq("id", id)
     .eq("supplier_id", company.id)
@@ -62,9 +62,35 @@ export default async function EditSupplierProductPage({
     .order("sort");
   const { data: variants } = await supabase
     .from("product_variants")
-    .select("id, label, attrs, seller_sku, price, moq, stock_qty")
+    .select("id, label, attrs, seller_sku, moq, stock_qty")
     .eq("product_id", id)
     .order("sort");
+
+  // Base prices are private, so they come from the supplier_prices view rather
+  // than the products table.
+  const { data: basePrices, error: basePricesError } = await supabase
+    .from("supplier_prices")
+    .select("product_id, price_per_unit, sample_price, variants")
+    .eq("product_id", id)
+    .maybeSingle();
+
+  // Never fall through to a zero base price here: the form would prefill 0 and
+  // the supplier's real price would look like a mistake.
+  if (basePricesError) {
+    console.error(
+      "supplier_prices lookup failed:",
+      basePricesError.code,
+      basePricesError.message,
+    );
+    throw basePricesError;
+  }
+
+  const baseVariantPrices = new Map<string, number>(
+    (basePrices?.variants ?? []).map((v: { id: string; price: number }) => [
+      v.id,
+      Number(v.price),
+    ]),
+  );
 
   const { data: categories } = await supabase
     .from("categories")
@@ -81,12 +107,12 @@ export default async function EditSupplierProductPage({
     hsn_code: product.hsn_code,
     description: product.description,
     unit: product.unit,
-    price_per_unit: Number(product.price_per_unit),
+    price_per_unit: Number(basePrices?.price_per_unit ?? 0),
     moq: product.moq,
     stock_qty: product.stock_qty,
     negotiable: product.negotiable,
     sample_available: product.sample_available,
-    sample_price: product.sample_price != null ? Number(product.sample_price) : null,
+    sample_price: basePrices?.sample_price != null ? Number(basePrices.sample_price) : null,
     lead_time_days: product.lead_time_days,
     gst_rate: product.gst_rate != null ? Number(product.gst_rate) : null,
     packaging_details: product.packaging_details,
@@ -106,7 +132,7 @@ export default async function EditSupplierProductPage({
         attr_key: entries[0]?.[0] ?? "",
         attr_value: entries[0]?.[1] ?? "",
         seller_sku: v.seller_sku,
-        price: Number(v.price),
+        price: baseVariantPrices.get(v.id) ?? 0,
         moq: v.moq,
         stock_qty: v.stock_qty,
       };
