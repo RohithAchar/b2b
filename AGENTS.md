@@ -147,7 +147,20 @@ For substantial work:
 
 Never rewrite unrelated history or overwrite unrelated work.
 
-## 12. Agent response format
+## 12. Skills
+
+Use the relevant installed skill when a task matches its domain:
+
+- **supabase** — Any Supabase work: database schema, migrations, RLS policies,
+  auth flows, `@supabase/ssr` integration, edge functions, storage, realtime,
+  Supabase CLI, or debugging Supabase errors.
+- **vercel-react-best-practices** — Writing, reviewing, or refactoring
+  React/Next.js code: component patterns, data fetching, bundle optimization,
+  or performance improvements.
+
+Load the skill via the `skill` tool before starting work in these domains.
+
+## 13. Agent response format
 
 Before implementation, briefly state:
 

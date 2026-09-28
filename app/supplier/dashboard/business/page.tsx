@@ -48,7 +48,7 @@ export default async function SupplierBusinessPage() {
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
-      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, logo_path, kyb_status, margin_pct",
+      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, logo_path, kyb_status",
     )
     .eq("owner_id", user.id)
     .maybeSingle();
@@ -80,7 +80,7 @@ export default async function SupplierBusinessPage() {
             Business profile
           </h1>
           <p className="text-sm text-muted-foreground">
-            Edit company name, logo, contact and margin here. Full application details are under Verification.
+            Edit company name, logo and contact here. Your margin lives under Products. Full application details are under Verification.
           </p>
         </div>
         <Button
@@ -99,7 +99,7 @@ export default async function SupplierBusinessPage() {
           <CardHeader className="border-b border-border px-5 py-4">
             <CardTitle>Business profile</CardTitle>
             <CardDescription>
-              Logo, company name, contact and margin — changes here do not require re-verification.
+              Logo, company name and contact — changes here do not require re-verification.
             </CardDescription>
           </CardHeader>
           <div className="px-5 py-5">
@@ -107,7 +107,6 @@ export default async function SupplierBusinessPage() {
               businessName={company.business_name}
               contactPerson={company.contact_person}
               logoPath={company.logo_path}
-              marginPct={Number(company.margin_pct ?? 0)}
             />
           </div>
         </Card>

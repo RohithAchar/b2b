@@ -81,7 +81,7 @@ export const KYB_STEP_FIELDS = [
   ["bank_account", "bank_ifsc"],
 ] as const;
 
-// Editable-anytime business profile: same rules, no status change.
+// Supplier-set margin, edited from Products → Margin. No status change.
 export const marginPctSchema = z
   .string()
   .trim()
@@ -93,14 +93,10 @@ export const marginPctSchema = z
   )
   .transform((v) => Number(v));
 
-export const businessProfileSchema = kybSchema
-  .pick({
-    business_name: true,
-    contact_person: true,
-  })
-  .extend({
-    margin_pct: marginPctSchema,
-  });
+export const businessProfileSchema = kybSchema.pick({
+  business_name: true,
+  contact_person: true,
+});
 
 export const MAX_DOC_BYTES = 10 * 1024 * 1024;
 

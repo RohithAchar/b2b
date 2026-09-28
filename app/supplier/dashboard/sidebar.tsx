@@ -12,6 +12,7 @@ import {
   DiscountTag01Icon,
   Package01Icon,
   PaintBrush01Icon,
+  PercentIcon,
   PuzzleIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -66,10 +67,11 @@ export function SupplierSidebar({
   const dashboardActive = pathname === "/supplier/dashboard"
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
+  const marginActive = pathname === "/supplier/dashboard/products/margin"
   const productEditActive =
     pathname.startsWith("/supplier/dashboard/products/") && isEdit(pathname)
   const productsActive =
-    productsListActive || addProductActive || productEditActive
+    productsListActive || addProductActive || productEditActive || marginActive
   const businessActive = pathname.startsWith("/supplier/dashboard/business")
   const verificationActive = pathname.startsWith(
     "/supplier/dashboard/verification"
@@ -161,6 +163,17 @@ export function SupplierSidebar({
                   >
                     <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
                     <span>Add product</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    render={
+                      <Link href="/supplier/dashboard/products/margin" />
+                    }
+                    isActive={marginActive}
+                  >
+                    <HugeiconsIcon icon={PercentIcon} strokeWidth={2} />
+                    <span>Margin</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               </SidebarMenuSub>

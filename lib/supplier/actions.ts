@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/guard";
 import {
   businessProfileSchema,
   kybSchema,
+  marginPctSchema,
   validateDocFile,
   validateLogoFile,
 } from "@/lib/supplier/kyb";
@@ -215,7 +216,7 @@ export async function submitKyb(
 }
 
 /**
- * Edit-anytime business profile: logo, company name, contact name, margin.
+ * Edit-anytime business profile: logo, company name, contact name.
  * Column whitelist — kyb_status, documents, tax and bank fields are
  * untouched, so edits never trigger re-verification.
  */
@@ -228,7 +229,6 @@ export async function updateBusinessProfile(
   const parsed = businessProfileSchema.safeParse({
     business_name: formData.get("business_name"),
     contact_person: formData.get("contact_person"),
-    margin_pct: formData.get("margin_pct"),
   });
   if (!parsed.success) {
     return {
@@ -275,7 +275,6 @@ export async function updateBusinessProfile(
     .update({
       business_name: parsed.data.business_name,
       contact_person: parsed.data.contact_person,
-      margin_pct: parsed.data.margin_pct,
       logo_path: logoPath,
     })
     .eq("owner_id", user.id);
@@ -290,5 +289,46 @@ export async function updateBusinessProfile(
 
   revalidatePath("/supplier/dashboard");
   revalidatePath("/supplier/dashboard/business");
+  return { ok: true, message: "Saved." };
+}
+
+/**
+ * Supplier-set margin, edited from Products → Margin. One margin for the whole
+ * catalogue. Only margin_pct is written, so the business profile and
+ * kyb_status are untouched and no re-verification is triggered.
+ */
+export async function updateMargin(
+  _prevState: KybActionState,
+  formData: FormData,
+): Promise<KybActionState> {
+  const { supabase, user } = await requireUser();
+
+  const parsed = marginPctSchema.safeParse(formData.get("margin_pct"));
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("companies")
+    .update({ margin_pct: parsed.data })
+    .eq("owner_id", user.id)
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    console.error("updateMargin failed:", error);
+    return { ok: false, message: "Could not save. Try again." };
+  }
+  // No row means the company was never created (or was removed) — same
+  // distinction the business and products pages draw before onboarding.
+  if (!data) {
+    redirect("/supplier/onboarding");
+  }
+
+  revalidatePath("/supplier/dashboard");
+  revalidatePath("/supplier/dashboard/products");
+  revalidatePath("/supplier/dashboard/products/margin");
   return { ok: true, message: "Saved." };
 }

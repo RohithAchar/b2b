@@ -27,7 +27,7 @@ export function PricingSection({
     <FormSection
       id="pricing"
       title="Pricing"
-      description="Buyers see your base price plus the margin set in Business profile. GST applies on top unless variants override it."
+      description="Buyers see your base price plus the margin set under Products → Margin. GST applies on top unless variants override it."
     >
       <FieldSet>
         <FieldLegend>Price</FieldLegend>

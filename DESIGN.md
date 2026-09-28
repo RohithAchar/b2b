@@ -177,8 +177,10 @@ Dashboard, Orders, Delivery, Products (expandable), Analytics, Payouts, Discount
 Audience, Appearance, Plugins, Settings (expandable).
 
 - **Products** is an expandable parent preserving the existing entries: **Products**
-  (`/supplier/dashboard/products`) and **Add product** (`/supplier/dashboard/products/new`);
-  it opens and highlights when any product route is active, including product edits.
+  (`/supplier/dashboard/products`) and **Add product** (`/supplier/dashboard/products/new`),
+  plus **Margin** (`/supplier/dashboard/products/margin`) — the supplier's single
+  `companies.margin_pct` markup, kept out of the business profile;
+  the group opens and highlights when any product route is active, including product edits.
 - **Settings** is an expandable parent holding the existing **Business profile**
   (`/supplier/dashboard/business`) and **Verification** (`/supplier/dashboard/verification`)
   entries so existing pages stay reachable.
