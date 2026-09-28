@@ -9,7 +9,7 @@ type StorefrontSupplier = {
   logo_path: string | null;
 };
 
-async function fetchSupplierMap(
+export async function fetchSupplierMap(
   supabase: SupabaseClient,
   ids: (string | null | undefined)[],
 ): Promise<Map<string, StorefrontSupplier>> {
@@ -43,7 +43,7 @@ type StorefrontPriceRow = {
  * view filters on the same approved / not-hidden condition as the product
  * queries, so every product the storefront can see has a pricing row.
  */
-async function fetchCustomerPriceMap(
+export async function fetchCustomerPriceMap(
   supabase: SupabaseClient,
   ids: (string | null | undefined)[],
 ): Promise<Map<string, CustomerPrices>> {
@@ -152,21 +152,50 @@ export async function getHomeProducts(supabase: SupabaseClient) {
 }
 
 // ---------------------------------------------------------------------------
-// Product listing with search + filter + pagination
+// Product listing with search + filter + sort + pagination
 // ---------------------------------------------------------------------------
+
+export type ProductSort =
+  | "relevance"
+  | "newest"
+  | "price_asc"
+  | "price_desc"
+  | "moq_asc";
 
 export type ProductListParams = {
   query?: string;
   categorySlug?: string;
+  sort?: ProductSort;
+  minPrice?: number;
+  maxPrice?: number;
+  minMoq?: number;
+  maxMoq?: number;
+  inStock?: boolean;
+  negotiable?: boolean;
+  sampleAvailable?: boolean;
   page?: number;
   perPage?: number;
 };
 
 export async function getProducts(supabase: SupabaseClient, params: ProductListParams) {
-  const { query, categorySlug, page = 1, perPage = 24 } = params;
+  const {
+    query,
+    categorySlug,
+    sort = "relevance",
+    minPrice,
+    maxPrice,
+    minMoq,
+    maxMoq,
+    inStock,
+    negotiable,
+    sampleAvailable,
+    page = 1,
+    perPage = 24,
+  } = params;
   const from = (page - 1) * perPage;
   const to = from + perPage - 1;
 
+  // Build the base filtered query (without sorting/pagination yet).
   let qb = supabase
     .from("products")
     .select(
@@ -176,12 +205,14 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     .eq("status", "approved")
     .eq("is_hidden", false);
 
-  if (query) {
-    qb = qb.textSearch("title", query, { type: "websearch" });
+  // Trim and skip empty queries — textSearch with "" matches everything but
+  // wastes a GIN index scan and can produce surprising results.
+  const trimmedQuery = query?.trim() ?? "";
+  if (trimmedQuery) {
+    qb = qb.textSearch("title", trimmedQuery, { type: "websearch" });
   }
 
   if (categorySlug) {
-    // First resolve category ID from slug.
     const { data: cat } = await supabase
       .from("categories")
       .select("id")
@@ -193,7 +224,136 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     }
   }
 
-  qb = qb.order("created_at", { ascending: false }).range(from, to);
+  if (minMoq != null) {
+    qb = qb.gte("moq", minMoq);
+  }
+  if (maxMoq != null) {
+    qb = qb.lte("moq", maxMoq);
+  }
+  if (inStock) {
+    qb = qb.gt("stock_qty", 0);
+  }
+  if (negotiable) {
+    qb = qb.eq("negotiable", true);
+  }
+  if (sampleAvailable) {
+    qb = qb.eq("sample_available", true);
+  }
+
+  // Price filtering and sorting require the storefront_prices view.
+  // We handle price sorts with a 3-query approach:
+  //   1. Get matching product IDs (with all filters applied)
+  //   2. Get prices for those IDs, ordered by customer_price
+  //   3. Fetch full product data for the paginated IDs
+  const needsPriceSort = sort === "price_asc" || sort === "price_desc";
+  const needsPriceFilter = minPrice != null || maxPrice != null;
+
+  if (needsPriceSort || needsPriceFilter) {
+    // Step 1: Get all matching product IDs (no pagination yet).
+    const { data: idRows } = await qb.order("id");
+
+    const allIds = (idRows ?? []).map((r) => r.id as string);
+
+    if (allIds.length === 0) {
+      return { products: [], total: 0, page, perPage, totalPages: 0 };
+    }
+
+    // Step 2: Get prices for those IDs.
+    let priceQb = supabase
+      .from("storefront_prices")
+      .select("product_id, customer_price")
+      .in("product_id", allIds);
+
+    if (minPrice != null) {
+      priceQb = priceQb.gte("customer_price", minPrice);
+    }
+    if (maxPrice != null) {
+      priceQb = priceQb.lte("customer_price", maxPrice);
+    }
+
+    const { data: priceRows } = await priceQb;
+    const priceMap = new Map(
+      (priceRows ?? []).map((r) => [r.product_id as string, Number(r.customer_price)]),
+    );
+
+    // Filter IDs by price range.
+    const filteredIds = allIds.filter((id) => {
+      const price = priceMap.get(id);
+      if (price == null) return false;
+      if (minPrice != null && price < minPrice) return false;
+      if (maxPrice != null && price > maxPrice) return false;
+      return true;
+    });
+
+    // Sort by price if needed.
+    if (needsPriceSort) {
+      const ascending = sort === "price_asc";
+      filteredIds.sort((a, b) => {
+        const pa = priceMap.get(a) ?? 0;
+        const pb = priceMap.get(b) ?? 0;
+        return ascending ? pa - pb : pb - pa;
+      });
+    }
+
+    const total = filteredIds.length;
+    const totalPages = Math.ceil(total / perPage);
+    const pageIds = filteredIds.slice(from, to + 1);
+
+    if (pageIds.length === 0) {
+      return { products: [], total, page, perPage, totalPages };
+    }
+
+    // Step 3: Fetch full product data for the paginated IDs.
+    const { data: rows } = await supabase
+      .from("products")
+      .select(
+        "id, title, unit, moq, negotiable, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+      )
+      .eq("status", "approved")
+      .eq("is_hidden", false)
+      .in("id", pageIds);
+
+    // Maintain the price-sorted order.
+    const rowMap = new Map((rows ?? []).map((r) => [r.id as string, r]));
+    const orderedRows = pageIds
+      .map((id) => rowMap.get(id))
+      .filter((r): r is NonNullable<typeof r> => r != null);
+
+    const [supplierMap, fullPriceMap] = await Promise.all([
+      fetchSupplierMap(
+        supabase,
+        orderedRows.map((p) => p.supplier_id as string),
+      ),
+      fetchCustomerPriceMap(
+        supabase,
+        orderedRows.map((p) => p.id as string),
+      ),
+    ]);
+
+    return {
+      products: orderedRows.map((p) => ({
+        ...p,
+        supplier: supplierMap.get(p.supplier_id as string) ?? null,
+        pricing: fullPriceMap.get(p.id as string) ?? null,
+      })),
+      total,
+      page,
+      perPage,
+      totalPages,
+    };
+  }
+
+  // Non-price sorts: single query with server-side ordering.
+  if (sort === "newest") {
+    qb = qb.order("created_at", { ascending: false });
+  } else if (sort === "moq_asc") {
+    qb = qb.order("moq", { ascending: true });
+  } else {
+    // relevance / default
+    qb = qb.order("created_at", { ascending: false });
+  }
+
+  qb = qb.range(from, to);
 
   const { data, count } = await qb;
 

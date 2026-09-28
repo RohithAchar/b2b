@@ -5,8 +5,11 @@ import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Building02Icon,
+  Clock01Icon,
   DashboardSquare01Icon,
+  HeartIcon,
   Logout01Icon,
+  Message01Icon,
   Package01Icon,
   ShieldCheckIcon,
 } from "@hugeicons/core-free-icons"
@@ -51,6 +54,23 @@ const ROLE_LINKS: Record<
   string,
   { label: string; href: string; icon: ReactNode }[]
 > = {
+  buyer: [
+    {
+      label: "Enquiries",
+      href: "/account?tab=enquiries",
+      icon: <HugeiconsIcon icon={Message01Icon} strokeWidth={2} />,
+    },
+    {
+      label: "Saved Products",
+      href: "/account?tab=saved",
+      icon: <HugeiconsIcon icon={HeartIcon} strokeWidth={2} />,
+    },
+    {
+      label: "Recently Viewed",
+      href: "/account?tab=recent",
+      icon: <HugeiconsIcon icon={Clock01Icon} strokeWidth={2} />,
+    },
+  ],
   supplier: [
     {
       label: "Dashboard",

@@ -50,6 +50,7 @@ export function StorefrontBottomNav({ user }: { user: User }) {
   const categoriesActive =
     pathname.startsWith("/category") || (isProducts && !query)
   const searchActive = isProducts && Boolean(query)
+  const enquiriesActive = pathname === "/account"
   const accountActive = pathname.startsWith("/auth")
 
   return (
@@ -96,15 +97,13 @@ export function StorefrontBottomNav({ user }: { user: User }) {
           </SheetContent>
         </Sheet>
 
-        <button
-          type="button"
-          aria-disabled="true"
-          aria-label="Enquiries (coming soon)"
-          title="Coming soon"
-          className={cn(itemClass(false), "cursor-default")}
+        <Link
+          href="/account?tab=enquiries"
+          aria-current={enquiriesActive ? "page" : undefined}
+          className={itemClass(enquiriesActive)}
         >
           <ItemContent icon={Message01Icon} label="Enquiries" />
-        </button>
+        </Link>
 
         {user ? (
           <AccountMenu

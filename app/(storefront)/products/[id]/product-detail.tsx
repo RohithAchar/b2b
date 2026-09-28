@@ -26,6 +26,11 @@ import { ProductCard, type ProductCardData } from "@/components/storefront/produ
 import { ProductGallery, type GalleryImage } from "@/components/storefront/product-gallery";
 import { ProductDetailTabs } from "@/components/storefront/product-content-tabs";
 import { SectionHeader } from "@/components/storefront/section-header";
+import { getSessionUser } from "@/lib/auth/session";
+import { isProductSaved } from "@/lib/buyer/queries";
+import { recordRecentlyViewed } from "@/lib/buyer/actions";
+import { EnquiryForm } from "./enquiry-form";
+import { SaveButton } from "./save-button";
 
 function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -70,7 +75,7 @@ function SpecItem({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function ProductDetail({ product }: { product: Product }) {
+export async function ProductDetail({ product }: { product: Product }) {
   const images: GalleryImage[] = [...product.images].sort((a, b) => a.sort - b.sort);
   const supplier = product.supplier;
   const attributeEntries = Object.entries(product.attributes);
@@ -87,6 +92,16 @@ export function ProductDetail({ product }: { product: Product }) {
   const sortedVariants = [...product.variants]
     .map((v) => ({ ...v, customer_price: variantPrices.get(v.id) }))
     .sort((a, b) => a.sort - b.sort);
+
+  // Check if the current user has saved this product.
+  const supabase = await createClient();
+  const user = await getSessionUser(supabase);
+  const saved = user ? await isProductSaved(supabase, user.id, product.id) : false;
+
+  // Record recently viewed (fire-and-forget, non-blocking).
+  if (user) {
+    await recordRecentlyViewed(product.id);
+  }
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -255,23 +270,16 @@ export function ProductDetail({ product }: { product: Product }) {
 
           {/* Buy / enquiry actions */}
           <div className="flex flex-col gap-2">
-            <Button size="lg" className="h-11 w-full text-base font-semibold">
-              Send Enquiry
-            </Button>
+            <EnquiryForm productId={product.id} />
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="default" className="border-border bg-card">
-                Request Quote
-              </Button>
-              <Button variant="outline" size="default" className="border-border bg-card">
-                Contact Supplier
-              </Button>
+              <SaveButton productId={product.id} saved={saved} />
+              {supplier && (
+                <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                  <HugeiconsIcon icon={PinLocation01Icon} strokeWidth={2} className="size-3.5" />
+                  Ships from {supplier.city}, {supplier.state}
+                </p>
+              )}
             </div>
-            {supplier && (
-              <p className="mt-1 flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                <HugeiconsIcon icon={PinLocation01Icon} strokeWidth={2} className="size-3.5" />
-                Ships from {supplier.city}, {supplier.state}
-              </p>
-            )}
           </div>
 
           {/* Description / specifications / variants */}

@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 
-export type SessionUser = { email: string; user_type: string } | null;
+export type SessionUser = { id: string; email: string; user_type: string } | null;
 
 /**
  * Resolves the authenticated user + profile user_type for a request.
@@ -22,6 +22,7 @@ export async function getSessionUser(
     .maybeSingle();
 
   return {
+    id: user.id,
     email: user.email ?? "",
     user_type: profile?.user_type ?? "buyer",
   };
