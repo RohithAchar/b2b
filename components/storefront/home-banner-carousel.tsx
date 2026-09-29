@@ -49,7 +49,7 @@ export function HomeBannerCarousel({ banners }: { banners: HomeBanner[] }) {
         <CarouselContent className="-ml-0">
           {banners.map((banner, i) => {
             const slide = (
-              <div className="relative h-56 w-full overflow-hidden rounded-lg border border-border bg-muted md:h-64">
+              <div className="relative aspect-[12/5] w-full overflow-hidden rounded-lg border border-border bg-muted">
                 <Image
                   src={publicImageUrl("banners", banner.image_path)}
                   alt={banner.title ?? "Banner"}

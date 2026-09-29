@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,18 +41,23 @@ export function BannerForm({
   currentImageUrl = null,
 }: BannerFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [selectedSlot, setSelectedSlot] = useState<BannerSlot>(slot);
 
   return (
     <form action={formAction}>
       <FieldGroup>
         {id ? <input type="hidden" name="id" value={id} /> : null}
+        {/* The select is disabled while editing so the slot cannot change,
+            and disabled controls are not submitted. Carry it explicitly. */}
+        {id ? <input type="hidden" name="slot" value={selectedSlot} /> : null}
         <Field>
           <FieldLabel htmlFor="slot">Position</FieldLabel>
           <NativeSelect
             id="slot"
             name="slot"
-            defaultValue={slot}
+            value={selectedSlot}
             disabled={Boolean(id)}
+            onChange={(e) => setSelectedSlot(e.target.value as BannerSlot)}
           >
             {(["hero", "promo"] as BannerSlot[]).map((value) => (
               <NativeSelectOption key={value} value={value}>
@@ -95,7 +100,8 @@ export function BannerForm({
         <Field>
           <FieldLabel htmlFor="image">Image</FieldLabel>
           <ImageUploadEditor
-            aspect={SLOT_ASPECTS[slot]}
+            key={selectedSlot}
+            aspect={SLOT_ASPECTS[selectedSlot]}
             required={imageRequired}
             currentImageUrl={currentImageUrl}
             onAppliedFile={() => {}}

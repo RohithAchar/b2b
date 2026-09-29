@@ -11,21 +11,29 @@ import {
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { createClient } from "@/lib/supabase/server";
 import { publicImageUrl } from "@/lib/storage";
+import { getBannerOutputSize } from "@/lib/admin/banner-images";
+import {
+  BANNER_SLOTS,
+  SLOT_ASPECTS,
+  SLOT_LABELS,
+  type BannerSlot,
+} from "@/lib/admin/banner-slots";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   DeleteBannerButton,
   ToggleVisibilityButton,
 } from "./banner-actions";
 
-const SLOT_LABELS: Record<string, string> = {
-  hero: "Hero carousel",
-  promo: "Promotional strip",
-};
-
-const SLOT_HINTS: Record<string, string> = {
-  hero: "Rotates at the top of the home page (aim for a wide 1200 x 256 image).",
-  promo: "Single strip under the category grid (aim for a wide, short image).",
-};
+const SLOT_HINTS: Record<BannerSlot, string> = Object.fromEntries(
+  BANNER_SLOTS.map((slot) => {
+    const { width, height } = getBannerOutputSize(slot);
+    const where =
+      slot === "hero"
+        ? "Rotates at the top of the home page"
+        : "Single strip under the category grid";
+    return [slot, `${where} (uploaded at ${width} x ${height}).`];
+  }),
+) as Record<BannerSlot, string>;
 
 function BannerPreview({
   imagePath,
@@ -38,11 +46,11 @@ function BannerPreview({
   subtitle: string | null;
   slot: string;
 }) {
+  const aspect = SLOT_ASPECTS[slot as BannerSlot] ?? SLOT_ASPECTS.hero;
   const media = (
     <div
-      className={`relative w-full overflow-hidden rounded-lg bg-muted ${
-        slot === "hero" ? "h-64" : "h-32"
-      }`}
+      className="relative w-full overflow-hidden rounded-lg bg-muted"
+      style={{ aspectRatio: String(aspect) }}
     >
       {imagePath !== "pending" ? (
         <>
@@ -100,7 +108,7 @@ export default async function BannersPage() {
         </div>
       </div>
 
-      {["hero", "promo"].map((slot) => {
+      {BANNER_SLOTS.map((slot) => {
         const banners = grouped.get(slot) ?? [];
         return (
           <Card key={slot}>

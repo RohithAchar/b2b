@@ -175,7 +175,9 @@ export function ImageUploadEditor({
       />
       {status === "ready" && appliedPreview ? (
         <div className="flex flex-col gap-2">
-          <FieldDescription>Composed at the banner ratio:</FieldDescription>
+          <FieldDescription>
+            Preview at the storefront banner ratio:
+          </FieldDescription>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={appliedPreview}
@@ -195,7 +197,10 @@ export function ImageUploadEditor({
       ) : status === "editing" && imageUrl ? (
         <div className="flex flex-col gap-2">
           <FieldLabel htmlFor="banner-image-editor">Frame the image</FieldLabel>
-          <div className="relative h-72 w-full overflow-hidden rounded-xl border border-border bg-muted">
+          <div
+            className="relative w-full overflow-hidden rounded-xl border border-border bg-muted"
+            style={{ aspectRatio: String(aspect) }}
+          >
             <Cropper
               image={imageUrl}
               crop={crop}
@@ -249,9 +254,9 @@ export function ImageUploadEditor({
             </div>
           </div>
           <FieldDescription>
-            Drag to reposition and pinch-zoom (or use the slider) to fill the
-            strip. The crop is locked to the banner ratio so the finished
-            image fills the slot exactly.
+            Drag to reposition and zoom to frame the banner. The crop is locked
+            to the selected banner ratio, so the finished image fills the
+            storefront slot exactly.
           </FieldDescription>
         </div>
       ) : showStored ? (

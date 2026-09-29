@@ -7,6 +7,6 @@ export const SLOT_LABELS: Record<BannerSlot, string> = {
 };
 
 export const SLOT_ASPECTS: Record<BannerSlot, number> = {
-  hero: 1248 / 256,
+  hero: 12 / 5,
   promo: 1248 / 128,
 };

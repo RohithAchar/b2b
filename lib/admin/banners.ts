@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import sharp from "sharp";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/guard";
 import { isSupportedImageType, sniffImageType } from "@/lib/storage";
-import { BANNER_SLOTS } from "./banner-slots";
+import { getBannerOutputSize } from "./banner-images";
+import { BANNER_SLOTS, type BannerSlot } from "./banner-slots";
 
 export type BannerActionState = {
   ok: boolean;
@@ -71,16 +73,47 @@ async function validateImage(file: File | null, required: boolean): Promise<stri
   return null;
 }
 
+/**
+ * The browser crop exists for human composition; this step is the storage
+ * contract. Decoding and re-encoding here means a direct request to the action
+ * cannot store an arbitrary image that would not fill the slot.
+ *
+ * Uploads smaller than the target are upscaled rather than passed through:
+ * `withoutEnlargement` would skip the resize entirely and let an off-ratio
+ * file reach storage untouched.
+ */
 async function uploadImage(
   supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
   bannerId: string,
   file: File,
+  slot: BannerSlot,
 ): Promise<string> {
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${bannerId}/${Date.now()}_${safeName}`;
+  const { width, height } = getBannerOutputSize(slot);
+
+  let output: Buffer;
+  try {
+    const input = Buffer.from(await file.arrayBuffer());
+    output = await sharp(input)
+      .rotate()
+      .resize(width, height, {
+        fit: "cover",
+        position: "centre",
+      })
+      .jpeg({ quality: 90, progressive: true, mozjpeg: true })
+      .toBuffer();
+  } catch (err) {
+    console.error("uploadImage decode failed:", err);
+    throw new Error("Could not read the image. Try a different file.");
+  }
+
+  const path = `${bannerId}/${Date.now()}_${slot}.jpg`;
   const { error } = await supabase.storage
     .from("banners")
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, output, {
+      contentType: "image/jpeg",
+      cacheControl: "31536000",
+      upsert: false,
+    });
   if (error) {
     throw new Error("Could not upload the image. Try again.");
   }
@@ -131,7 +164,7 @@ export async function createBanner(
   }
 
   try {
-    const path = await uploadImage(supabase, row.id, file);
+    const path = await uploadImage(supabase, row.id, file, parsed.data.slot);
     const { error: pathError } = await supabase
       .from("home_banners")
       .update({ image_path: path })
@@ -255,7 +288,7 @@ export async function updateBanner(
   let oldImagePath: string | null = null;
   if (file) {
     try {
-      imagePath = await uploadImage(supabase, row.id, file);
+      imagePath = await uploadImage(supabase, row.id, file, parsed.data.slot);
       oldImagePath = row.image_path;
     } catch (err) {
       console.error("updateBanner image failed:", err);
