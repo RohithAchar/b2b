@@ -146,10 +146,20 @@ export function RegionGridSkeleton({ count = 4 }: { count?: number }) {
 
 export function ProductDetailSkeleton() {
   return (
-    <div aria-hidden className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_440px]">
-      <div>
-        <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border bg-card">
+    <div aria-hidden className="grid gap-5 lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="relative mx-auto aspect-square w-full max-w-[500px] overflow-hidden rounded-lg border border-border bg-card lg:mx-0">
           <Skeleton className="absolute inset-0 rounded-none" />
+        </div>
+        <div className="flex gap-2.5 lg:order-first lg:w-16 lg:shrink-0 lg:flex-col">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div
+              key={i}
+              className="relative size-16 shrink-0 overflow-hidden rounded-md border-2 border-border bg-card"
+            >
+              <Skeleton className="absolute inset-0 rounded-none" />
+            </div>
+          ))}
         </div>
       </div>
       <div className="flex flex-col gap-4">

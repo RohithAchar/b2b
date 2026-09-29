@@ -166,10 +166,24 @@ navigation and discovery, not analytics. Rendered in a dense responsive grid
 (4 columns mobile → 5–6 tablet → 8 desktop). `!gap-0 !py-0`.
 
 ### Product detail (`app/products/[id]/product-detail.tsx`)
-2-column grid `lg:grid-cols-[minmax(0,1fr)_440px]`:
-- Left: square gallery (sticky `lg:sticky lg:top-4`) + thumbnails.
+2-column grid `lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8`:
+- Left: **bounded** gallery — 64px thumbnail rail + 12px gap + a 500px square `bg-muted`
+  `object-contain` inspection area. The image is never cropped and never grows with the
+  viewport, and it scrolls away with the page (no sticky positioning).
 - Right: title → price/MOQ card → quantity pricing → quick specs → supplier card →
   actions → **Description/Specifications/Variants tabs** (right column only).
+
+### Product gallery (`components/storefront/product-gallery.tsx`)
+One responsive component, no carousel library. The main image comes first in the DOM
+(mobile order: image → thumbnails); `lg:order-first` moves the thumbnail rail to the
+left on desktop, so mobile is a horizontal scrolling strip and desktop is a vertical
+rail. The rail is `lg:max-h-[500px] lg:overflow-y-auto` so many images never make the
+gallery tall, and no image is hidden or reordered.
+- Thumbnails are `size-16` with `gap-2.5`; selected = `border-primary` **plus** a
+  `CheckmarkCircle01Icon` badge (selection is never signalled by color alone) and
+  `aria-current`; unselected = `border-border`. Focus uses the standard
+  `outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50`.
+- The main image stays `object-contain`; only the thumbnails use `object-cover`.
 
 ### Supplier dashboard sidebar (`app/supplier/dashboard/sidebar.tsx`)
 Supplier workspace navigation mirrors a modern seller dashboard hierarchy, ordered:
