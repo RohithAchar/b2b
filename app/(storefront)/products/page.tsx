@@ -1,7 +1,19 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { getProducts, getNavigationCategories, type ProductSort } from "@/lib/storefront"
+import {
+  getProducts,
+  getProductsByImage,
+  getNavigationCategories,
+  type ProductSort,
+} from "@/lib/storefront"
+import {
+  buildPageUrl,
+  parseBoolean,
+  parseImageQueryId,
+  parseNumber,
+  parseSort,
+} from "@/lib/storefront-query"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
@@ -20,9 +32,11 @@ import {
 import { ProductGridSkeleton } from "@/components/storefront/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProductsFilterBar } from "@/components/storefront/products-filter-bar"
+import { isImageSearchConfigured } from "@/lib/embeddings"
 
 type SearchParams = {
   q?: string
+  img?: string
   category?: string
   sort?: string
   minPrice?: string
@@ -33,55 +47,6 @@ type SearchParams = {
   negotiable?: string
   sampleAvailable?: string
   page?: string
-}
-
-const VALID_SORTS: ProductSort[] = ["relevance", "newest", "price_asc", "price_desc", "moq_asc"]
-
-function parseSort(value: string | undefined): ProductSort {
-  if (value && VALID_SORTS.includes(value as ProductSort)) {
-    return value as ProductSort
-  }
-  return "relevance"
-}
-
-function parseNumber(value: string | undefined): number | undefined {
-  if (!value) return undefined
-  const n = Number(value)
-  return Number.isFinite(n) && n >= 0 ? n : undefined
-}
-
-function parseBoolean(value: string | undefined): boolean | undefined {
-  if (value === "true") return true
-  if (value === "false") return false
-  return undefined
-}
-
-function buildPageUrl(params: {
-  query: string
-  categorySlug: string
-  sort: ProductSort
-  minPrice?: string
-  maxPrice?: string
-  minMoq?: string
-  maxMoq?: string
-  inStock?: string
-  negotiable?: string
-  sampleAvailable?: string
-  page: number
-}) {
-  const sp = new URLSearchParams()
-  if (params.query) sp.set("q", params.query)
-  if (params.categorySlug) sp.set("category", params.categorySlug)
-  if (params.sort !== "relevance") sp.set("sort", params.sort)
-  if (params.minPrice) sp.set("minPrice", params.minPrice)
-  if (params.maxPrice) sp.set("maxPrice", params.maxPrice)
-  if (params.minMoq) sp.set("minMoq", params.minMoq)
-  if (params.maxMoq) sp.set("maxMoq", params.maxMoq)
-  if (params.inStock === "true") sp.set("inStock", "true")
-  if (params.negotiable === "true") sp.set("negotiable", "true")
-  if (params.sampleAvailable === "true") sp.set("sampleAvailable", "true")
-  sp.set("page", String(params.page))
-  return `/products?${sp.toString()}`
 }
 
 function FilterBarSkeleton() {
@@ -111,6 +76,10 @@ async function ProductListings({
 }) {
   const sp = await searchParams
   const query = sp.q ?? ""
+  // An image query takes precedence over ?q: the ranking is visual, so a
+  // leftover text term would only mislead the result count.
+  const imageQueryId = parseImageQueryId(sp.img)
+  const isImageMode = imageQueryId !== null
   const categorySlug = sp.category ?? ""
   const sort = parseSort(sp.sort)
   const minPrice = parseNumber(sp.minPrice)
@@ -123,20 +92,57 @@ async function ProductListings({
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
 
   const supabase = await createClient()
-  const { products, total, totalPages } = await getProducts(supabase, {
-    query,
-    categorySlug,
-    sort,
-    minPrice,
-    maxPrice,
-    minMoq,
-    maxMoq,
-    inStock: inStock ?? undefined,
-    negotiable: negotiable ?? undefined,
-    sampleAvailable: sampleAvailable ?? undefined,
-    page,
-    perPage: 24,
-  })
+
+  const result = isImageMode
+    ? await getProductsByImage(supabase, {
+        queryId: imageQueryId,
+        categorySlug,
+        minPrice,
+        maxPrice,
+        minMoq,
+        maxMoq,
+        inStock: inStock ?? undefined,
+        negotiable: negotiable ?? undefined,
+        sampleAvailable: sampleAvailable ?? undefined,
+        page,
+        perPage: 24,
+      })
+    : await getProducts(supabase, {
+        query,
+        categorySlug,
+        sort,
+        minPrice,
+        maxPrice,
+        minMoq,
+        maxMoq,
+        inStock: inStock ?? undefined,
+        negotiable: negotiable ?? undefined,
+        sampleAvailable: sampleAvailable ?? undefined,
+        page,
+        perPage: 24,
+      })
+
+  // A null result is a backend failure, not "no matches" — show it as such.
+  if (result === null) {
+    return (
+      <div className="py-16">
+        <Empty>
+          <EmptyTitle>Search is unavailable</EmptyTitle>
+          <EmptyDescription>
+            We could not load results just now. Please try again.
+          </EmptyDescription>
+          <Link href="/products">
+            <Button variant="outline" size="sm" className="mt-3">
+              Back to all products
+            </Button>
+          </Link>
+        </Empty>
+      </div>
+    )
+  }
+
+  const { products, total, totalPages } = result
+  const imageExpired = isImageMode && "expired" in result && result.expired
 
   const activeFilter = categorySlug
     ? ((await getNavigationCategories(supabase)).find(
@@ -197,29 +203,52 @@ async function ProductListings({
   }
 
   const buildFilterUrl = (removeParams: Record<string, string | undefined>) => {
-    const sp = new URLSearchParams()
-    if (query) sp.set("q", query)
-    if (categorySlug && removeParams.category === undefined) sp.set("category", categorySlug)
-    if (sort !== "relevance") sp.set("sort", sort)
-    if (minPrice != null && removeParams.minPrice === undefined) sp.set("minPrice", String(minPrice))
-    if (maxPrice != null && removeParams.maxPrice === undefined) sp.set("maxPrice", String(maxPrice))
-    if (minMoq != null && removeParams.minMoq === undefined) sp.set("minMoq", String(minMoq))
-    if (maxMoq != null && removeParams.maxMoq === undefined) sp.set("maxMoq", String(maxMoq))
-    if (inStock && removeParams.inStock === undefined) sp.set("inStock", "true")
-    if (negotiable && removeParams.negotiable === undefined) sp.set("negotiable", "true")
-    if (sampleAvailable && removeParams.sampleAvailable === undefined) sp.set("sampleAvailable", "true")
-    sp.set("page", "1")
-    return `/products?${sp.toString()}`
+    const url = new URLSearchParams()
+    if (imageQueryId) url.set("img", imageQueryId)
+    else if (query) url.set("q", query)
+    if (categorySlug && removeParams.category === undefined) url.set("category", categorySlug)
+    if (!isImageMode && sort !== "relevance") url.set("sort", sort)
+    if (minPrice != null && removeParams.minPrice === undefined) url.set("minPrice", String(minPrice))
+    if (maxPrice != null && removeParams.maxPrice === undefined) url.set("maxPrice", String(maxPrice))
+    if (minMoq != null && removeParams.minMoq === undefined) url.set("minMoq", String(minMoq))
+    if (maxMoq != null && removeParams.maxMoq === undefined) url.set("maxMoq", String(maxMoq))
+    if (inStock && removeParams.inStock === undefined) url.set("inStock", "true")
+    if (negotiable && removeParams.negotiable === undefined) url.set("negotiable", "true")
+    if (sampleAvailable && removeParams.sampleAvailable === undefined) url.set("sampleAvailable", "true")
+    url.set("page", "1")
+    return `/products?${url.toString()}`
   }
 
   const clearAllUrl = () => {
-    const sp = new URLSearchParams()
-    if (query) sp.set("q", query)
-    if (categorySlug) sp.set("category", categorySlug)
-    return `/products?${sp.toString()}`
+    const url = new URLSearchParams()
+    if (imageQueryId) url.set("img", imageQueryId)
+    else if (query) url.set("q", query)
+    if (categorySlug) url.set("category", categorySlug)
+    return `/products?${url.toString()}`
   }
 
-  const sortLabel = SORT_LABELS[sort]
+  // Exits image search entirely, back to the plain catalog.
+  const exitImageSearchUrl = () => {
+    const url = new URLSearchParams()
+    if (categorySlug) url.set("category", categorySlug)
+    return `/products?${url.toString()}`
+  }
+
+  const pageUrl = (targetPage: number) =>
+    buildPageUrl({
+      query,
+      categorySlug,
+      sort,
+      minPrice: sp.minPrice,
+      maxPrice: sp.maxPrice,
+      minMoq: sp.minMoq,
+      maxMoq: sp.maxMoq,
+      inStock: inStock ? "true" : undefined,
+      negotiable: negotiable ? "true" : undefined,
+      sampleAvailable: sampleAvailable ? "true" : undefined,
+      imageQueryId,
+      page: targetPage,
+    })
 
   return (
     <>
@@ -228,12 +257,20 @@ async function ProductListings({
         <p className="text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{total}</span> product
           {total !== 1 ? "s" : ""} found
-          {query && <> for &ldquo;{query}&rdquo;</>}
+          {isImageMode ? " similar to your image" : query && <> for &ldquo;{query}&rdquo;</>}
         </p>
-        {sort !== "relevance" && (
+        {!isImageMode && sort !== "relevance" && (
           <span className="text-xs text-muted-foreground">
-            Sorted by {sortLabel}
+            Sorted by {SORT_LABELS[sort]}
           </span>
+        )}
+        {isImageMode && (
+          <Link
+            href={exitImageSearchUrl()}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Exit image search
+          </Link>
         )}
       </div>
 
@@ -274,13 +311,19 @@ async function ProductListings({
       {products.length === 0 ? (
         <div className="py-16">
           <Empty>
-            <EmptyTitle>No products found</EmptyTitle>
+            <EmptyTitle>
+              {imageExpired ? "That image search has expired" : "No products found"}
+            </EmptyTitle>
             <EmptyDescription>
-              Try a different search or clear the filters.
+              {imageExpired
+                ? "Image searches are kept for 24 hours. Upload the image again to search."
+                : isImageMode
+                  ? "No products look similar enough to your image. Try a clearer photo or widen the filters."
+                  : "Try a different search or clear the filters."}
             </EmptyDescription>
-            <Link href="/products">
+            <Link href={imageExpired || isImageMode ? exitImageSearchUrl() : "/products"}>
               <Button variant="outline" size="sm" className="mt-3">
-                Clear filters
+                {imageExpired || isImageMode ? "Browse all products" : "Clear filters"}
               </Button>
             </Link>
           </Empty>
@@ -303,43 +346,14 @@ async function ProductListings({
             <PaginationContent>
               {page > 1 && (
                 <PaginationItem>
-                  <PaginationPrevious
-                    href={buildPageUrl({
-                      query,
-                      categorySlug,
-                      sort,
-                      minPrice: sp.minPrice,
-                      maxPrice: sp.maxPrice,
-                      minMoq: sp.minMoq,
-                      maxMoq: sp.maxMoq,
-                      inStock: inStock ? "true" : undefined,
-                      negotiable: negotiable ? "true" : undefined,
-                      sampleAvailable: sampleAvailable ? "true" : undefined,
-                      page: page - 1,
-                    })}
-                  />
+                  <PaginationPrevious href={pageUrl(page - 1)} />
                 </PaginationItem>
               )}
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                 const p = i + 1
                 return (
                   <PaginationItem key={p}>
-                    <PaginationLink
-                      href={buildPageUrl({
-                        query,
-                        categorySlug,
-                        sort,
-                        minPrice: sp.minPrice,
-                        maxPrice: sp.maxPrice,
-                        minMoq: sp.minMoq,
-                        maxMoq: sp.maxMoq,
-                        inStock: inStock ? "true" : undefined,
-                        negotiable: negotiable ? "true" : undefined,
-                        sampleAvailable: sampleAvailable ? "true" : undefined,
-                        page: p,
-                      })}
-                      isActive={p === page}
-                    >
+                    <PaginationLink href={pageUrl(p)} isActive={p === page}>
                       {p}
                     </PaginationLink>
                   </PaginationItem>
@@ -347,21 +361,7 @@ async function ProductListings({
               })}
               {page < totalPages && (
                 <PaginationItem>
-                  <PaginationNext
-                    href={buildPageUrl({
-                      query,
-                      categorySlug,
-                      sort,
-                      minPrice: sp.minPrice,
-                      maxPrice: sp.maxPrice,
-                      minMoq: sp.minMoq,
-                      maxMoq: sp.maxMoq,
-                      inStock: inStock ? "true" : undefined,
-                      negotiable: negotiable ? "true" : undefined,
-                      sampleAvailable: sampleAvailable ? "true" : undefined,
-                      page: page + 1,
-                    })}
-                  />
+                  <PaginationNext href={pageUrl(page + 1)} />
                 </PaginationItem>
               )}
             </PaginationContent>
@@ -392,7 +392,7 @@ export default async function ProductsPage({
       />
 
       <Suspense fallback={<FilterBarSkeleton />}>
-        <ProductsFilterBar />
+        <ProductsFilterBar imageSearchEnabled={isImageSearchConfigured()} />
       </Suspense>
 
       <Suspense fallback={<ProductGridSkeleton count={20} />}>

@@ -12,6 +12,7 @@ import {
 } from "@/lib/supplier/products";
 import { defaultSeoDescription, defaultSeoTitle } from "@/lib/supplier/rich-text";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
+import { indexProductImages } from "@/lib/product-image-index";
 
 export type ProductActionState = {
   ok: boolean;
@@ -57,6 +58,25 @@ async function removeStoredPaths(
   const { error } = await supabase.storage.from("product_images").remove(paths);
   if (error) {
     console.error("storage cleanup failed:", error);
+  }
+}
+
+/**
+ * Refresh a product's image embeddings after its image rows change.
+ *
+ * Deliberately swallows every failure: the product is already saved, and an
+ * embedding outage or a missing JINA_API_KEY must not turn a successful save
+ * into an error the supplier has to act on. Anything missed here is picked up
+ * by scripts/backfill-image-embeddings.mjs.
+ */
+async function indexImagesBestEffort(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  productId: string,
+): Promise<void> {
+  try {
+    await indexProductImages(supabase, productId);
+  } catch (err) {
+    console.error("indexProductImages failed:", (err as Error).message);
   }
 }
 
@@ -346,6 +366,8 @@ export async function createProduct(
     return { ok: false, message: rpcMessage(imageRowsError, "Could not save product images. Try again.") };
   }
 
+  await indexImagesBestEffort(supabase, product.id);
+
   const { error: variantsError } = await supabase.rpc("replace_product_variants", {
     p_product_id: product.id,
     p_variants: variantRpcPayload(variantsOrErr),
@@ -537,6 +559,10 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
     console.error("updateProduct image rows failed:", imageRowsError);
     return { ok: false, message: rpcMessage(imageRowsError, "Cannot add that many images."), productId };
   }
+
+  // Removed images lose their embedding rows via ON DELETE CASCADE; re-index to
+  // pick up anything newly added.
+  await indexImagesBestEffort(supabase, productId);
   if (removedPaths.length > 0) {
     await removeStoredPaths(supabase, removedPaths);
   }

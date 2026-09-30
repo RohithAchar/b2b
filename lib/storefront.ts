@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CustomerPrices } from "@/lib/pricing";
+import type { ProductSort } from "@/lib/storefront-query";
+
+// Re-exported so existing `import { type ProductSort } from "@/lib/storefront"`
+// call sites keep working; the definition now lives with the other pure
+// listing helpers so the page, filter bar and tests share one source.
+export type { ProductSort } from "@/lib/storefront-query";
 
 type StorefrontSupplier = {
   id: string;
@@ -154,13 +160,6 @@ export async function getHomeProducts(supabase: SupabaseClient) {
 // ---------------------------------------------------------------------------
 // Product listing with search + filter + sort + pagination
 // ---------------------------------------------------------------------------
-
-export type ProductSort =
-  | "relevance"
-  | "newest"
-  | "price_asc"
-  | "price_desc"
-  | "moq_asc";
 
 export type ProductListParams = {
   query?: string;
@@ -379,6 +378,222 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     page,
     perPage,
     totalPages: Math.ceil((count ?? 0) / perPage),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Image (visual) search
+// ---------------------------------------------------------------------------
+
+export type ImageSearchParams = {
+  /** public.image_search_queries.id from the ?img= search param. */
+  queryId: string;
+  categorySlug?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minMoq?: number;
+  maxMoq?: number;
+  inStock?: boolean;
+  negotiable?: boolean;
+  sampleAvailable?: boolean;
+  page?: number;
+  perPage?: number;
+};
+
+/**
+ * Candidate pool pulled from the ranking RPC before faceting. Filtering happens
+ * after ranking, so a narrow filter still has enough rows to fill a page.
+ * Capped at PostgREST's `max_rows` (1000) in supabase/config.toml.
+ */
+const IMAGE_CANDIDATE_POOL = 1000;
+
+type ImageRankRow = {
+  product_id: string;
+  distance: number | null;
+  total_count: number | null;
+};
+
+type EmptyImageSearch = {
+  products: never[];
+  total: 0;
+  page: number;
+  perPage: number;
+  totalPages: 0;
+  /** True when ?img= was valid but the ranking query returned nothing. */
+  expired: boolean;
+};
+
+function emptyImageSearch(page: number, perPage: number): EmptyImageSearch {
+  return { products: [], total: 0, page, perPage, totalPages: 0, expired: true };
+}
+
+/**
+ * Rank approved products by visual similarity to a buyer-owned query vector.
+ *
+ * The RPC is SECURITY INVOKER, so a draft, rejected or hidden product is already
+ * excluded by RLS; the explicit status filters here are defence in depth.
+ *
+ * Filter facets (price/MOQ/flags) are private to the storefront_prices view, so
+ * they cannot be expressed in the ranking SQL. Instead a bounded candidate pool
+ * is ranked first, then faceted and paginated in the same order. `total` is
+ * therefore the count after faceting, not `total_count` from the RPC.
+ */
+export async function getProductsByImage(
+  supabase: SupabaseClient,
+  params: ImageSearchParams,
+) {
+  const {
+    queryId,
+    categorySlug,
+    minPrice,
+    maxPrice,
+    minMoq,
+    maxMoq,
+    inStock,
+    negotiable,
+    sampleAvailable,
+    page = 1,
+    perPage = 24,
+  } = params;
+
+  const from = (page - 1) * perPage;
+  const to = from + perPage - 1;
+
+  const { data: rankData, error: rankError } = await supabase.rpc(
+    "search_products_by_image",
+    {
+      p_query_id: queryId,
+      p_match_count: IMAGE_CANDIDATE_POOL,
+      p_offset: 0,
+    },
+  );
+
+  if (rankError) {
+    console.error("getProductsByImage rpc failed:", rankError.code, rankError.message);
+    return null;
+  }
+
+  const rankRows = (rankData ?? []) as ImageRankRow[];
+  if (rankRows.length === 0) {
+    // RLS hides vectors the caller does not own, so an unknown, foreign or
+    // expired ?img= is indistinguishable from a query with no matches.
+    return emptyImageSearch(page, perPage);
+  }
+
+  // Distance order, de-duplicated: a product matches on any of its images.
+  const candidates: { id: string; distance: number }[] = [];
+  const seen = new Set<string>();
+  for (const row of rankRows) {
+    const id = row.product_id as string | null;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    candidates.push({ id, distance: Number(row.distance ?? 0) });
+  }
+
+  if (candidates.length === 0) {
+    return emptyImageSearch(page, perPage);
+  }
+
+  const candidateIds = candidates.map((c) => c.id);
+
+  let qb = supabase
+    .from("products")
+    .select("id, moq, negotiable, sample_available, category_id")
+    .eq("status", "approved")
+    .eq("is_hidden", false)
+    .in("id", candidateIds);
+
+  if (categorySlug) {
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("slug", categorySlug)
+      .maybeSingle();
+    if (cat) {
+      qb = qb.eq("category_id", cat.id);
+    }
+  }
+  if (minMoq != null) qb = qb.gte("moq", minMoq);
+  if (maxMoq != null) qb = qb.lte("moq", maxMoq);
+  if (inStock) qb = qb.gt("stock_qty", 0);
+  if (negotiable) qb = qb.eq("negotiable", true);
+  if (sampleAvailable) qb = qb.eq("sample_available", true);
+
+  const { data: facetRows, error: facetError } = await qb;
+  if (facetError) {
+    console.error("getProductsByImage facet failed:", facetError.code, facetError.message);
+    return null;
+  }
+
+  // Price facets come from storefront_prices (products.price_per_unit is the
+  // base price, and supplier margin is private).
+  let survivors = facetRows ?? [];
+  if (minPrice != null || maxPrice != null) {
+    const { data: priceRows } = await supabase
+      .from("storefront_prices")
+      .select("product_id, customer_price")
+      .in("product_id", candidateIds);
+
+    const priceMap = new Map(
+      (priceRows ?? []).map((r) => [r.product_id as string, Number(r.customer_price)]),
+    );
+    survivors = survivors.filter((row) => {
+      const price = priceMap.get(row.id as string);
+      if (price == null) return false;
+      if (minPrice != null && price < minPrice) return false;
+      if (maxPrice != null && price > maxPrice) return false;
+      return true;
+    });
+  }
+
+  const survivorIds = new Set(survivors.map((r) => r.id as string));
+  const matched = candidates.filter((c) => survivorIds.has(c.id));
+
+  const total = matched.length;
+  const totalPages = Math.ceil(total / perPage);
+  const pageIds = matched.slice(from, to + 1).map((c) => c.id);
+
+  if (pageIds.length === 0) {
+    return { products: [], total, page, perPage, totalPages, expired: false };
+  }
+
+  // Hydrate the page slice, then restore distance order.
+  const { data: rows } = await supabase
+    .from("products")
+    .select(
+      "id, title, unit, moq, negotiable, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+    )
+    .eq("status", "approved")
+    .eq("is_hidden", false)
+    .in("id", pageIds);
+
+  const rowMap = new Map((rows ?? []).map((r) => [r.id as string, r]));
+  const orderedRows = pageIds
+    .map((id) => rowMap.get(id))
+    .filter((r): r is NonNullable<typeof r> => r != null);
+
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      orderedRows.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(
+      supabase,
+      orderedRows.map((p) => p.id as string),
+    ),
+  ]);
+
+  return {
+    products: orderedRows.map((p) => ({
+      ...p,
+      supplier: supplierMap.get(p.supplier_id as string) ?? null,
+      pricing: priceMap.get(p.id as string) ?? null,
+    })),
+    total,
+    page,
+    perPage,
+    totalPages,
+    expired: false,
   };
 }
 
