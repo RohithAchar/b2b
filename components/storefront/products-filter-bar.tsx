@@ -15,17 +15,11 @@ import {
 import { Search01Icon, FilterIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useState } from "react"
-import { ImageSearchForm } from "@/components/storefront/image-search-form"
 
-/**
- * Category chips must carry the current mode, otherwise leaving image search
- * would silently drop the visual query.
- */
-export function buildCategoryLink(query: string, slug: string, imageQueryId?: string | null) {
+export function buildCategoryLink(query: string, slug: string) {
   const sp = new URLSearchParams()
   sp.set("category", slug)
-  if (imageQueryId) sp.set("img", imageQueryId)
-  else if (query) sp.set("q", query)
+  if (query) sp.set("q", query)
   return `/products?${sp.toString()}`
 }
 
@@ -37,17 +31,11 @@ const SORT_OPTIONS = [
   { value: "moq_asc", label: "MOQ: Low to High" },
 ] as const
 
-export function ProductsFilterBar({
-  imageSearchEnabled = false,
-}: {
-  imageSearchEnabled?: boolean
-}) {
+export function ProductsFilterBar() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const categories = useStorefrontCategories()
   const query = searchParams.get("q") ?? ""
-  const imageQueryId = searchParams.get("img")
-  const isImageMode = Boolean(imageQueryId)
   const categorySlug = searchParams.get("category") ?? ""
   const sort = searchParams.get("sort") ?? "relevance"
   const minPrice = searchParams.get("minPrice") ?? undefined
@@ -72,13 +60,10 @@ export function ProductsFilterBar({
 
   const buildUrl = (overrides: Record<string, string | undefined>) => {
     const sp = new URLSearchParams()
-    if (imageQueryId) sp.set("img", imageQueryId)
-    else if (query) sp.set("q", query)
+    if (query) sp.set("q", query)
     if (categorySlug) sp.set("category", categorySlug)
-    // Image results are ordered by visual distance; a sort control would
-    // contradict that, so the param is dropped while in image mode.
     const finalSort = overrides.sort ?? sort
-    if (!isImageMode && finalSort !== "relevance") sp.set("sort", finalSort)
+    if (finalSort !== "relevance") sp.set("sort", finalSort)
     const finalMinPrice = overrides.minPrice ?? minPrice
     if (finalMinPrice) sp.set("minPrice", finalMinPrice)
     const finalMaxPrice = overrides.maxPrice ?? maxPrice
@@ -99,8 +84,7 @@ export function ProductsFilterBar({
 
   const clearAllUrl = () => {
     const sp = new URLSearchParams()
-    if (imageQueryId) sp.set("img", imageQueryId)
-    else if (query) sp.set("q", query)
+    if (query) sp.set("q", query)
     if (categorySlug) sp.set("category", categorySlug)
     return `/products?${sp.toString()}`
   }
@@ -133,8 +117,6 @@ export function ProductsFilterBar({
         </Button>
       </form>
 
-      {imageSearchEnabled && !isImageMode && <ImageSearchForm />}
-
       {/* Category chips */}
       <div className="flex flex-wrap gap-1.5">
         <Button
@@ -145,11 +127,7 @@ export function ProductsFilterBar({
           render={
             <Link
               href={
-                imageQueryId
-                  ? `/products?img=${imageQueryId}`
-                  : query
-                    ? `/products?q=${encodeURIComponent(query)}`
-                    : "/products"
+                query ? `/products?q=${encodeURIComponent(query)}` : "/products"
               }
             />
           }
@@ -163,7 +141,7 @@ export function ProductsFilterBar({
             size="sm"
             nativeButton={false}
             className="h-7 rounded-sm text-xs"
-            render={<Link href={buildCategoryLink(query, cat.slug, imageQueryId)} />}
+            render={<Link href={buildCategoryLink(query, cat.slug)} />}
           >
             {cat.name}
           </Button>
@@ -172,26 +150,23 @@ export function ProductsFilterBar({
 
       {/* Sort + Filter toggle */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Hidden in image mode: results are ordered by visual similarity. */}
-        {!isImageMode && (
-          <Select
-            value={sort}
-            onValueChange={(value) => {
-              router.push(buildUrl({ sort: value ?? undefined }))
-            }}
-          >
-            <SelectTrigger className="h-8 w-44 rounded-md text-xs">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <Select
+          value={sort}
+          onValueChange={(value) => {
+            router.push(buildUrl({ sort: value ?? undefined }))
+          }}
+        >
+          <SelectTrigger className="h-8 w-44 rounded-md text-xs">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <Button
           variant={filtersOpen || activeFilterCount > 0 ? "default" : "outline"}

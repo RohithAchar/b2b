@@ -165,23 +165,6 @@ primary reading focus. No product count is shown — the homepage showcase is fo
 navigation and discovery, not analytics. Rendered in a dense responsive grid
 (4 columns mobile → 5–6 tablet → 8 desktop). `!gap-0 !py-0`.
 
-### Product listing search bar (`components/storefront/products-filter-bar.tsx`)
-Text search (GET `/products?q=…`) → category chips → sort + filter toggle. Rounded-square
-chips (`rounded-sm`), not pills.
-
-**Search by image** is a second, visually parallel control directly under the text form
-(`SearchVisualIcon`, outline button to pick a file + submit). It lives only here rather
-than in the header or mobile bottom sheet, so there is one image-search entry point
-instead of three. The control is server-gated on `JINA_API_KEY` via the
-`imageSearchEnabled` prop — a client component cannot read a server env var, so the flag
-is passed down from the page.
-
-In image mode (`?img=<uuid>`) the sort `Select` is **hidden**, not disabled: results are
-ordered by visual distance, so offering a sort control would contradict the result order.
-Category chips, filters and pagination all carry `img` forward; leaving any of them drops
-the visual query back to text search. The result count reads "N products found similar to
-your image", and an "Exit image search" link returns to the plain catalog.
-
 ### Product detail (`app/products/[id]/product-detail.tsx`)
 2-column grid `lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8`:
 - Left: **bounded** gallery — 64px thumbnail rail + 12px gap + a 500px square `bg-muted`

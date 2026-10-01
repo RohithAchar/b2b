@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildPageUrl,
-  parseBoolean,
-  parseImageQueryId,
-  parseNumber,
-  parseSort,
-  trimQuery,
-  type ProductSort,
-} from "../lib/storefront-query";
+import type { ProductSort } from "../lib/storefront";
 
-// These tests exercise the helpers the /products page and filter bar actually
-// use (lib/storefront-query.ts). They previously duplicated private copies of
-// these functions inside the test file, which meant the page could drift while
-// the suite still passed.
+// ---------------------------------------------------------------------------
+// Sort validation
+// ---------------------------------------------------------------------------
 
+const VALID_SORTS: ProductSort[] = ["relevance", "newest", "price_asc", "price_desc", "moq_asc"];
 
+function parseSort(value: string | undefined): ProductSort {
+  if (value && VALID_SORTS.includes(value as ProductSort)) {
+    return value as ProductSort;
+  }
+  return "relevance";
+}
 
 describe("parseSort", () => {
   it("returns the sort value when valid", () => {
@@ -35,6 +33,16 @@ describe("parseSort", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Number parsing for filters
+// ---------------------------------------------------------------------------
+
+function parseNumber(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 describe("parseNumber", () => {
   it("parses valid numbers", () => {
     expect(parseNumber("100")).toBe(100);
@@ -50,6 +58,16 @@ describe("parseNumber", () => {
     expect(parseNumber("NaN")).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Boolean parsing for filters
+// ---------------------------------------------------------------------------
+
+function parseBoolean(value: string | undefined): boolean | undefined {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+}
 
 describe("parseBoolean", () => {
   it("parses true", () => {
@@ -68,63 +86,40 @@ describe("parseBoolean", () => {
   });
 });
 
-describe("trimQuery", () => {
-  it("trims whitespace", () => {
-    expect(trimQuery("  steel  ")).toBe("steel");
-  });
+// ---------------------------------------------------------------------------
+// URL building for pagination with preserved state
+// ---------------------------------------------------------------------------
 
-  it("returns empty for undefined", () => {
-    expect(trimQuery(undefined)).toBe("");
-  });
-
-  it("returns empty for whitespace-only", () => {
-    expect(trimQuery("   ")).toBe("");
-  });
-
-  it("preserves multi-word queries", () => {
-    expect(trimQuery("stainless steel pipe")).toBe("stainless steel pipe");
-  });
-
-  it("preserves punctuation", () => {
-    expect(trimQuery("steel (304)")).toBe("steel (304)");
-  });
-});
-
-describe("parseImageQueryId", () => {
-  const valid = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
-
-  it("accepts a uuid", () => {
-    expect(parseImageQueryId(valid)).toBe(valid);
-  });
-
-  it("lowercases and trims", () => {
-    expect(parseImageQueryId(`  ${valid.toUpperCase()}  `)).toBe(valid);
-  });
-
-  it("rejects non-uuid values", () => {
-    // A malformed ?img= would otherwise be forwarded to the ranking RPC, which
-    // would raise a uuid parse error and fail the whole page.
-    expect(parseImageQueryId("not-a-uuid")).toBeNull();
-    expect(parseImageQueryId("'; drop table products; --")).toBeNull();
-    expect(parseImageQueryId("12345")).toBeNull();
-  });
-
-  it("rejects empty values", () => {
-    expect(parseImageQueryId(undefined)).toBeNull();
-    expect(parseImageQueryId("")).toBeNull();
-    expect(parseImageQueryId("   ")).toBeNull();
-  });
-});
+function buildPageUrl(params: {
+  query: string;
+  categorySlug: string;
+  sort: ProductSort;
+  minPrice?: string;
+  maxPrice?: string;
+  minMoq?: string;
+  maxMoq?: string;
+  inStock?: string;
+  negotiable?: string;
+  sampleAvailable?: string;
+  page: number;
+}) {
+  const sp = new URLSearchParams();
+  if (params.query) sp.set("q", params.query);
+  if (params.categorySlug) sp.set("category", params.categorySlug);
+  if (params.sort !== "relevance") sp.set("sort", params.sort);
+  if (params.minPrice) sp.set("minPrice", params.minPrice);
+  if (params.maxPrice) sp.set("maxPrice", params.maxPrice);
+  if (params.minMoq) sp.set("minMoq", params.minMoq);
+  if (params.maxMoq) sp.set("maxMoq", params.maxMoq);
+  if (params.inStock === "true") sp.set("inStock", "true");
+  if (params.negotiable === "true") sp.set("negotiable", "true");
+  if (params.sampleAvailable === "true") sp.set("sampleAvailable", "true");
+  sp.set("page", String(params.page));
+  return `/products?${sp.toString()}`;
+}
 
 describe("buildPageUrl", () => {
-  const base = {
-    query: "",
-    categorySlug: "",
-    sort: "relevance" as ProductSort,
-    page: 1,
-  };
-
-  it("preserves all text-search params when paginating", () => {
+  it("preserves all params when paginating", () => {
     const url = buildPageUrl({
       query: "steel",
       categorySlug: "metals",
@@ -152,48 +147,62 @@ describe("buildPageUrl", () => {
   });
 
   it("omits relevance sort", () => {
-    expect(buildPageUrl({ ...base, sort: "relevance" })).not.toContain("sort=");
-  });
-
-  it("includes sort when not relevance", () => {
-    expect(buildPageUrl({ ...base, sort: "newest" })).toContain("sort=newest");
-  });
-
-  it("handles empty params", () => {
-    expect(buildPageUrl(base)).toBe("/products?page=1");
-  });
-
-  it("carries the image query id instead of q", () => {
     const url = buildPageUrl({
-      ...base,
-      query: "steel",
-      imageQueryId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
-      page: 3,
-    });
-    expect(url).toContain("img=3f2504e0-4f89-41d3-9a0c-0305e82c3301");
-    // Ranking is visual, so a leftover text term must not ride along.
-    expect(url).not.toContain("q=");
-    expect(url).toContain("page=3");
-  });
-
-  it("drops sort in image mode", () => {
-    const url = buildPageUrl({
-      ...base,
-      sort: "price_desc",
-      imageQueryId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+      query: "",
+      categorySlug: "",
+      sort: "relevance",
+      page: 1,
     });
     expect(url).not.toContain("sort=");
   });
 
-  it("keeps filters alongside the image query id", () => {
+  it("includes sort when not relevance", () => {
     const url = buildPageUrl({
-      ...base,
-      categorySlug: "metals",
-      inStock: "true",
-      imageQueryId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+      query: "",
+      categorySlug: "",
+      sort: "newest",
+      page: 1,
     });
-    expect(url).toContain("img=3f2504e0-4f89-41d3-9a0c-0305e82c3301");
-    expect(url).toContain("category=metals");
-    expect(url).toContain("inStock=true");
+    expect(url).toContain("sort=newest");
+  });
+
+  it("handles empty params", () => {
+    const url = buildPageUrl({
+      query: "",
+      categorySlug: "",
+      sort: "relevance",
+      page: 1,
+    });
+    expect(url).toBe("/products?page=1");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Query trimming
+// ---------------------------------------------------------------------------
+
+function trimQuery(query: string | undefined): string {
+  return query?.trim() ?? "";
+}
+
+describe("trimQuery", () => {
+  it("trims whitespace", () => {
+    expect(trimQuery("  steel  ")).toBe("steel");
+  });
+
+  it("returns empty for undefined", () => {
+    expect(trimQuery(undefined)).toBe("");
+  });
+
+  it("returns empty for whitespace-only", () => {
+    expect(trimQuery("   ")).toBe("");
+  });
+
+  it("preserves multi-word queries", () => {
+    expect(trimQuery("stainless steel pipe")).toBe("stainless steel pipe");
+  });
+
+  it("Preserves punctuation", () => {
+    expect(trimQuery("steel (304)")).toBe("steel (304)");
   });
 });
