@@ -42,7 +42,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     .join(", ");
 
   return (
-    <Card className="group !gap-0 !py-0 overflow-hidden border-border transition-shadow hover:shadow-md">
+    <Card className="group !gap-0 !py-0 overflow-hidden border-0 transition-shadow hover:shadow-md">
       <Link href={`/products/${product.id}`} className="block">
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {isPlaceholder ? (
@@ -89,7 +89,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         </div>
       </Link>
 
-      <div className="flex items-center justify-between gap-1 border-t border-border bg-muted/30 max-sm:px-2 px-3 max-sm:py-1.5 py-2">
+      <div className="flex items-center justify-between gap-1 bg-muted/30 max-sm:px-2 px-3 max-sm:py-1.5 py-2">
         <div className="min-w-0">
           {supplier ? (
             <div className="flex items-center gap-1">
