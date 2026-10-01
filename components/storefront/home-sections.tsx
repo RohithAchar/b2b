@@ -96,6 +96,7 @@ export async function PopularCategoriesSection() {
         subtitle="Top wholesale categories in demand"
         actionLabel="All categories"
         actionHref="/products"
+        className="border-b-0"
       />
       {categories.length === 0 ? (
         <div className="py-4">
@@ -120,13 +121,14 @@ export async function WholesaleDealsSection() {
   const products = await getHomeProducts(supabase);
 
   return (
-    <section className="border-y border-border bg-card">
+    <section className="bg-card">
       <div className="mx-auto w-full max-w-7xl px-4 py-6">
         <SectionHeader
           title="Wholesale Deals"
           subtitle="Quoted wholesale prices directly from suppliers"
           actionLabel="View all"
           actionHref="/products"
+          className="border-b-0"
         />
         {products.length === 0 ? (
           <div className="py-4">
@@ -160,6 +162,7 @@ export async function SourceRegionsSection() {
         subtitle="Verified suppliers across Indian wholesale markets"
         actionLabel="Explore suppliers"
         actionHref="/products"
+        className="border-b-0"
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {regions.map((region) => (
@@ -183,6 +186,7 @@ export async function VerifiedSuppliersSection() {
         subtitle="Trusted wholesale suppliers on the platform"
         actionLabel="Browse suppliers"
         actionHref="/products"
+        className="border-b-0"
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         {featuredSuppliers.map((supplier) => (
