@@ -4,3 +4,7 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   msw: false
+  # Transformers.js image search runs CLIP through the native Node backend,
+  # which fetches its prebuilt binaries in a postinstall step.
+  onnxruntime-node: true
+  protobufjs: false

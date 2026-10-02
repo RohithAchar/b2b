@@ -35,3 +35,11 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# CLIP image-search weights (~86 MB), populated by
+# `pnpm embeddings:fetch-model` and bundled into the /api/search/image function
+# via outputFileTracingIncludes. Kept out of git so the repository does not
+# carry an 86 MB binary; `prebuild` repopulates it on every build.
+# Commit this line out if your build environment cannot reach the Hugging Face
+# Hub and you would rather have the weights in the repository.
+/models

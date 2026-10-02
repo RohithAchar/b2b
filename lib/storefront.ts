@@ -175,6 +175,13 @@ export type ProductListParams = {
   sampleAvailable?: boolean;
   page?: number;
   perPage?: number;
+  /**
+   * Search-by-image candidate products, most visually similar first. Constrains
+   * the listing to this set — it is a candidate pool, never a bypass of the
+   * other filters or the approved / not-hidden condition below. The `relevance`
+   * sort means "in the order given" rather than "newest".
+   */
+  imageProductIds?: string[];
 };
 
 export async function getProducts(supabase: SupabaseClient, params: ProductListParams) {
@@ -191,9 +198,17 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     sampleAvailable,
     page = 1,
     perPage = 24,
+    imageProductIds,
   } = params;
   const from = (page - 1) * perPage;
   const to = from + perPage - 1;
+
+  // Image search ranks by visual distance, so when it is active "relevance"
+  // means "in the order the caller supplied" rather than "newest first".
+  const similarityRank = imageProductIds
+    ? new Map(imageProductIds.map((id, index) => [id, index]))
+    : null;
+  const rankedIds = imageProductIds?.length ? [...imageProductIds] : null;
 
   // Build the base filtered query (without sorting/pagination yet).
   let qb = supabase
@@ -204,6 +219,12 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     )
     .eq("status", "approved")
     .eq("is_hidden", false);
+
+  // An .eq("id") per candidate would be an OR chain; .in() is a single
+  // membership test, so the candidate set can only ever narrow the listing.
+  if (similarityRank) {
+    qb = qb.in("id", rankedIds!);
+  }
 
   // Trim and skip empty queries — textSearch with "" matches everything but
   // wastes a GIN index scan and can produce surprising results.
@@ -293,6 +314,10 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
         const pb = priceMap.get(b) ?? 0;
         return ascending ? pa - pb : pb - pa;
       });
+    } else if (similarityRank) {
+      // Price was only a filter here, so restore visual-similarity order —
+      // the .order("id") above would otherwise have reshuffled the candidates.
+      filteredIds.sort((a, b) => (similarityRank.get(a) ?? 0) - (similarityRank.get(b) ?? 0));
     }
 
     const total = filteredIds.length;
@@ -340,6 +365,46 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
       page,
       perPage,
       totalPages,
+    };
+  }
+
+  // Image search with the default sort: the candidate pool is already small and
+  // bounded, and its order is a visual ranking PostgREST cannot express, so page
+  // and order are applied here instead of in the query. Mirrors the three-step
+  // approach the price path already takes.
+  if (similarityRank) {
+    const { data, count } = await qb.order("id");
+    const rows = data ?? [];
+
+    const ranked = rows
+      .filter((row) => similarityRank.has(row.id as string))
+      .sort(
+        (a, b) =>
+          (similarityRank.get(a.id as string) ?? 0) - (similarityRank.get(b.id as string) ?? 0),
+      );
+
+    const pageRows = ranked.slice(from, to + 1);
+    const [supplierMap, priceMap] = await Promise.all([
+      fetchSupplierMap(
+        supabase,
+        pageRows.map((p) => p.supplier_id as string),
+      ),
+      fetchCustomerPriceMap(
+        supabase,
+        pageRows.map((p) => p.id as string),
+      ),
+    ]);
+
+    return {
+      products: pageRows.map((p) => ({
+        ...p,
+        supplier: supplierMap.get(p.supplier_id as string) ?? null,
+        pricing: priceMap.get(p.id as string) ?? null,
+      })),
+      total: count ?? ranked.length,
+      page,
+      perPage,
+      totalPages: Math.ceil((count ?? ranked.length) / perPage),
     };
   }
 

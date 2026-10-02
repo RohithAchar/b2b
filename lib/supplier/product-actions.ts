@@ -12,6 +12,8 @@ import {
 } from "@/lib/supplier/products";
 import { defaultSeoDescription, defaultSeoTitle } from "@/lib/supplier/rich-text";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
+import { indexProductImages } from "@/lib/ai/index-product-image";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ProductActionState = {
   ok: boolean;
@@ -108,6 +110,28 @@ async function rollbackCreatedProduct(
 
 function rpcMessage(error: { message?: string } | null, fallback: string): string {
   return error?.message ? error.message : fallback;
+}
+
+/**
+ * Index the product's images so they can be found by search-by-image.
+ *
+ * Called after the last database mutation of a save, so a rolled-back product is
+ * never embedded. Strictly best-effort: missing service-role credentials, a
+ * model that cannot load, or a storage error are logged and left to
+ * `pnpm embeddings:backfill`, which is resumable. A product save must never
+ * fail because the search index did not update.
+ *
+ * Uses the service-role client because product_image_embeddings grants nothing
+ * to authenticated, so embedding writes cannot be done with the caller's token.
+ */
+async function indexImagesForSearch(productId: string): Promise<void> {
+  try {
+    await indexProductImages(createAdminClient(), productId);
+  } catch (err) {
+    console.error(
+      `[image-search] skipped indexing for product ${productId}: ${(err as Error).message}`,
+    );
+  }
 }
 
 type ParsedVariant = {
@@ -368,6 +392,8 @@ export async function createProduct(
     }
   }
 
+  await indexImagesForSearch(product.id);
+
   revalidatePath("/supplier/dashboard/products");
   if (boolOf(formData.get("auto_submit"))) {
     const res = await submitForApproval(supabase, supplierId, product.id);
@@ -549,6 +575,8 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
     console.error("updateProduct variants failed:", variantsError);
     return { ok: false, message: rpcMessage(variantsError, "Product saved but variant sync failed. Edit to retry."), productId };
   }
+
+  await indexImagesForSearch(productId);
 
   revalidatePath("/supplier/dashboard/products");
   revalidatePath("/products");
