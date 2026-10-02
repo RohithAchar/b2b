@@ -91,7 +91,6 @@ function buildPageUrl(params: {
 function FilterBarSkeleton() {
   return (
     <div aria-hidden className="mb-4 flex flex-col gap-3">
-      <Skeleton className="h-10 w-full max-w-md" />
       <div className="flex flex-wrap gap-1.5">
         <Skeleton className="h-7 w-16 rounded-sm" />
         <Skeleton className="h-7 w-20 rounded-sm" />
