@@ -225,6 +225,7 @@ describe.skipIf(!existsSync(SEARCH_ROUTE_TRACE))("deployed image search function
 
   it.each([
     ["sharp's libvips", /libvips-cpp\.so\./],
+    ["onnxruntime-node's package.json", /onnxruntime-node\/package\.json$/],
     ["onnxruntime-node's JavaScript", /onnxruntime-node\/dist\/index\.js$/],
     ["onnxruntime-node's binding", /onnxruntime_binding\.node$/],
     ["onnxruntime-node's CPU library", /libonnxruntime\.so\.1$/],
