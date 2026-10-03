@@ -1,7 +1,13 @@
+import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { resolveLocalModelDir } from "../lib/ai/image-model-source";
+import {
+  configureImageModelSource,
+  IMAGE_MODEL_ROOT,
+  resolveLocalModelDir,
+} from "../lib/ai/image-model-source";
 import {
   getImageEmbedding,
   IMAGE_EMBEDDING_DIM,
@@ -151,6 +157,79 @@ describe("image model source", () => {
   it("never points at a directory outside models/", () => {
     const dir = resolveLocalModelDir();
     expect(dir === null || dir.startsWith(resolve(process.cwd(), "models"))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Native dependencies — the Vercel failure this guards against. Nothing here
+// downloads a model: `sharp` and `onnxruntime-node` are loaded for their
+// side effect of binding, and the model source is only *resolved*.
+// ---------------------------------------------------------------------------
+
+describe("image search native dependencies", () => {
+  it("binds libvips, which fails with ERR_DLOPEN_FAILED when its .so is absent", () => {
+    // A deployed function whose trace omitted `libvips-cpp.so.<version>` throws
+    // `Could not load the "sharp" module using the linux-x64 runtime` on the
+    // first image search, long after the request reached the endpoint.
+    expect(sharp.versions.vips).toEqual(expect.any(String));
+    expect(sharp.versions.vips.length).toBeGreaterThan(0);
+  });
+
+  it("binds the ONNX runtime", async () => {
+    // The binding is required through a template literal, so a deployed function
+    // that did not trace it fails here instead, on the first inference.
+    //
+    // Resolved from Transformers.js rather than by package name: pnpm keeps
+    // `onnxruntime-node` next to its single dependent, so only the import path
+    // Transformers.js itself uses finds it.
+    const requireFromTransformers = createRequire(
+      createRequire(import.meta.url).resolve("@huggingface/transformers"),
+    );
+    const ort = requireFromTransformers("onnxruntime-node");
+
+    expect(ort.InferenceSession).toBeTypeOf("function");
+  });
+
+  it("points the library at models/ and forbids remote fetches", async () => {
+    const dir = await configureImageModelSource();
+    const { env } = await import("@huggingface/transformers");
+
+    if (dir === null) {
+      // No vendored weights in this checkout: the download fallback stays legal.
+      return;
+    }
+    // The whole point of vendoring: a cold start must not reach the Hub.
+    expect(env.allowRemoteModels).toBe(false);
+    expect(env.localModelPath).toBe(IMAGE_MODEL_ROOT);
+    expect(env.useFSCache).toBe(false);
+  });
+});
+
+/**
+ * What actually reaches the deployed function. The two checks above also pass on
+ * a developer machine, where `node_modules` is complete and nothing is traced;
+ * this one reads the build output, so it is the only check that notices when a
+ * native binary stops being shipped. Skipped when there is no build to inspect.
+ */
+const SEARCH_ROUTE_TRACE = resolve(
+  process.cwd(),
+  ".next/server/app/api/search/image/route.js.nft.json",
+);
+
+describe.skipIf(!existsSync(SEARCH_ROUTE_TRACE))("deployed image search function", () => {
+  const tracedFiles: string[] = JSON.parse(readFileSync(SEARCH_ROUTE_TRACE, "utf8")).files;
+
+  it("ships the CLIP weights rather than downloading them", () => {
+    expect(tracedFiles.some((file) => file.includes("clip-vit-base-patch32/onnx/"))).toBe(true);
+  });
+
+  it.each([
+    ["sharp's libvips", /libvips-cpp\.so\./],
+    ["onnxruntime-node's JavaScript", /onnxruntime-node\/dist\/index\.js$/],
+    ["onnxruntime-node's binding", /onnxruntime_binding\.node$/],
+    ["onnxruntime-node's CPU library", /libonnxruntime\.so\.1$/],
+  ])("ships %s", (_label, pattern) => {
+    expect(tracedFiles.some((file) => pattern.test(file))).toBe(true);
   });
 });
 
