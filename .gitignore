@@ -1,5 +1,5 @@
-# dependencies
-/node_modules
+# dependencies (matches at any depth, including services/*/)
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -31,7 +31,13 @@ pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Locally cached CLIP weights for services/image-search development
+# (populated on first run into the Transformers.js cache). Never committed;
+# the Docker image bakes weights at build time instead.
+/models

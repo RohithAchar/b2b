@@ -12,6 +12,7 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "migration:list": "supabase migration list",
+    "embeddings:backfill": "node scripts/backfill-product-image-embeddings.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -47,6 +48,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@huggingface/transformers": "^4.3.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -54,6 +56,7 @@
     "@types/sanitize-html": "^2.16.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "onnxruntime-node": "^1.30.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "supabase": "^2.117.0",

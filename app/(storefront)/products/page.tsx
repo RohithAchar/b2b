@@ -20,6 +20,7 @@ import {
 import { ProductGridSkeleton } from "@/components/storefront/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProductsFilterBar } from "@/components/storefront/products-filter-bar"
+import { decodeImageResultToken } from "@/lib/ai/image-result-token"
 
 type SearchParams = {
   q?: string
@@ -33,6 +34,7 @@ type SearchParams = {
   negotiable?: string
   sampleAvailable?: string
   page?: string
+  img?: string
 }
 
 const VALID_SORTS: ProductSort[] = ["relevance", "newest", "price_asc", "price_desc", "moq_asc"]
@@ -68,6 +70,7 @@ function buildPageUrl(params: {
   negotiable?: string
   sampleAvailable?: string
   page: number
+  imageToken?: string
 }) {
   const sp = new URLSearchParams()
   if (params.query) sp.set("q", params.query)
@@ -80,6 +83,7 @@ function buildPageUrl(params: {
   if (params.inStock === "true") sp.set("inStock", "true")
   if (params.negotiable === "true") sp.set("negotiable", "true")
   if (params.sampleAvailable === "true") sp.set("sampleAvailable", "true")
+  if (params.imageToken) sp.set("img", params.imageToken)
   sp.set("page", String(params.page))
   return `/products?${sp.toString()}`
 }
@@ -87,7 +91,6 @@ function buildPageUrl(params: {
 function FilterBarSkeleton() {
   return (
     <div aria-hidden className="mb-4 flex flex-col gap-3">
-      <Skeleton className="h-10 w-full max-w-md" />
       <div className="flex flex-wrap gap-1.5">
         <Skeleton className="h-7 w-16 rounded-sm" />
         <Skeleton className="h-7 w-20 rounded-sm" />
@@ -122,6 +125,12 @@ async function ProductListings({
   const sampleAvailable = parseBoolean(sp.sampleAvailable)
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
 
+  // Search-by-image mode: `img` carries a compact, ordered list of product ids
+  // produced by /api/search/image. A malformed token simply degrades to a normal
+  // listing rather than erroring.
+  const imageProductIds = decodeImageResultToken(sp.img) ?? undefined
+  const imageToken = imageProductIds ? sp.img : undefined
+
   const supabase = await createClient()
   const { products, total, totalPages } = await getProducts(supabase, {
     query,
@@ -136,6 +145,7 @@ async function ProductListings({
     sampleAvailable: sampleAvailable ?? undefined,
     page,
     perPage: 24,
+    imageProductIds,
   })
 
   const activeFilter = categorySlug
@@ -208,6 +218,7 @@ async function ProductListings({
     if (inStock && removeParams.inStock === undefined) sp.set("inStock", "true")
     if (negotiable && removeParams.negotiable === undefined) sp.set("negotiable", "true")
     if (sampleAvailable && removeParams.sampleAvailable === undefined) sp.set("sampleAvailable", "true")
+    if (imageToken) sp.set("img", imageToken)
     sp.set("page", "1")
     return `/products?${sp.toString()}`
   }
@@ -216,6 +227,7 @@ async function ProductListings({
     const sp = new URLSearchParams()
     if (query) sp.set("q", query)
     if (categorySlug) sp.set("category", categorySlug)
+    // Deliberately drops `img`: clearing filters returns to a plain listing.
     return `/products?${sp.toString()}`
   }
 
@@ -223,6 +235,19 @@ async function ProductListings({
 
   return (
     <>
+      {/* Image-search heading. Deliberately says "similar", never "match" —
+          this is visual similarity retrieval, not product identification. */}
+      {imageProductIds && (
+        <div className="mb-4">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Products similar to your photo
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Showing products visually similar to your uploaded image.
+          </p>
+        </div>
+      )}
+
       {/* Results meta */}
       <div className="mb-4 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1">
         <p className="text-sm text-muted-foreground">
@@ -234,6 +259,9 @@ async function ProductListings({
           <span className="text-xs text-muted-foreground">
             Sorted by {sortLabel}
           </span>
+        )}
+        {imageProductIds && sort === "relevance" && (
+          <span className="text-xs text-muted-foreground">Ordered by visual similarity</span>
         )}
       </div>
 
@@ -274,13 +302,17 @@ async function ProductListings({
       {products.length === 0 ? (
         <div className="py-16">
           <Empty>
-            <EmptyTitle>No products found</EmptyTitle>
+            <EmptyTitle>
+              {imageProductIds ? "No visually similar products found" : "No products found"}
+            </EmptyTitle>
             <EmptyDescription>
-              Try a different search or clear the filters.
+              {imageProductIds
+                ? "Try a photo with more of the product in frame, or browse the full catalog."
+                : "Try a different search or clear the filters."}
             </EmptyDescription>
-            <Link href="/products">
+            <Link href={clearAllUrl()}>
               <Button variant="outline" size="sm" className="mt-3">
-                Clear filters
+                {imageProductIds ? "Browse all products" : "Clear filters"}
               </Button>
             </Link>
           </Empty>
@@ -316,6 +348,7 @@ async function ProductListings({
                       negotiable: negotiable ? "true" : undefined,
                       sampleAvailable: sampleAvailable ? "true" : undefined,
                       page: page - 1,
+                      imageToken,
                     })}
                   />
                 </PaginationItem>
@@ -337,6 +370,7 @@ async function ProductListings({
                         negotiable: negotiable ? "true" : undefined,
                         sampleAvailable: sampleAvailable ? "true" : undefined,
                         page: p,
+                        imageToken,
                       })}
                       isActive={p === page}
                     >
@@ -360,6 +394,7 @@ async function ProductListings({
                       negotiable: negotiable ? "true" : undefined,
                       sampleAvailable: sampleAvailable ? "true" : undefined,
                       page: page + 1,
+                      imageToken,
                     })}
                   />
                 </PaginationItem>

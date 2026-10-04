@@ -12,14 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search01Icon, FilterIcon } from "@hugeicons/core-free-icons"
+import { FilterIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useState } from "react"
 
-export function buildCategoryLink(query: string, slug: string) {
+
+export function buildCategoryLink(query: string, slug: string, imageToken = "") {
   const sp = new URLSearchParams()
   sp.set("category", slug)
   if (query) sp.set("q", query)
+  if (imageToken) sp.set("img", imageToken)
   return `/products?${sp.toString()}`
 }
 
@@ -45,6 +47,7 @@ export function ProductsFilterBar() {
   const inStock = searchParams.get("inStock") === "true"
   const negotiable = searchParams.get("negotiable") === "true"
   const sampleAvailable = searchParams.get("sampleAvailable") === "true"
+  const imageToken = searchParams.get("img") ?? ""
 
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -78,6 +81,8 @@ export function ProductsFilterBar() {
     if (finalNegotiable === "true") sp.set("negotiable", "true")
     const finalSampleAvailable = overrides.sampleAvailable ?? (sampleAvailable ? "true" : undefined)
     if (finalSampleAvailable === "true") sp.set("sampleAvailable", "true")
+    // Image search is a candidate pool, so it rides along with every filter.
+    if (imageToken) sp.set("img", imageToken)
     sp.set("page", "1")
     return `/products?${sp.toString()}`
   }
@@ -91,31 +96,23 @@ export function ProductsFilterBar() {
 
   return (
     <div className="mb-4 flex flex-col gap-3">
-      {/* Search form */}
-      <form action="/products" method="get" className="flex gap-2">
-        {categorySlug && (
-          <input type="hidden" name="category" value={categorySlug} />
-        )}
-        <input type="hidden" name="page" value="1" />
-        <div className="relative flex-1">
-          <Input
-            name="q"
-            defaultValue={query}
-            placeholder="Search products, suppliers or brands..."
-            className="h-10 pr-9"
-          />
-          <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground">
-            <HugeiconsIcon
-              icon={Search01Icon}
-              strokeWidth={2}
-              className="size-4"
-            />
-          </span>
+      {/* Searching happens in the storefront header on desktop and the mobile
+          bottom-nav sheet on small screens. This bar only narrows results. */}
+
+      {/* Image-search mode banner */}
+      {imageToken && (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2">
+          <p className="text-sm text-foreground">
+            Showing products visually similar to your uploaded image.
+          </p>
+          <Link
+            href={clearAllUrl()}
+            className="shrink-0 text-xs font-medium text-primary hover:underline"
+          >
+            Clear image search
+          </Link>
         </div>
-        <Button type="submit" size="lg">
-          Search
-        </Button>
-      </form>
+      )}
 
       {/* Category chips */}
       <div className="flex flex-wrap gap-1.5">
@@ -141,7 +138,7 @@ export function ProductsFilterBar() {
             size="sm"
             nativeButton={false}
             className="h-7 rounded-sm text-xs"
-            render={<Link href={buildCategoryLink(query, cat.slug)} />}
+            render={<Link href={buildCategoryLink(query, cat.slug, imageToken)} />}
           >
             {cat.name}
           </Button>

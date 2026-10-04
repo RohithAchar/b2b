@@ -1,9 +1,22 @@
+"use client"
+
 import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon, Store01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ImageSearchButton } from "@/components/storefront/image-search-button"
 
+/**
+ * The storefront search bar.
+ *
+ * Used by the header's search tier and the mobile bottom-nav sheet — the only
+ * two places a shopper searches from — so image search is reachable from every
+ * search entry point rather than only one of them.
+ *
+ * The file is a client component because `ImageSearchButton` opens a file
+ * picker and navigates.
+ */
 export function StorefrontSearchForm({
   autoFocus = false,
   showBrowseAll = false,
@@ -33,6 +46,7 @@ export function StorefrontSearchForm({
           />
         </span>
       </div>
+      <ImageSearchButton />
       <Button type="submit" size="lg" className="shrink-0 px-6">
         Search
       </Button>
