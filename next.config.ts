@@ -21,6 +21,25 @@ const nextConfig: NextConfig = {
       // enforced in lib/supplier/kyb.ts after parsing.
       bodySizeLimit: "32mb",
     },
+    // Dev-memory fix (8 GB RAM machines were swapping): several dependencies
+    // ship a single barrel that re-exports thousands of modules — notably
+    // `@hugeicons/core-free-icons` (~148 MB, imported by ~60 files) and
+    // `recharts` (`import *`). Without this, compiling any page that touches
+    // one icon parses the entire barrel. This rewrites those imports to
+    // per-module paths at compile time; no source changes needed.
+    optimizePackageImports: [
+      "@hugeicons/core-free-icons",
+      "@hugeicons/react",
+      "recharts",
+      "@base-ui/react",
+      "cmdk",
+      "embla-carousel-react",
+      "react-day-picker",
+      "date-fns",
+      "@tiptap/react",
+      "@tiptap/starter-kit",
+      "@tiptap/extension-link",
+    ],
   },
 }
 
