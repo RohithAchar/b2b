@@ -192,59 +192,22 @@ revisit the token length above.
 
 ## Deployment notes
 
-The weights live in `models/` and are bundled into the routes that need them, so
-a cold start is a disk read rather than a download. Both figures below are
-measured, and the gap is the whole reason `models/` exists:
-
-| | |
-| --- | --- |
-| Cold load, weights downloaded from the Hub | **935 s** |
-| Cold load, weights read from `models/` | **~0.9 s** |
-| Warm load | ~0.7 s |
-| Inference, 800×600 | 71–144 ms |
-| Quantised weights (`q8`) | ~85 MB |
-
-An earlier measurement of the download path came out at 441 s; 935 s is the
-figure from a clean re-run on this machine. Treat both as "minutes, and not
-predictable" — the download rate is the variable, not the model.
-
-Verified end-to-end through HTTP against a freshly started `next start`
-process, i.e. paying the cold load in-request:
+CLIP inference runs in a standalone service (`services/image-search/`, see its
+README). The browser never talks to it — the flow is:
 
 ```
-[image-search] model ready (local): Xenova/clip-vit-base-patch32 q8
-[image-search] embed 855ms, rpc 1637ms, 35 image matches, 23 products
-status=200 total=2.524638s
+browser ─▶ Vercel POST /api/search/image ─▶ inference service POST /embed
+  ─▶ 512-d unit vector ─▶ Supabase match_product_images() ─▶ product ids
+  ─▶ existing /products?img=<token> result flow
 ```
 
-### Populating `models/`
-
-`pnpm embeddings:fetch-model` writes the three files a vision-only pipeline
-reads (`config.json`, `preprocessor_config.json`,
-`onnx/vision_model_quantized.onnx`). It tries the Transformers.js download cache
-first, so it costs 0.5 s on a machine that has already run the model, and only
-falls back to the Hub otherwise.
-
-`prebuild` runs it, so `pnpm build` cannot produce a deployment without weights.
-The directory is gitignored — see the note there if your build environment
-cannot reach the Hub and you would rather commit the weights.
-
-`next.config.ts` lists the routes under `outputFileTracingIncludes`. The tracer
-currently resolves `models/` on its own, but the list is explicit so a tracer
-change fails loudly in review rather than silently in production. Any new route
-that reaches `getImageEmbedding()` needs adding to it.
-
-`lib/ai/image-model-source.ts` leaves the Transformers.js defaults alone when
-`models/` is missing, so a checkout without the weights still works — just with
-the multi-minute download. The loader logs which path it took:
-
-```
-[image-search] model ready (local): ...        # from models/
-[image-search] model ready (downloaded): ...   # Hub fallback, minutes
-```
-
-An unexpected `downloaded` line in production logs means the tracing config is
-wrong, not that the network is slow.
+Vercel keeps request validation, rate limiting, the pgvector search, and the
+`ImageSearchResponse` shape; the service owns model loading (once per process,
+weights cached, never downloaded per request), Bearer-token auth
+(`IMAGE_SEARCH_SERVICE_TOKEN`), and `/health`. Vercel needs
+`IMAGE_SEARCH_SERVICE_URL` + `IMAGE_SEARCH_SERVICE_TOKEN`; the service needs
+`IMAGE_SEARCH_SERVICE_TOKEN`. The Next.js bundle contains no
+Transformers.js/ONNX/weights (verified via the route's `.nft.json` trace).
 
 ### Loading the weights from disk
 
@@ -301,7 +264,9 @@ Known limits, stated rather than hidden:
 
 | Path | Role |
 | --- | --- |
-| `lib/ai/image-embeddings.ts` | Model singleton, `normalizeVector`, `getImageEmbedding`. Server-only. |
+| `lib/ai/image-embeddings.ts` | Local CLIP runtime for the inference service and offline CLI backfill. Never imported by app routes. |
+| `lib/ai/image-embedding-model.ts` | Model id/dim constants. Client-safe. |
+| `lib/ai/image-inference-client.ts` | Vercel → service client (auth, timeout, validation). Server-only. |
 | `lib/ai/image-model-source.ts` | Resolves `models/` and points Transformers.js at it. Server-only. |
 | `lib/ai/image-search-config.ts` | Tunables and shared types. Client-safe. |
 | `lib/ai/search-products.ts` | RPC wrapper. Server-only. |
@@ -312,8 +277,8 @@ Known limits, stated rather than hidden:
 | `lib/supabase/admin.ts` | Service-role client. Server-only. |
 | `app/api/search/image/route.ts` | Upload endpoint. |
 | `components/storefront/image-search-button.tsx` | Camera button and preview. |
-| `scripts/backfill-product-image-embeddings.ts` | `pnpm embeddings:backfill`. |
-| `scripts/fetch-image-model-weights.ts` | `pnpm embeddings:fetch-model`. Populates `models/`. |
+| `scripts/backfill-product-image-embeddings.ts` | `pnpm embeddings:backfill`. Uses the service when configured, local CLIP otherwise. |
+| `services/image-search/` | Standalone inference service (Docker, `/health`, `/embed`). |
 
 ## Tests
 

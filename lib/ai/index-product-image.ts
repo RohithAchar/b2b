@@ -4,10 +4,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // support, which does not do extensionless resolution.
 import { publicImageUrl } from "../storage.ts";
 import { IMAGE_INDEXING_TIMEOUT_MS } from "./image-search-config.ts";
-import { getImageEmbedding, IMAGE_EMBEDDING_MODEL } from "./image-embeddings.ts";
+import { IMAGE_EMBEDDING_MODEL } from "./image-embedding-model.ts";
+import { getImageEmbeddingViaService } from "./image-inference-client.ts";
 
 /**
  * Server-only. Generates and stores CLIP embeddings for catalog product images.
+ *
+ * Embeddings always come from the shared inference service
+ * (services/image-search/) via getImageEmbeddingViaService — this module never
+ * imports the local Transformers.js runtime, so no app route or server action
+ * that reaches it can pull ML/native binaries into the Vercel bundle. Offline
+ * CLI runs without service credentials use the local path inside
+ * scripts/backfill-product-image-embeddings.ts instead.
  *
  * Writes go through a service-role client (lib/supabase/admin.ts) because
  * product_image_embeddings deliberately grants nothing to anon/authenticated;
@@ -44,7 +52,7 @@ export async function indexProductImage(
   image: ProductImageSource,
 ): Promise<void> {
   const blob = await fetchImageBytes(publicImageUrl(PRODUCT_IMAGES_BUCKET, image.path));
-  const embedding = await getImageEmbedding(blob);
+  const embedding = await getImageEmbeddingViaService(blob);
 
   const { error } = await supabase.from("product_image_embeddings").upsert(
     {

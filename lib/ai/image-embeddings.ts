@@ -12,18 +12,13 @@
  */
 
 import { configureImageModelSource } from "./image-model-source.ts";
+import {
+  IMAGE_EMBEDDING_DIM,
+  IMAGE_EMBEDDING_DTYPE,
+  IMAGE_EMBEDDING_MODEL,
+} from "./image-embedding-model.ts";
 
-export const IMAGE_EMBEDDING_MODEL = "Xenova/clip-vit-base-patch32";
-
-/** CLIP ViT-B/32's projected image-embedding width. Must match the migration. */
-export const IMAGE_EMBEDDING_DIM = 512;
-
-/**
- * Quantised weights: ~89 MB instead of ~350 MB, with negligible effect on
- * ranking quality for visual similarity. Inference lands around 100 ms per
- * image on a laptop-class CPU.
- */
-export const IMAGE_EMBEDDING_DTYPE = "q8";
+export { IMAGE_EMBEDDING_DIM, IMAGE_EMBEDDING_DTYPE, IMAGE_EMBEDDING_MODEL };
 
 export class ImageEmbeddingError extends Error {
   // Declared rather than a constructor parameter property: this module is also

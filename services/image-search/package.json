@@ -1,0 +1,1 @@
+{"name":"b2b-image-search-service","version":"0.0.1","private":true,"type":"module","scripts":{"start":"node src/server.js","dev":"node src/server.js"},"dependencies":{"@huggingface/transformers":"^4.3.0","onnxruntime-node":"^1.30.0","sharp":"^0.35.5"},"engines":{"node":">=22"}}

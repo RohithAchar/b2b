@@ -206,10 +206,12 @@ describe("image search native dependencies", () => {
 });
 
 /**
- * What actually reaches the deployed function. The two checks above also pass on
- * a developer machine, where `node_modules` is complete and nothing is traced;
- * this one reads the build output, so it is the only check that notices when a
- * native binary stops being shipped. Skipped when there is no build to inspect.
+ * What actually reaches the deployed function. CLIP inference moved to the
+ * standalone service (services/image-search/), so the Vercel route must trace
+ * NEITHER model weights NOR native ML binaries. This reads the build output,
+ * so it is the only check that notices when an app/lib import accidentally
+ * pulls the ML runtime back into the bundle. Skipped when there is no build
+ * to inspect.
  */
 const SEARCH_ROUTE_TRACE = resolve(
   process.cwd(),
@@ -217,10 +219,13 @@ const SEARCH_ROUTE_TRACE = resolve(
 );
 
 describe.skipIf(!existsSync(SEARCH_ROUTE_TRACE))("deployed image search function", () => {
-  const tracedFiles: string[] = JSON.parse(readFileSync(SEARCH_ROUTE_TRACE, "utf8")).files;
+  // Read lazily inside the tests: the trace only exists after `pnpm build`,
+  // and eager reads break collection when `.next` is absent or stale.
+  const tracedFiles = (): string[] =>
+    JSON.parse(readFileSync(SEARCH_ROUTE_TRACE, "utf8")).files;
 
-  it("ships the CLIP weights rather than downloading them", () => {
-    expect(tracedFiles.some((file) => file.includes("clip-vit-base-patch32/onnx/"))).toBe(true);
+  it("does not bundle CLIP weights", () => {
+    expect(tracedFiles().some((file) => file.includes("clip-vit-base-patch32/onnx/"))).toBe(false);
   });
 
   it.each([
@@ -229,8 +234,9 @@ describe.skipIf(!existsSync(SEARCH_ROUTE_TRACE))("deployed image search function
     ["onnxruntime-node's JavaScript", /onnxruntime-node\/dist\/index\.js$/],
     ["onnxruntime-node's binding", /onnxruntime_binding\.node$/],
     ["onnxruntime-node's CPU library", /libonnxruntime\.so\.1$/],
-  ])("ships %s", (_label, pattern) => {
-    expect(tracedFiles.some((file) => pattern.test(file))).toBe(true);
+    ["Transformers.js", /@huggingface\/transformers/],
+  ])("does not bundle %s", (_label, pattern) => {
+    expect(tracedFiles().some((file) => pattern.test(file))).toBe(false);
   });
 });
 

@@ -2,11 +2,9 @@ packages: []
 
 # Sharp ships its binaries as platform-specific optional dependencies
 # (`@img/sharp-<platform>` / `@img/sharp-libvips-<platform>`), and pnpm installs
-# optional dependencies for the current platform only. Without this, the build
-# machine decides which `@img/*` packages exist: on an Apple Silicon laptop the
-# build produces arm64 binaries that the Linux x64 Vercel runtime cannot
-# dlopen. `current` keeps local development and `pnpm test` working;
-# `linux-x64` is the Vercel Node runtime (glibc, no musl suffix).
+# optional dependencies for the current platform only. `current` keeps local
+# development and `pnpm test` working; `linux-x64` is the Vercel Node runtime
+# (glibc). Needed by lib/admin/banners.ts image processing.
 supportedArchitectures:
   - current
   - linux-x64
@@ -15,7 +13,7 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   msw: false
-  # Transformers.js image search runs CLIP through the native Node backend,
-  # which fetches its prebuilt binaries in a postinstall step.
+  # Dev/CLI-only: local CLIP fallback for scripts + model tests, and the
+  # standalone service in services/image-search/. Never imported by app routes.
   onnxruntime-node: true
   protobufjs: false

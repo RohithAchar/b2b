@@ -6,17 +6,15 @@ import {
   IMAGE_SEARCH_UPLOAD_FIELD,
   type ImageSearchResponse,
 } from "@/lib/ai/image-search-config";
-import { getImageEmbedding, ImageEmbeddingError } from "@/lib/ai/image-embeddings";
+import { getImageEmbeddingViaService, ImageInferenceError } from "@/lib/ai/image-inference-client";
 import { isImageSearchRateLimited } from "@/lib/ai/image-search-rate-limit";
 import { findSimilarProducts, ImageSearchUnavailableError } from "@/lib/ai/search-products";
 
-// CLIP runs through onnxruntime-node, which the Edge runtime cannot load.
+// The model runs in the external inference service (services/image-search/),
+// so this route stays a thin validate -> embed -> pgvector-search proxy and the
+// Vercel bundle never contains Transformers.js, ONNX, or model weights.
 export const runtime = "nodejs";
 
-// The CLIP weights are vendored into `models/` and bundled with this function
-// (see next.config.ts), so a cold start costs a ~0.9 s disk read rather than a
-// download. Measured end-to-end at 2.5 s from a cold server process, so this
-// ceiling only has to cover the first request that pays the model load.
 export const maxDuration = 60;
 
 const MB = 1024 * 1024;
@@ -78,12 +76,17 @@ export async function POST(request: NextRequest) {
 
   let embedding: number[];
   try {
-    embedding = await getImageEmbedding(uploaded);
+    embedding = await getImageEmbeddingViaService(uploaded);
   } catch (err) {
-    if (err instanceof ImageEmbeddingError) {
-      console.error(`[image-search] embedding failed: ${err.message}`);
-      if (err.cause) console.error("[image-search] cause:", err.cause);
-      return errorResponse(422, "Couldn't read that photo. Try another one.", "embedding_failed");
+    if (err instanceof ImageInferenceError) {
+      console.error(`[image-search] inference failed (${err.code}): ${err.message}`);
+      if (err.code === "rejected") {
+        return errorResponse(422, "Couldn't read that photo. Try another one.", "embedding_failed");
+      }
+      if (err.code === "unavailable") {
+        return errorResponse(503, "Image search is unavailable right now.", "search_unavailable");
+      }
+      return errorResponse(500, "Image search is unavailable right now.", "embedding_failed");
     }
     console.error("[image-search] unexpected embedding error:", err);
     return errorResponse(500, "Image search is unavailable right now.", "embedding_failed");

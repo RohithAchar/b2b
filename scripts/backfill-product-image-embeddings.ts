@@ -4,8 +4,12 @@
  *   pnpm embeddings:backfill
  *
  * Explicitly invoked only. Never runs during `next build`, `next dev` startup or
- * a migration, because it downloads ~89 MB of model weights and embeds the
- * whole catalog.
+ * a migration, because it embeds the whole catalog.
+ *
+ * Embedding source: the shared inference service (IMAGE_SEARCH_SERVICE_URL +
+ * IMAGE_SEARCH_SERVICE_TOKEN) when configured — the same runtime the
+ * storefront search uses. Without service credentials it falls back to local
+ * CLIP via lib/ai/image-embeddings.ts (requires the ML devDependencies).
  *
  * Resumable: images that already have a row for the current model are skipped,
  * so re-running after a failure only does the remaining work. Individual image
@@ -14,10 +18,11 @@
  * Run with Node's native TypeScript support, which requires relative imports to
  * carry explicit `.ts` extensions (hence the unusual-looking specifiers).
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "../lib/supabase/admin.ts";
 import { IMAGE_BACKFILL_BATCH_SIZE } from "../lib/ai/image-search-config.ts";
 import { indexProductImage } from "../lib/ai/index-product-image.ts";
-import { IMAGE_EMBEDDING_MODEL } from "../lib/ai/image-embeddings.ts";
+import { IMAGE_EMBEDDING_MODEL } from "../lib/ai/image-embedding-model.ts";
 
 type ProductImageRow = {
   id: string;
@@ -70,7 +75,32 @@ async function existingImageIds(batch: ProductImageRow[]): Promise<Set<string>> 
   return new Set((data ?? []).map((row) => row.product_image_id as string));
 }
 
+/**
+ * Offline fallback for runs without inference-service credentials. Lives here
+ * (not in lib/) so the Next.js bundle can never trace the Transformers.js
+ * runtime through app/lib imports.
+ */
+async function indexProductImageLocal(admin: SupabaseClient, image: ProductImageRow): Promise<void> {
+  const { publicImageUrl } = await import("../lib/storage.ts");
+  const { getImageEmbedding } = await import("../lib/ai/image-embeddings.ts");
+  const res = await fetch(publicImageUrl("product_images", image.path));
+  if (!res.ok) throw new Error(`storage returned ${res.status}`);
+  const embedding = await getImageEmbedding(await res.blob());
+  const { error } = await admin.from("product_image_embeddings").upsert(
+    {
+      product_image_id: image.id,
+      product_id: image.product_id,
+      embedding,
+      model: IMAGE_EMBEDDING_MODEL,
+    },
+    { onConflict: "product_image_id,model" },
+  );
+  if (error) throw new Error(`could not store embedding: ${error.message}`);
+}
+
 async function main() {
+  const viaService = Boolean(process.env.IMAGE_SEARCH_SERVICE_URL);
+  console.log(`[backfill] embeddings via ${viaService ? "inference service" : "local CLIP"}`);
   const startedAt = Date.now();
 
   const { count } = await admin
@@ -110,7 +140,11 @@ async function main() {
 
       const imageStartedAt = Date.now();
       try {
-        await indexProductImage(admin, image);
+        if (process.env.IMAGE_SEARCH_SERVICE_URL) {
+          await indexProductImage(admin, image);
+        } else {
+          await indexProductImageLocal(admin, image);
+        }
         created += 1;
         console.log(`[backfill] + ${image.id} (${Date.now() - imageStartedAt}ms)`);
       } catch (err) {

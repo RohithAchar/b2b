@@ -5,7 +5,7 @@ import {
   type ImageSearchResult,
 } from "./image-search-config.ts";
 import { dedupeImageMatches } from "./image-search-matches.ts";
-import { IMAGE_EMBEDDING_MODEL } from "./image-embeddings.ts";
+import { IMAGE_EMBEDDING_MODEL } from "./image-embedding-model.ts";
 
 /**
  * Server-only. Runs the pgvector similarity search for one uploaded image.

@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/fetch-image-model-weights.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -14,7 +13,6 @@
     "db:reset": "supabase db reset",
     "migration:list": "supabase migration list",
     "embeddings:backfill": "node scripts/backfill-product-image-embeddings.ts",
-    "embeddings:fetch-model": "node scripts/fetch-image-model-weights.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -22,7 +20,6 @@
     "@base-ui/react": "^1.8.0",
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react": "^1.1.10",
-    "@huggingface/transformers": "^4.3.0",
     "@shadcn/react": "^0.3.1",
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.115.0",
@@ -38,7 +35,6 @@
     "input-otp": "^1.5.0",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
-    "onnxruntime-node": "^1.30.0",
     "react": "19.2.4",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.4",
@@ -52,6 +48,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@huggingface/transformers": "^4.3.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -59,6 +56,7 @@
     "@types/sanitize-html": "^2.16.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "onnxruntime-node": "^1.30.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "supabase": "^2.117.0",
