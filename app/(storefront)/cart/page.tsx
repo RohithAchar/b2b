@@ -63,7 +63,11 @@ export default async function CartPage() {
             {summary.lines.map((line) => (
               <Card key={line.cartItemId} className="rounded-lg p-4">
                 <div className="flex gap-3">
-                  <div className="relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                  <Link
+                    href={`/products/${line.productId}`}
+                    aria-label={`View ${line.title}`}
+                    className="relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted"
+                  >
                     {line.imagePath ? (
                       <Image
                         src={publicImageUrl("product_images", line.imagePath)}
@@ -77,9 +81,14 @@ export default async function CartPage() {
                         No image
                       </div>
                     )}
-                  </div>
+                  </Link>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{line.title}</p>
+                    <Link
+                      href={`/products/${line.productId}`}
+                      className="block truncate text-sm font-semibold hover:text-primary"
+                    >
+                      {line.title}
+                    </Link>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {formatRupees(line.unitPrice)} / {line.unit} · MOQ: {line.moq}
                     </p>
