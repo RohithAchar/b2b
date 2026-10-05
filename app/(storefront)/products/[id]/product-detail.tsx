@@ -31,6 +31,7 @@ import { isProductSaved } from "@/lib/buyer/queries";
 import { recordRecentlyViewed } from "@/lib/buyer/actions";
 import { EnquiryForm } from "./enquiry-form";
 import { SaveButton } from "./save-button";
+import { AddToCartForm } from "./add-to-cart-form";
 
 function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -271,6 +272,18 @@ export async function ProductDetail({ product }: { product: Product }) {
 
           {/* Buy / enquiry actions */}
           <div className="flex flex-col gap-2">
+            <AddToCartForm
+              productId={product.id}
+              moq={product.moq}
+              unit={product.unit}
+              variants={sortedVariants.map((v) => ({
+                id: v.id,
+                label: v.label,
+                customer_price: v.customer_price,
+                moq: v.moq,
+              }))}
+              signedIn={!!user}
+            />
             <EnquiryForm productId={product.id} />
             <div className="grid grid-cols-2 gap-2">
               <SaveButton productId={product.id} saved={saved} />

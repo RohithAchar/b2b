@@ -9,15 +9,17 @@ type NavCategory = { slug: string; name: string }
 export function StorefrontShell({
   user,
   categories,
+  cartCount = 0,
   children,
 }: {
   user: User
   categories?: NavCategory[]
+  cartCount?: number
   children: ReactNode
 }) {
   return (
     <div className="flex min-h-screen flex-col pb-(--bottom-nav-offset) lg:pb-0">
-      <StorefrontHeader user={user} categories={categories} />
+      <StorefrontHeader user={user} categories={categories} cartCount={cartCount} />
       <main className="flex-1">{children}</main>
       <StorefrontFooter />
       <StorefrontBottomNav user={user} />

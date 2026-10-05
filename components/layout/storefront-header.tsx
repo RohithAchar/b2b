@@ -2,6 +2,7 @@ import Link from "next/link"
 import { NAV_LINKS } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
 import { MobileNav } from "@/components/layout/mobile-nav"
+import { CartIconLink } from "@/components/storefront/cart-icon-link"
 import { StorefrontSearchForm } from "@/components/storefront/storefront-search-form"
 import { Button } from "@/components/ui/button"
 
@@ -11,9 +12,11 @@ type NavCategory = { slug: string; name: string }
 export function StorefrontHeader({
   user,
   categories = [],
+  cartCount = 0,
 }: {
   user: User
   categories?: NavCategory[]
+  cartCount?: number
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
@@ -46,8 +49,12 @@ export function StorefrontHeader({
             ))}
           </nav>
 
+          {/* Cart (mobile; desktop has it in right actions) */}
+          <CartIconLink count={cartCount} className="ml-auto lg:hidden" />
+
           {/* Right actions (desktop; mobile uses the bottom navigation) */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+            <CartIconLink count={cartCount} />
             {user ? (
               <AccountMenu user={user} />
             ) : (

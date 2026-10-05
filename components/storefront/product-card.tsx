@@ -6,6 +6,7 @@ import { publicImageUrl } from "@/lib/storage";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CardAddButton } from "@/components/storefront/card-add-button";
 
 export type ProductCardData = {
   id: string;
@@ -108,15 +109,18 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             </p>
           ) : null}
         </div>
-        <Link href={`/products/${product.id}`} className="shrink-0">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-          >
-            Enquiry
-          </Button>
-        </Link>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CardAddButton productId={product.id} moq={product.moq} />
+          <Link href={`/products/${product.id}`}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              Enquiry
+            </Button>
+          </Link>
+        </div>
       </div>
     </Card>
   );
