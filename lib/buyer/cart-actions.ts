@@ -366,11 +366,11 @@ export async function getCartSummary(
   return { ...summary, unavailableCount };
 }
 
-/** Total units in the buyer's cart, for the header badge. */
+/** Distinct lines in the buyer's cart, for the header badge. */
 export async function getCartCount(supabase: SupabaseClient, buyerId: string): Promise<number> {
-  const { data } = await supabase
+  const { count } = await supabase
     .from("cart_items")
-    .select("quantity")
+    .select("id", { count: "exact", head: true })
     .eq("buyer_id", buyerId);
-  return ((data ?? []) as { quantity: number }[]).reduce((sum, r) => sum + r.quantity, 0);
+  return count ?? 0;
 }

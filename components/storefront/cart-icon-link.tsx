@@ -7,7 +7,7 @@ export function CartIconLink({ count, className }: { count: number; className?: 
   return (
     <Link
       href="/cart"
-      aria-label={count > 0 ? `Cart, ${count} items` : "Cart"}
+      aria-label={count > 0 ? `Cart, ${count} item${count > 1 ? "s" : ""}` : "Cart"}
       className={cn(
         "relative flex size-9 items-center justify-center rounded-md text-foreground/80 transition-colors hover:bg-muted hover:text-foreground",
         className,
