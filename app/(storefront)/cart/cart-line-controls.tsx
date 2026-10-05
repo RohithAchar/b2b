@@ -10,13 +10,17 @@ import { removeFromCart, updateCartQty } from "@/lib/buyer/cart-actions";
 export function CartLineControls({
   cartItemId,
   quantity,
+  moq,
 }: {
   cartItemId: string;
   quantity: number;
+  moq: number;
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  // The stepper never goes below the line's MOQ; only Remove deletes a line.
+  const floor = Math.max(1, moq);
 
   async function run(formData: FormData, action: typeof updateCartQty) {
     setPending(true);
@@ -47,7 +51,7 @@ export function CartLineControls({
           <button
             type="button"
             aria-label="Decrease quantity"
-            disabled={pending}
+            disabled={pending || quantity <= floor}
             onClick={() => {
               const fd = withItem();
               fd.set("quantity", String(quantity - 1));

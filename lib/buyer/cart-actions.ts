@@ -8,6 +8,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { fetchCustomerPriceMap } from "@/lib/storefront";
 import {
   MIN_CART_VALUE,
+  moqViolation,
   priceForQuantity,
   summarizeCart,
   type CartLinePricing,
@@ -35,12 +36,27 @@ const addToCartSchema = z.object({
 async function approvedProduct(supabase: SupabaseClient, productId: string) {
   const { data } = await supabase
     .from("products")
-    .select("id")
+    .select("id, moq, unit")
     .eq("id", productId)
     .eq("status", "approved")
     .eq("is_hidden", false)
     .maybeSingle();
-  return data;
+  return data as { id: string; moq: number; unit: string } | null;
+}
+
+async function variantRow(
+  supabase: SupabaseClient,
+  productId: string,
+  variantId: string,
+): Promise<{ moq: number | null } | null> {
+  const { data } = await supabase
+    .from("product_variants")
+    .select("id, moq")
+    .eq("id", variantId)
+    .eq("product_id", productId)
+    .maybeSingle();
+  if (!data) return null;
+  return { moq: (data.moq as number | null) ?? null };
 }
 
 export async function addToCart(
@@ -64,20 +80,23 @@ export async function addToCart(
 
   const { productId, variantId, quantity } = parsed.data;
 
-  if (!(await approvedProduct(supabase, productId))) {
+  const product = await approvedProduct(supabase, productId);
+  if (!product) {
     return errState("This product is no longer available.");
   }
 
+  let effectiveMoq = product.moq;
   if (variantId) {
-    const { data: variant } = await supabase
-      .from("product_variants")
-      .select("id")
-      .eq("id", variantId)
-      .eq("product_id", productId)
-      .maybeSingle();
+    const variant = await variantRow(supabase, productId, variantId);
     if (!variant) {
       return errState("This variant is no longer available.");
     }
+    effectiveMoq = variant.moq ?? product.moq;
+  }
+
+  const violation = moqViolation(quantity, effectiveMoq, product.unit);
+  if (violation) {
+    return errState(violation);
   }
 
   // Read-then-write instead of upsert: the unique constraint is NULLS NOT
@@ -153,6 +172,36 @@ export async function updateCartQty(
   // Zero or negative removes the line — the table forbids qty < 1.
   if (quantity <= 0) {
     return removeFromCart(_prev, formData);
+  }
+
+  const { data: line } = await supabase
+    .from("cart_items")
+    .select("id, product_id, variant_id")
+    .eq("id", cartItemId)
+    .eq("buyer_id", user.id)
+    .maybeSingle();
+
+  if (!line) {
+    return errState("This item is no longer in your cart.");
+  }
+
+  const product = await approvedProduct(supabase, line.product_id as string);
+  if (!product) {
+    return errState("This product is no longer available.");
+  }
+
+  let effectiveMoq = product.moq;
+  if (line.variant_id) {
+    const variant = await variantRow(supabase, line.product_id as string, line.variant_id as string);
+    if (!variant) {
+      return errState("This variant is no longer available.");
+    }
+    effectiveMoq = variant.moq ?? product.moq;
+  }
+
+  const violation = moqViolation(quantity, effectiveMoq, product.unit);
+  if (violation) {
+    return errState(violation);
   }
 
   const { error } = await supabase

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MIN_CART_VALUE,
+  moqViolation,
   priceForQuantity,
   summarizeCart,
   type CartLinePricing,
@@ -35,6 +36,26 @@ function line(overrides: Partial<CartLinePricing> = {}): CartLinePricing {
 describe("MIN_CART_VALUE", () => {
   it("is ₹2,500", () => {
     expect(MIN_CART_VALUE).toBe(2500);
+  });
+});
+
+describe("moqViolation", () => {
+  it("allows quantities at or above the MOQ", () => {
+    expect(moqViolation(2, 2, "pcs")).toBeNull();
+    expect(moqViolation(10, 2, "pcs")).toBeNull();
+  });
+
+  it("rejects quantities below the MOQ with a message", () => {
+    expect(moqViolation(1, 2, "pcs")).toBe("Minimum order is 2 pcs.");
+    expect(moqViolation(0, 2, "pcs")).toBe("Minimum order is 2 pcs.");
+  });
+
+  it("uses the singular unit for MOQ 1", () => {
+    expect(moqViolation(0, 1, "box")).toBe("Minimum order is 1 box.");
+  });
+
+  it("rejects non-integers", () => {
+    expect(moqViolation(2.5, 2, "pcs")).toBe("Minimum order is 2 pcs.");
   });
 });
 

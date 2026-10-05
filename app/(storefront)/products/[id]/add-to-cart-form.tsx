@@ -45,7 +45,16 @@ export function AddToCartForm({
   const [quantity, setQuantity] = useState(moq);
 
   const selected = variants.find((v) => v.id === variantId);
-  const effectiveMoq = selected?.moq ?? moq;
+  const effectiveMoq = Math.max(1, selected?.moq ?? moq);
+
+  // Clamp up when switching to a variant with a higher MOQ. Never clamps
+  // down: the buyer's chosen quantity stands unless the floor requires more.
+  function handleVariantChange(next: string | null) {
+    if (!next) return;
+    setVariantId(next);
+    const floor = Math.max(1, variants.find((v) => v.id === next)?.moq ?? moq);
+    setQuantity((q) => Math.max(q, floor));
+  }
 
   useEffect(() => {
     if (state.ok) {
@@ -74,7 +83,7 @@ export function AddToCartForm({
       {variants.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <Label>Variant</Label>
-          <Select value={variantId} onValueChange={(v) => v && setVariantId(v)}>
+          <Select value={variantId} onValueChange={handleVariantChange}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Base product" />
             </SelectTrigger>
@@ -101,8 +110,8 @@ export function AddToCartForm({
           <button
             type="button"
             aria-label="Decrease quantity"
-            disabled={quantity <= 1 || pending}
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            disabled={quantity <= effectiveMoq || pending}
+            onClick={() => setQuantity((q) => Math.max(effectiveMoq, q - 1))}
             className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
           >
             −

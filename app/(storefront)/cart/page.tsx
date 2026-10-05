@@ -88,8 +88,13 @@ export default async function CartPage() {
                         Only {line.stockQty} in stock
                       </p>
                     )}
+                    {line.quantity < line.moq && (
+                      <p className="mt-0.5 text-xs font-medium text-warning">
+                        Minimum order is {line.moq} {line.unit} — increase the quantity.
+                      </p>
+                    )}
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      <CartLineControls cartItemId={line.cartItemId} quantity={line.quantity} />
+                      <CartLineControls cartItemId={line.cartItemId} quantity={line.quantity} moq={line.moq} />
                       <p className="text-sm font-bold tabular-nums">
                         {formatRupees(line.lineTotal)}
                       </p>

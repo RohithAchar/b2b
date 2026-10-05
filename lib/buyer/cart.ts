@@ -95,3 +95,15 @@ export function summarizeCart(
 export function formatRupees(value: number): string {
   return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
+
+/**
+ * Per-line MOQ floor, independent of the cart-wide ₹2,500 gate: a quantity
+ * below the line's effective MOQ (variant moq, else base moq) is rejected.
+ * Returns the user-facing message, or null when the quantity is allowed.
+ */
+export function moqViolation(quantity: number, moq: number, unit: string): string | null {
+  if (!Number.isInteger(quantity) || quantity < Math.max(1, moq)) {
+    return `Minimum order is ${moq} ${unit}.`;
+  }
+  return null;
+}
