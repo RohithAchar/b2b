@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MIN_CART_VALUE,
   moqViolation,
+  parseQuantityInput,
   priceForQuantity,
   summarizeCart,
   type CartLinePricing,
@@ -56,6 +57,25 @@ describe("moqViolation", () => {
 
   it("rejects non-integers", () => {
     expect(moqViolation(2.5, 2, "pcs")).toBe("Minimum order is 2 pcs.");
+  });
+});
+
+describe("parseQuantityInput", () => {
+  it("parses plain digits", () => {
+    expect(parseQuantityInput("12", 2)).toBe(12);
+    expect(parseQuantityInput("007", 1)).toBe(7);
+  });
+
+  it("clamps up to the floor", () => {
+    expect(parseQuantityInput("1", 2)).toBe(2);
+  });
+
+  it("returns null for empty, decimal, or non-numeric text", () => {
+    expect(parseQuantityInput("", 1)).toBeNull();
+    expect(parseQuantityInput("  ", 1)).toBeNull();
+    expect(parseQuantityInput("2.5", 1)).toBeNull();
+    expect(parseQuantityInput("-3", 1)).toBeNull();
+    expect(parseQuantityInput("12a", 1)).toBeNull();
   });
 });
 

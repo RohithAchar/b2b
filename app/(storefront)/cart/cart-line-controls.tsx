@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { removeFromCart, updateCartQty } from "@/lib/buyer/cart-actions";
+import { parseQuantityInput } from "@/lib/buyer/cart";
 
 export function CartLineControls({
   cartItemId,
@@ -21,6 +22,8 @@ export function CartLineControls({
   const [pending, setPending] = useState(false);
   // The stepper never goes below the line's MOQ; only Remove deletes a line.
   const floor = Math.max(1, moq);
+  // Typed text; committed to the server on blur/Enter, reverted on bad input.
+  const [draft, setDraft] = useState(String(quantity));
 
   async function run(formData: FormData, action: typeof updateCartQty) {
     setPending(true);
@@ -29,6 +32,7 @@ export function CartLineControls({
     setPending(false);
     if (!result.ok) {
       setError(result.message);
+      setDraft(String(quantity));
       return;
     }
     router.refresh();
@@ -38,6 +42,18 @@ export function CartLineControls({
     const fd = formData ?? new FormData();
     fd.set("cartItemId", cartItemId);
     return fd;
+  }
+
+  function commitDraft() {
+    const next = parseQuantityInput(draft, floor);
+    if (next == null) {
+      setDraft(String(quantity));
+      return;
+    }
+    if (next === quantity) return;
+    const fd = withItem();
+    fd.set("quantity", String(next));
+    void run(fd, updateCartQty);
   }
 
   return (
@@ -61,9 +77,25 @@ export function CartLineControls({
           >
             −
           </button>
-          <span aria-live="polite" className="w-8 text-center text-sm font-bold tabular-nums">
+          <span aria-live="polite" className="sr-only">
             {quantity}
           </span>
+          <input
+            aria-label="Quantity"
+            inputMode="numeric"
+            autoComplete="off"
+            disabled={pending}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitDraft}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="w-10 bg-transparent text-center text-sm font-bold tabular-nums outline-none disabled:opacity-40"
+          />
           <button
             type="button"
             aria-label="Increase quantity"

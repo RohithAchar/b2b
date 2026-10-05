@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { addToCart, type BuyerActionState } from "@/lib/buyer/cart-actions";
+import { parseQuantityInput } from "@/lib/buyer/cart";
 
 const initialState: BuyerActionState = { ok: false, message: "" };
 
@@ -43,9 +44,17 @@ export function AddToCartForm({
   const [state, action, pending] = useActionState(addToCart, initialState);
   const [variantId, setVariantId] = useState("base");
   const [quantity, setQuantity] = useState(moq);
+  // Typed text mirrors the committed quantity; it only becomes the quantity
+  // on blur/Enter so intermediate states ("", "1" while typing "12") are safe.
+  const [draft, setDraft] = useState(String(moq));
 
   const selected = variants.find((v) => v.id === variantId);
   const effectiveMoq = Math.max(1, selected?.moq ?? moq);
+
+  function setBoth(next: number) {
+    setQuantity(next);
+    setDraft(String(next));
+  }
 
   // Clamp up when switching to a variant with a higher MOQ. Never clamps
   // down: the buyer's chosen quantity stands unless the floor requires more.
@@ -53,7 +62,12 @@ export function AddToCartForm({
     if (!next) return;
     setVariantId(next);
     const floor = Math.max(1, variants.find((v) => v.id === next)?.moq ?? moq);
-    setQuantity((q) => Math.max(q, floor));
+    setBoth(Math.max(quantity, floor));
+  }
+
+  function commitDraft() {
+    const next = parseQuantityInput(draft, effectiveMoq);
+    setBoth(next ?? quantity);
   }
 
   useEffect(() => {
@@ -111,19 +125,34 @@ export function AddToCartForm({
             type="button"
             aria-label="Decrease quantity"
             disabled={quantity <= effectiveMoq || pending}
-            onClick={() => setQuantity((q) => Math.max(effectiveMoq, q - 1))}
+            onClick={() => setBoth(Math.max(effectiveMoq, quantity - 1))}
             className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
           >
             −
           </button>
-          <span aria-live="polite" className="w-10 text-center text-sm font-bold tabular-nums">
-            {quantity}
-          </span>
+          <input
+            aria-label="Quantity"
+            inputMode="numeric"
+            autoComplete="off"
+            disabled={pending}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitDraft}
+            onKeyDown={(e) => {
+              // Commit on Enter without submitting: the blur handler parses
+              // first, and submitting here could read the pre-commit value.
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="w-12 bg-transparent text-center text-sm font-bold tabular-nums outline-none disabled:opacity-40"
+          />
           <button
             type="button"
             aria-label="Increase quantity"
             disabled={pending}
-            onClick={() => setQuantity((q) => q + 1)}
+            onClick={() => setBoth(quantity + 1)}
             className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
           >
             +

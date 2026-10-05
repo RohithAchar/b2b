@@ -97,6 +97,18 @@ export function formatRupees(value: number): string {
 }
 
 /**
+ * Parse a typed quantity: whole digits only, clamped up to the floor (the
+ * line's MOQ). Returns null when the text is not a usable number, in which
+ * case the caller reverts to the last good quantity.
+ */
+export function parseQuantityInput(raw: string, floor: number): number | null {
+  if (!/^\d+$/.test(raw.trim())) return null;
+  const value = Number.parseInt(raw.trim(), 10);
+  if (!Number.isSafeInteger(value)) return null;
+  return Math.max(1, floor, value);
+}
+
+/**
  * Per-line MOQ floor, independent of the cart-wide ₹2,500 gate: a quantity
  * below the line's effective MOQ (variant moq, else base moq) is rejected.
  * Returns the user-facing message, or null when the quantity is allowed.
