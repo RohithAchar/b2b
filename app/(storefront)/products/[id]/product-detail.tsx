@@ -158,7 +158,7 @@ export async function ProductDetail({ product }: { product: Product }) {
                 / {product.unit}
               </span>
               {product.negotiable && (
-                <Button variant="outline" size="xs" className="ml-auto rounded-sm border-brand-amber/60 text-brand-dark dark:text-brand-amber">
+                <Button variant="outline" size="xs" className="ml-auto rounded-sm border-brand-amber/60 text-brand-dark">
                   Price Negotiable
                 </Button>
               )}
