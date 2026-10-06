@@ -2,16 +2,24 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   images: {
-    // The Supabase storage CDN serves already-optimised JPEGs, and this
-    // network resolves *.supabase.co to NAT64 IPv6 (64:ff9b::/96), which
-    // Next's image optimizer classifies as a private IP and refuses to fetch.
-    // Serving the URLs directly keeps every storefront image working.
+    // Retested 2026-10-06: keep direct serving until `/_next/image?url=<supabase>`
+    // returns 200 in both `pnpm dev` and `pnpm start`. This network resolves
+    // *.supabase.co to NAT64 IPv6 (64:ff9b::/96), which the optimizer rejects
+    // as a private IP. Mitigation is Supabase `/render/image` transforms via
+    // `publicTransformedImageUrl()` in heavy slots. To retest, comment out
+    // `unoptimized`, `rm -rf .next`, and curl `/_next/image?url=<encoded>`.
     unoptimized: true,
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "**.supabase.co",
         pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+        pathname: "/storage/v1/render/image/public/**",
       },
     ],
   },
@@ -30,12 +38,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "@hugeicons/core-free-icons",
       "@hugeicons/react",
-      "recharts",
       "@base-ui/react",
-      "cmdk",
       "embla-carousel-react",
-      "react-day-picker",
-      "date-fns",
       "@tiptap/react",
       "@tiptap/starter-kit",
       "@tiptap/extension-link",

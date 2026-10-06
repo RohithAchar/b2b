@@ -2,14 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Location01Icon } from "@hugeicons/core-free-icons";
-import { createClient } from "@/lib/supabase/server";
-import { publicImageUrl } from "@/lib/storage";
+import { publicTransformedImageUrl } from "@/lib/storage";
 import {
-  getFeaturedSuppliers,
-  getHomeCategories,
-  getHomeProducts,
-  getSourceRegions,
-} from "@/lib/storefront";
+  getCachedFeaturedSuppliers,
+  getCachedHomeCategories,
+  getCachedHomeProducts,
+  getCachedSourceRegions,
+} from "@/lib/storefront-cache";
 import { Card } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
@@ -30,7 +29,7 @@ function CategoryTile({
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           {cat.image_path ? (
             <Image
-              src={publicImageUrl("category_images", cat.image_path)}
+              src={publicTransformedImageUrl("category_images", cat.image_path, { width: 400 })}
               alt={cat.name}
               fill
               sizes="(min-width: 1024px) 12.5vw, (min-width: 768px) 25vw, 40vw"
@@ -86,8 +85,7 @@ function RegionCard({
 }
 
 export async function PopularCategoriesSection() {
-  const supabase = await createClient();
-  const categories = await getHomeCategories(supabase);
+  const categories = await getCachedHomeCategories();
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-6">
@@ -117,8 +115,7 @@ export async function PopularCategoriesSection() {
 }
 
 export async function WholesaleDealsSection() {
-  const supabase = await createClient();
-  const products = await getHomeProducts(supabase);
+  const products = await getCachedHomeProducts();
 
   return (
     <section className="bg-card">
@@ -150,8 +147,7 @@ export async function WholesaleDealsSection() {
 }
 
 export async function SourceRegionsSection() {
-  const supabase = await createClient();
-  const regions = await getSourceRegions(supabase);
+  const regions = await getCachedSourceRegions();
 
   if (regions.length === 0) return null;
 
@@ -174,8 +170,7 @@ export async function SourceRegionsSection() {
 }
 
 export async function VerifiedSuppliersSection() {
-  const supabase = await createClient();
-  const featuredSuppliers = await getFeaturedSuppliers(supabase);
+  const featuredSuppliers = await getCachedFeaturedSuppliers();
 
   if (featuredSuppliers.length === 0) return null;
 

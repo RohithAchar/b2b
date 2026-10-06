@@ -14,9 +14,14 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { FormSection } from "@/components/dashboard/form-section";
-import { ImageCropModal } from "@/components/dashboard/image-crop-modal";
+import dynamic from "next/dynamic";
 import { MAX_PRODUCT_IMAGES, MIN_PRODUCT_IMAGES, youtubeThumbUrl } from "@/lib/supplier/products";
 import type { ExistingImage, FieldErrorHelpers } from "./product-form-types";
+
+const ImageCropModal = dynamic(
+  () => import("@/components/dashboard/image-crop-modal").then((m) => m.ImageCropModal),
+  { ssr: false },
+);
 
 export function ProductMediaSection({
   fileInputRef,
@@ -141,7 +146,7 @@ export function ProductMediaSection({
               </AttachmentActions>
               <AttachmentMedia variant="image">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={productImageUrl(img.path)} alt={`Product image ${i + 1}`} />
+                <img loading="lazy" decoding="async" src={productImageUrl(img.path)} alt={`Product image ${i + 1}`} />
               </AttachmentMedia>
               <AttachmentContent>
                 <AttachmentTitle>{i === 0 ? "Cover" : `Image ${i + 1}`}</AttachmentTitle>
@@ -167,7 +172,7 @@ export function ProductMediaSection({
                 </AttachmentActions>
                 <AttachmentMedia variant="image">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewUrls[i]} alt={`New upload ${globalIndex + 1}`} />
+                  <img loading="lazy" decoding="async" src={previewUrls[i]} alt={`New upload ${globalIndex + 1}`} />
                 </AttachmentMedia>
                 <AttachmentContent>
                   <AttachmentTitle>{globalIndex === 0 ? "Cover" : `Image ${globalIndex + 1}`}</AttachmentTitle>
@@ -226,7 +231,7 @@ export function ProductMediaSection({
                 <Attachment orientation="horizontal" state="done">
                   <AttachmentMedia variant="image">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={youtubeThumbUrl(youtubeId)} alt="YouTube preview" />
+                    <img loading="lazy" decoding="async" src={youtubeThumbUrl(youtubeId)} alt="YouTube preview" />
                   </AttachmentMedia>
                   <AttachmentContent>
                     <AttachmentTitle>Video attached</AttachmentTitle>

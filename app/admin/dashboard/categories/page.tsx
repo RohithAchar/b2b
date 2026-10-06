@@ -91,7 +91,7 @@ export default async function CategoriesPage() {
                   {parent.image_path && parent.image_path !== "pending" ? (
                     <ItemMedia variant="image">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageUrl(parent.image_path)} alt="" />
+                      <img src={imageUrl(parent.image_path)} alt="" loading="lazy" decoding="async" />
                     </ItemMedia>
                   ) : null}
                   <ItemContent>
@@ -125,7 +125,7 @@ export default async function CategoriesPage() {
                     {child.image_path && child.image_path !== "pending" ? (
                       <ItemMedia variant="image">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imageUrl(child.image_path)} alt="" />
+                        <img src={imageUrl(child.image_path)} alt="" loading="lazy" decoding="async" />
                       </ItemMedia>
                     ) : null}
                     <ItemContent>

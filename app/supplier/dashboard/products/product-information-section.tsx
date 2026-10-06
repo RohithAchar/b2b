@@ -14,12 +14,17 @@ import {
 } from "@/components/ui/native-select";
 import { FormSection } from "@/components/dashboard/form-section";
 import { cn } from "cn";
+import dynamic from "next/dynamic";
 import {
   DESCRIPTION_MIN_TEXT_CHARS,
   plainTextLength,
 } from "@/lib/supplier/rich-text";
-import { RichTextEditor } from "./rich-text-editor";
 import type { CategoryGroup, FieldErrorHelpers } from "./product-form-types";
+
+const RichTextEditor = dynamic(
+  () => import("./rich-text-editor").then((m) => m.RichTextEditor),
+  { ssr: false },
+);
 
 export function ProductInformationSection({
   grouped,

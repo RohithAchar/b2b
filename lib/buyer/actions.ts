@@ -51,7 +51,6 @@ export async function saveProduct(
   }
 
   revalidatePath("/account/saved");
-  revalidatePath("/products");
   return okState;
 }
 
@@ -84,7 +83,6 @@ export async function unsaveProduct(
   }
 
   revalidatePath("/account/saved");
-  revalidatePath("/products");
   return okState;
 }
 

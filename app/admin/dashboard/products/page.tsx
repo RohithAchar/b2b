@@ -153,7 +153,7 @@ export default async function AdminProductsPage({
                 {covers.get(p.id) ? (
                   <ItemMedia variant="image">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imageUrl(covers.get(p.id)!)} alt="" />
+                    <img src={imageUrl(covers.get(p.id)!)} alt="" loading="lazy" decoding="async" />
                   </ItemMedia>
                 ) : null}
                 <ItemContent>

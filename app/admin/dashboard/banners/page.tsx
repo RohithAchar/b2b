@@ -58,6 +58,8 @@ function BannerPreview({
           <img
             src={publicImageUrl("banners", imagePath)}
             alt={title ?? "Banner"}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />
           {title || subtitle ? (

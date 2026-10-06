@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/guard";
 import type { AdminActionState } from "@/lib/admin/actions";
@@ -37,6 +37,10 @@ export async function approveProduct(
     return { ok: false, message: error.message || "Could not approve. Try again." };
   }
   revalidatePath("/admin/dashboard/products");
+  revalidateTag("products", "max");
+  revalidateTag("home", "max");
+  revalidatePath("/");
+  revalidatePath("/products");
   return { ok: true, message: "Approved." };
 }
 
@@ -70,6 +74,7 @@ export async function rejectProduct(
     return { ok: false, message: error.message || "Could not send back. Try again." };
   }
   revalidatePath("/admin/dashboard/products");
+  revalidateTag("products", "max");
   return { ok: true, message: "Sent back with note." };
 }
 
@@ -102,8 +107,10 @@ export async function unpublishProduct(
   revalidatePath("/admin/dashboard/products");
   revalidatePath(`/admin/dashboard/products/${parsed.data.id}`);
   revalidatePath("/supplier/dashboard/products");
+  revalidateTag("products", "max");
+  revalidateTag("prices", "max");
   revalidatePath("/products");
   revalidatePath(`/products/${parsed.data.id}`);
-  revalidatePath("/category/[slug]");
+  revalidatePath("/");
   return { ok: true, message: "Product taken down. The supplier can edit it and resubmit to relist." };
 }

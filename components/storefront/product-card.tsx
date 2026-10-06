@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
-import { publicImageUrl } from "@/lib/storage";
+import { publicTransformedImageUrl } from "@/lib/storage";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ function coverUrl(product: ProductCardData): string {
   const images = product.images;
   if (!images || images.length === 0) return "/placeholder.png";
   const sorted = [...images].sort((a, b) => a.sort - b.sort);
-  return publicImageUrl("product_images", sorted[0].path);
+  return publicTransformedImageUrl("product_images", sorted[0].path, { width: 640 });
 }
 
 export function ProductCard({ product }: { product: ProductCardData }) {

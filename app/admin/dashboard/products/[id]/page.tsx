@@ -190,7 +190,7 @@ export default async function AdminProductReviewPage({
                   <ItemContent>
                     <AspectRatio ratio={16 / 9}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageUrl(img.path)} alt="" />
+                      <img loading="lazy" decoding="async" src={imageUrl(img.path)} alt="" />
                     </AspectRatio>
                     <ItemDescription>{i === 0 ? "Cover" : `Image ${i + 1}`}</ItemDescription>
                   </ItemContent>
@@ -203,7 +203,7 @@ export default async function AdminProductReviewPage({
               <FieldLabel>Video</FieldLabel>
               <AspectRatio ratio={16 / 9}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={youtubeThumbUrl(product.youtube_id)} alt="Video thumbnail" />
+                <img loading="lazy" decoding="async" src={youtubeThumbUrl(product.youtube_id)} alt="Video thumbnail" />
               </AspectRatio>
               <FieldDescription>{product.youtube_url}</FieldDescription>
             </Field>

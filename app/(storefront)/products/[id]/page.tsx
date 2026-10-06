@@ -1,8 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
-import { createClient } from "@/lib/supabase/server"
-import { getProduct } from "@/lib/storefront"
+import { getCachedProduct } from "@/lib/storefront-cache"
 import { publicImageUrl } from "@/lib/storage"
 import {
   resolveProductMetaDescription,
@@ -31,8 +30,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const supabase = await createClient()
-  const product = await getProduct(supabase, id)
+  const product = await getCachedProduct(id)
   if (!product) return {}
 
   const title = resolveProductMetaTitle(product)
@@ -72,8 +70,7 @@ export default async function ProductPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
-  const product = await getProduct(supabase, id)
+  const product = await getCachedProduct(id)
 
   if (!product) notFound()
 

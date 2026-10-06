@@ -68,7 +68,7 @@ export function BusinessProfileForm({
           <ItemMedia variant="image">
             {currentLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={currentLogo} alt="" />
+              <img loading="lazy" decoding="async" src={currentLogo} alt="" />
             ) : null}
           </ItemMedia>
           <ItemContent>

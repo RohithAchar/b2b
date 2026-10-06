@@ -12,7 +12,12 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { type BannerActionState } from "@/lib/admin/banners";
 import { SLOT_ASPECTS, SLOT_LABELS, type BannerSlot } from "@/lib/admin/banner-slots";
-import { ImageUploadEditor } from "./image-upload-editor";
+import dynamic from "next/dynamic";
+
+const ImageUploadEditor = dynamic(
+  () => import("./image-upload-editor").then((m) => m.ImageUploadEditor),
+  { ssr: false },
+);
 
 const initialState: BannerActionState = { ok: false, message: "" };
 

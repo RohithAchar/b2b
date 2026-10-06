@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/guard";
@@ -164,6 +164,10 @@ export async function createCategory(
     return { ok: false, message: "Could not upload the image. Try again." };
   }
 
+  revalidateTag("categories", "max");
+  revalidateTag("nav", "max");
+  revalidateTag("home", "max");
+  revalidatePath("/");
   revalidatePath("/admin/dashboard/categories");
   redirect("/admin/dashboard/categories");
 }
@@ -200,6 +204,10 @@ export async function toggleCategory(
     return { ok: false, message: "Could not update. Try again." };
   }
 
+  revalidateTag("categories", "max");
+  revalidateTag("nav", "max");
+  revalidateTag("home", "max");
+  revalidatePath("/");
   revalidatePath("/admin/dashboard/categories");
   redirect("/admin/dashboard/categories");
 }
@@ -243,6 +251,10 @@ export async function deleteCategory(
     await supabase.storage.from("category_images").remove([row.image_path]);
   }
 
+  revalidateTag("categories", "max");
+  revalidateTag("nav", "max");
+  revalidateTag("home", "max");
+  revalidatePath("/");
   revalidatePath("/admin/dashboard/categories");
   redirect("/admin/dashboard/categories");
 }
@@ -337,6 +349,10 @@ export async function updateCategory(
     return { ok: false, message: "Could not save. Try again." };
   }
 
+  revalidateTag("categories", "max");
+  revalidateTag("nav", "max");
+  revalidateTag("home", "max");
+  revalidatePath("/");
   revalidatePath("/admin/dashboard/categories");
   redirect("/admin/dashboard/categories");
 }

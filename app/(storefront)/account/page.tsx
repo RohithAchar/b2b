@@ -35,15 +35,19 @@ export default async function AccountPage({
         {user.email}
       </p>
       <AccountTabs activeTab={activeTab}>
-        <TabsContent value="enquiries">
-          <EnquiriesTab />
-        </TabsContent>
-        <TabsContent value="saved">
-          <SavedTab />
-        </TabsContent>
-        <TabsContent value="recent">
-          <RecentTab />
-        </TabsContent>
+        {activeTab === "saved" ? (
+          <TabsContent value="saved">
+            <SavedTab />
+          </TabsContent>
+        ) : activeTab === "recent" ? (
+          <TabsContent value="recent">
+            <RecentTab />
+          </TabsContent>
+        ) : (
+          <TabsContent value="enquiries">
+            <EnquiriesTab />
+          </TabsContent>
+        )}
       </AccountTabs>
     </div>
   );

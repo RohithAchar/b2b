@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/server"
-import { getProducts, getNavigationCategories, type ProductSort } from "@/lib/storefront"
+import { getCachedNavigationCategories, getCachedProducts } from "@/lib/storefront-cache"
+import type { ProductSort } from "@/lib/storefront"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
@@ -131,27 +131,27 @@ async function ProductListings({
   const imageProductIds = decodeImageResultToken(sp.img) ?? undefined
   const imageToken = imageProductIds ? sp.img : undefined
 
-  const supabase = await createClient()
-  const { products, total, totalPages } = await getProducts(supabase, {
-    query,
-    categorySlug,
-    sort,
-    minPrice,
-    maxPrice,
-    minMoq,
-    maxMoq,
-    inStock: inStock ?? undefined,
-    negotiable: negotiable ?? undefined,
-    sampleAvailable: sampleAvailable ?? undefined,
-    page,
-    perPage: 24,
-    imageProductIds,
-  })
+  const [{ products, total, totalPages }, navCategories] = await Promise.all([
+    getCachedProducts({
+      query,
+      categorySlug,
+      sort,
+      minPrice,
+      maxPrice,
+      minMoq,
+      maxMoq,
+      inStock: inStock ?? undefined,
+      negotiable: negotiable ?? undefined,
+      sampleAvailable: sampleAvailable ?? undefined,
+      page,
+      perPage: 24,
+      imageProductIds,
+    }),
+    categorySlug ? getCachedNavigationCategories() : Promise.resolve([]),
+  ])
 
   const activeFilter = categorySlug
-    ? ((await getNavigationCategories(supabase)).find(
-        (c) => c.slug === categorySlug,
-      )?.name ?? null)
+    ? (navCategories.find((c) => c.slug === categorySlug)?.name ?? null)
     : null
 
   // Build active filter chips.

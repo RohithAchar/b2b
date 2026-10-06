@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CustomerPrices } from "@/lib/pricing";
-import { fetchCustomerPriceMap, fetchSupplierMap } from "@/lib/storefront";
+import { fetchCustomerPriceMap } from "@/lib/storefront";
 
 // ---------------------------------------------------------------------------
 // Enquiry history
@@ -117,23 +117,17 @@ export async function getBuyerSavedProducts(
   const productIds = rows
     .map((r) => r.product?.id)
     .filter((id): id is string => typeof id === "string" && Boolean(id));
-  const supplierIds = rows
-    .map((r) => r.product?.supplier?.id)
-    .filter((id): id is string => typeof id === "string" && Boolean(id));
 
-  const [priceMap, supplierMap] = await Promise.all([
-    fetchCustomerPriceMap(supabase, productIds),
-    fetchSupplierMap(supabase, supplierIds),
-  ]);
+  // The FK `supplier` join above already returns the supplier row — a second
+  // `fetchSupplierMap` would duplicate that query, so only prices are enriched.
+  const priceMap = await fetchCustomerPriceMap(supabase, productIds);
 
   const products = rows.map((r) => {
     if (!r.product) return null;
     const p = r.product;
     return {
       ...p,
-      supplier: p.supplier
-        ? supplierMap.get(p.supplier.id) ?? p.supplier
-        : null,
+      supplier: p.supplier ?? null,
       pricing: priceMap.get(p.id) ?? null,
     };
   }).filter((p): p is NonNullable<typeof p> => p != null);
@@ -203,23 +197,16 @@ export async function getBuyerRecentlyViewed(
   const productIds = rows
     .map((r) => r.product?.id)
     .filter((id): id is string => typeof id === "string" && Boolean(id));
-  const supplierIds = rows
-    .map((r) => r.product?.supplier?.id)
-    .filter((id): id is string => typeof id === "string" && Boolean(id));
 
-  const [priceMap, supplierMap] = await Promise.all([
-    fetchCustomerPriceMap(supabase, productIds),
-    fetchSupplierMap(supabase, supplierIds),
-  ]);
+  // Same as saved tab: supplier already joined above, only enrich prices.
+  const priceMap = await fetchCustomerPriceMap(supabase, productIds);
 
   const products = rows.map((r) => {
     if (!r.product) return null;
     const p = r.product;
     return {
       ...p,
-      supplier: p.supplier
-        ? supplierMap.get(p.supplier.id) ?? p.supplier
-        : null,
+      supplier: p.supplier ?? null,
       pricing: priceMap.get(p.id) ?? null,
     };
   }).filter((p): p is NonNullable<typeof p> => p != null);

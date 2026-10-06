@@ -8,7 +8,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { publicImageUrl } from "@/lib/storage";
-import { getRelatedProducts } from "@/lib/storefront";
+import { getCachedRelatedProducts } from "@/lib/storefront-cache";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -99,9 +99,10 @@ export async function ProductDetail({ product }: { product: Product }) {
   const user = await getSessionUser(supabase);
   const saved = user ? await isProductSaved(supabase, user.id, product.id) : false;
 
-  // Record recently viewed (fire-and-forget, non-blocking).
+  // Recently-viewed is a per-user write — never block the cached PDP body on
+  // it. It runs after the response starts streaming; failures only log.
   if (user) {
-    await recordRecentlyViewed(product.id);
+    void recordRecentlyViewed(product.id);
   }
 
   return (
@@ -386,8 +387,7 @@ export async function RelatedProductsSection({
 }) {
   if (!categoryId) return null;
 
-  const supabase = await createClient();
-  const related = await getRelatedProducts(supabase, categoryId, excludeId);
+  const related = await getCachedRelatedProducts(categoryId, excludeId);
 
   if (related.length === 0) return null;
 

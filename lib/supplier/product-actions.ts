@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireUser, getVerifiedSupplierId } from "@/lib/auth/guard";
 import {
   MAX_PRODUCT_IMAGES,
@@ -579,9 +579,10 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
   await indexImagesForSearch(productId);
 
   revalidatePath("/supplier/dashboard/products");
+  revalidateTag("products", "max");
+  revalidateTag("prices", "max");
   revalidatePath("/products");
   revalidatePath(`/products/${productId}`);
-  revalidatePath("/category/[slug]");
   if (boolOf(formData.get("auto_submit")) && existing.status !== "approved") {
     const res = await submitForApproval(supabase, supplierId, productId);
     if (!res.ok) return { ok: false, message: res.message, productId };
@@ -692,9 +693,10 @@ async function setHidden(productId: string, hidden: boolean): Promise<ProductAct
     return { ok: false, message: "Could not update the listing. Try again." };
   }
   revalidatePath("/supplier/dashboard/products");
+  revalidateTag("products", "max");
+  revalidateTag("prices", "max");
   revalidatePath("/products");
   revalidatePath(`/products/${productId}`);
-  revalidatePath("/category/[slug]");
   return {
     ok: true,
     message: hidden ? "Listing hidden from the storefront." : "Listing is live again.",

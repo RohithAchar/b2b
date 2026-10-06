@@ -270,8 +270,9 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   const needsPriceFilter = minPrice != null || maxPrice != null;
 
   if (needsPriceSort || needsPriceFilter) {
-    // Step 1: Get all matching product IDs (no pagination yet).
-    const { data: idRows } = await qb.order("id");
+    // Step 1: Get matching product IDs (no pagination yet, bounded so a
+    // broad filter cannot pull the whole table into memory / URL).
+    const { data: idRows } = await qb.order("id").limit(1000);
 
     const allIds = (idRows ?? []).map((r) => r.id as string);
 
@@ -279,23 +280,29 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
       return { products: [], total: 0, page, perPage, totalPages: 0 };
     }
 
-    // Step 2: Get prices for those IDs.
-    let priceQb = supabase
-      .from("storefront_prices")
-      .select("product_id, customer_price")
-      .in("product_id", allIds);
+    // Step 2: Get prices for those IDs in bounded chunks — a single
+    // `.in()` with 1k+ IDs risks URL length / 414 and slow plans.
+    const priceById = new Map<string, number>();
+    for (let i = 0; i < allIds.length; i += 200) {
+      const chunk = allIds.slice(i, i + 200);
+      let priceQb = supabase
+        .from("storefront_prices")
+        .select("product_id, customer_price")
+        .in("product_id", chunk);
 
-    if (minPrice != null) {
-      priceQb = priceQb.gte("customer_price", minPrice);
-    }
-    if (maxPrice != null) {
-      priceQb = priceQb.lte("customer_price", maxPrice);
-    }
+      if (minPrice != null) {
+        priceQb = priceQb.gte("customer_price", minPrice);
+      }
+      if (maxPrice != null) {
+        priceQb = priceQb.lte("customer_price", maxPrice);
+      }
 
-    const { data: priceRows } = await priceQb;
-    const priceMap = new Map(
-      (priceRows ?? []).map((r) => [r.product_id as string, Number(r.customer_price)]),
-    );
+      const { data: priceRows } = await priceQb;
+      for (const r of (priceRows ?? []) as { product_id: string; customer_price: number }[]) {
+        priceById.set(r.product_id as string, Number(r.customer_price));
+      }
+    }
+    const priceMap = priceById;
 
     // Filter IDs by price range.
     const filteredIds = allIds.filter((id) => {
@@ -568,7 +575,7 @@ export async function getSourceRegions(supabase: SupabaseClient) {
   const { data } = await supabase
     .from("storefront_suppliers")
     .select("city, state")
-    .limit(500);
+    .limit(200);
 
   const regions: { state: string; cities: string[] }[] = [];
   const stateMap = new Map<string, Set<string>>();
@@ -602,7 +609,8 @@ export async function getFeaturedSuppliers(supabase: SupabaseClient) {
   const { data: featured } = await supabase
     .from("supplier_featured_images")
     .select("supplier_id, image_path")
-    .in("supplier_id", supplierIds);
+    .in("supplier_id", supplierIds)
+    .limit(18);
 
   const imagesBySupplier: Record<string, string[]> = {};
   for (const row of (featured ?? []) as {

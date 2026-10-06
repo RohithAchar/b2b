@@ -1,9 +1,8 @@
 import { Suspense } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/server"
 import { publicImageUrl } from "@/lib/storage"
-import { getHomeBanners } from "@/lib/storefront"
+import { getCachedHomeBanners } from "@/lib/storefront-cache"
 import { Button } from "@/components/ui/button"
 import { SectionHeader } from "@/components/storefront/section-header"
 import {
@@ -115,8 +114,7 @@ function CompactHero() {
 }
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  const banners = await getHomeBanners(supabase)
+  const banners = await getCachedHomeBanners()
 
   const heroBanners = banners.filter((b) => b.slot === "hero")
   const promoBanner = banners.find((b) => b.slot === "promo")

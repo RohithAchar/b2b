@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getSessionUser } from "@/lib/auth/session"
 import { getCartCount } from "@/lib/buyer/cart-actions"
-import { getNavigationCategories } from "@/lib/storefront"
+import { getCachedNavigationCategories } from "@/lib/storefront-cache"
 import { StorefrontShell } from "@/components/layout/storefront-shell"
 import { StorefrontDataProvider } from "@/components/layout/storefront-data"
 
@@ -11,9 +11,10 @@ export default async function StorefrontLayout({
   const supabase = await createClient()
   const [sessionUser, navCategories] = await Promise.all([
     getSessionUser(supabase),
-    getNavigationCategories(supabase),
+    getCachedNavigationCategories(),
   ])
-  const cartCount = sessionUser ? await getCartCount(supabase, sessionUser.id) : 0
+  const cartCountPromise = sessionUser ? getCartCount(supabase, sessionUser.id) : Promise.resolve(0)
+  const [cartCount] = await Promise.all([cartCountPromise])
 
   return (
     <StorefrontDataProvider categories={navCategories}>

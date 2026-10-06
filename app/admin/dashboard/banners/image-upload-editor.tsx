@@ -179,7 +179,7 @@ export function ImageUploadEditor({
             Preview at the storefront banner ratio:
           </FieldDescription>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <img loading="lazy" decoding="async"
             src={appliedPreview}
             alt="Cropped banner preview"
             className="w-full rounded-xl border border-border object-cover"
@@ -263,7 +263,7 @@ export function ImageUploadEditor({
         <div className="flex flex-col gap-2">
           <FieldDescription>Current banner:</FieldDescription>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <img loading="lazy" decoding="async"
             src={currentImageUrl}
             alt="Current banner"
             className="w-full rounded-xl border border-border object-cover"

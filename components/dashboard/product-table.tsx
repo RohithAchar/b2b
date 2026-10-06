@@ -300,7 +300,7 @@ export function ProductTable({
                   <span className="relative hidden size-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted sm:block">
                     {p.cover ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={p.cover}
                         alt=""
                         className="h-full w-full object-cover"

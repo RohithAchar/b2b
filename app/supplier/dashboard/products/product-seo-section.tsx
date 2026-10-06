@@ -16,7 +16,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormSection } from "@/components/dashboard/form-section";
-import { ImageCropModal } from "@/components/dashboard/image-crop-modal";
+import dynamic from "next/dynamic";
 import { cn } from "cn";
 import {
   MAX_SEO_DESCRIPTION_CHARS,
@@ -27,6 +27,11 @@ import {
 import { stripHtml } from "@/lib/supplier/rich-text";
 import { SITE_URL } from "@/lib/site";
 import type { ExistingProduct, FieldErrorHelpers } from "./product-form-types";
+
+const ImageCropModal = dynamic(
+  () => import("@/components/dashboard/image-crop-modal").then((m) => m.ImageCropModal),
+  { ssr: false },
+);
 
 export function ProductSeoSection({
   invalidFor,
@@ -158,7 +163,7 @@ export function ProductSeoSection({
                 <AttachmentMedia variant="image">
                   {seoImageSrc ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={seoImageSrc} alt="Search preview image" />
+                    <img loading="lazy" decoding="async" src={seoImageSrc} alt="Search preview image" />
                   ) : (
                     <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
                   )}

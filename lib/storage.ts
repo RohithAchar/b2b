@@ -4,6 +4,20 @@ export function publicImageUrl(bucket: string, path: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
 }
 
+/**
+ * Sized variant via Supabase Image Transformation (`/render/image`). Use for
+ * heavy storefront slots (cards, tiles) while `next/image` stays unoptimized.
+ * Keep original `publicImageUrl` for AI/SEO/backfill callers.
+ */
+export function publicTransformedImageUrl(
+  bucket: string,
+  path: string,
+  opts: { width: number; quality?: number },
+): string {
+  const quality = opts.quality ?? 75;
+  return `${SUPABASE_URL}/storage/v1/render/image/public/${bucket}/${path}?width=${opts.width}&quality=${quality}&resize=cover`;
+}
+
 type SniffedType =
   | "image/jpeg"
   | "image/png"

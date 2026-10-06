@@ -209,14 +209,14 @@ export function ProductsFilterBar() {
                 defaultValue={minPrice}
                 onBlur={(e) => {
                   if (e.target.value !== minPrice) {
-                    window.location.href = buildUrl({ minPrice: e.target.value || undefined })
+                    router.push(buildUrl({ minPrice: e.target.value || undefined }))
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    window.location.href = buildUrl({ minPrice: val })
+                    router.push(buildUrl({ minPrice: val }))
                   }
                 }}
               />
@@ -233,14 +233,14 @@ export function ProductsFilterBar() {
                 defaultValue={maxPrice}
                 onBlur={(e) => {
                   if (e.target.value !== maxPrice) {
-                    window.location.href = buildUrl({ maxPrice: e.target.value || undefined })
+                    router.push(buildUrl({ maxPrice: e.target.value || undefined }))
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    window.location.href = buildUrl({ maxPrice: val })
+                    router.push(buildUrl({ maxPrice: val }))
                   }
                 }}
               />
@@ -257,14 +257,14 @@ export function ProductsFilterBar() {
                 defaultValue={minMoq}
                 onBlur={(e) => {
                   if (e.target.value !== minMoq) {
-                    window.location.href = buildUrl({ minMoq: e.target.value || undefined })
+                    router.push(buildUrl({ minMoq: e.target.value || undefined }))
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    window.location.href = buildUrl({ minMoq: val })
+                    router.push(buildUrl({ minMoq: val }))
                   }
                 }}
               />
@@ -281,14 +281,14 @@ export function ProductsFilterBar() {
                 defaultValue={maxMoq}
                 onBlur={(e) => {
                   if (e.target.value !== maxMoq) {
-                    window.location.href = buildUrl({ maxMoq: e.target.value || undefined })
+                    router.push(buildUrl({ maxMoq: e.target.value || undefined }))
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    window.location.href = buildUrl({ maxMoq: val })
+                    router.push(buildUrl({ maxMoq: val }))
                   }
                 }}
               />
@@ -300,7 +300,7 @@ export function ProductsFilterBar() {
                 type="checkbox"
                 checked={inStock}
                 onChange={(e) => {
-                  window.location.href = buildUrl({ inStock: e.target.checked ? "true" : undefined })
+                  router.push(buildUrl({ inStock: e.target.checked ? "true" : undefined }))
                 }}
                 className="size-3.5 rounded-sm border-border"
               />
@@ -311,7 +311,7 @@ export function ProductsFilterBar() {
                 type="checkbox"
                 checked={negotiable}
                 onChange={(e) => {
-                  window.location.href = buildUrl({ negotiable: e.target.checked ? "true" : undefined })
+                  router.push(buildUrl({ negotiable: e.target.checked ? "true" : undefined }))
                 }}
                 className="size-3.5 rounded-sm border-border"
               />
@@ -322,7 +322,7 @@ export function ProductsFilterBar() {
                 type="checkbox"
                 checked={sampleAvailable}
                 onChange={(e) => {
-                  window.location.href = buildUrl({ sampleAvailable: e.target.checked ? "true" : undefined })
+                  router.push(buildUrl({ sampleAvailable: e.target.checked ? "true" : undefined }))
                 }}
                 className="size-3.5 rounded-sm border-border"
               />

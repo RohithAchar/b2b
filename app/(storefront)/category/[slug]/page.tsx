@@ -2,13 +2,12 @@ import { Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { publicImageUrl } from "@/lib/storage"
 import {
-  getCategoryBySlug,
-  getCategoryProductCount,
-  getProducts,
-} from "@/lib/storefront"
+  getCachedCategoryBySlug,
+  getCachedCategoryProductCount,
+  getCachedProducts,
+} from "@/lib/storefront-cache"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
@@ -33,8 +32,7 @@ async function CategoryProductListings({
   slug: string
   page: number
 }) {
-  const supabase = await createClient()
-  const { products, totalPages } = await getProducts(supabase, {
+  const { products, totalPages } = await getCachedProducts({
     categorySlug: slug,
     page,
     perPage: 24,
@@ -118,11 +116,10 @@ export default async function CategoryPage({
   const sp = await searchParams
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
 
-  const supabase = await createClient()
-  const category = await getCategoryBySlug(supabase, slug)
+  const category = await getCachedCategoryBySlug(slug)
   if (!category) notFound()
 
-  const productCount = await getCategoryProductCount(supabase, category.id)
+  const productCount = await getCachedCategoryProductCount(category.id)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
