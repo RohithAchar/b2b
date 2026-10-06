@@ -17,3 +17,5 @@ allowBuilds:
   # standalone service in services/image-search/. Never imported by app routes.
   onnxruntime-node: true
   protobufjs: false
+  core-js-pure: false
+  esbuild: true

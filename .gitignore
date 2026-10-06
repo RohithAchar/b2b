@@ -41,3 +41,6 @@ next-env.d.ts
 # (populated on first run into the Transformers.js cache). Never committed;
 # the Docker image bakes weights at build time instead.
 /models
+
+*storybook.log
+storybook-static
