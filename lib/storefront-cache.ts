@@ -7,6 +7,7 @@ import {
   getHomeBanners,
   getHomeCategories,
   getHomeProducts,
+  getMegaMenuCategories,
   getNavigationCategories,
   getProduct,
   getProducts,
@@ -66,6 +67,12 @@ export const getCachedNavigationCategories = unstable_cache(
 export const getCachedHomeCategories = unstable_cache(
   async () => getHomeCategories(makePublicClient() as unknown as AnyClient),
   ["home-categories"],
+  { revalidate: 600, tags: ["categories", "home", "products"] },
+);
+
+export const getCachedMegaMenuCategories = unstable_cache(
+  async () => getMegaMenuCategories(makePublicClient() as unknown as AnyClient),
+  ["mega-menu-categories"],
   { revalidate: 600, tags: ["categories", "home", "products"] },
 );
 

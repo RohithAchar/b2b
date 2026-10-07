@@ -6,7 +6,7 @@ import { publicTransformedImageUrl } from "@/lib/storage";
 import {
   getCachedFeaturedSuppliers,
   getCachedHomeCategories,
-  getCachedHomeProducts,
+  getCachedProducts,
   getCachedSourceRegions,
 } from "@/lib/storefront-cache";
 import { Card } from "@/components/ui/card";
@@ -114,19 +114,12 @@ export async function PopularCategoriesSection() {
   );
 }
 
-export async function WholesaleDealsSection() {
-  const products = await getCachedHomeProducts();
+export async function AllProductsSection() {
+  const { products } = await getCachedProducts({ page: 1, perPage: 24 });
 
   return (
-    <section className="bg-card">
+    <section className="bg-muted">
       <div className="mx-auto w-full max-w-7xl px-4 py-6">
-        <SectionHeader
-          title="Wholesale Deals"
-          subtitle="Quoted wholesale prices directly from suppliers"
-          actionLabel="View all"
-          actionHref="/products"
-          className="border-b-0"
-        />
         {products.length === 0 ? (
           <div className="py-4">
             <Empty>

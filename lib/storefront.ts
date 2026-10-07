@@ -519,6 +519,77 @@ export async function getCategoryBySlug(supabase: SupabaseClient, slug: string) 
 }
 
 // ---------------------------------------------------------------------------
+// Mega-menu categories: top-level parents with images + counts plus their
+// subcategories in two queries (avoids N+1 getCategoryBySlug calls).
+// ---------------------------------------------------------------------------
+
+export type MegaMenuCategoryData = {
+  id: string;
+  name: string;
+  slug: string;
+  image_path: string | null;
+  product_count: number;
+  subcategories: {
+    id: string;
+    name: string;
+    slug: string;
+    image_path: string | null;
+  }[];
+};
+
+export async function getMegaMenuCategories(
+  supabase: SupabaseClient,
+): Promise<MegaMenuCategoryData[]> {
+  const { data: parents } = await supabase
+    .from("categories")
+    .select("id, name, slug, image_path")
+    .eq("is_active", true)
+    .is("parent_id", null)
+    .order("sort_order")
+    .order("name");
+
+  const parentRows =
+    (parents ?? []) as {
+      id: string;
+      name: string;
+      slug: string;
+      image_path: string | null;
+    }[];
+  if (parentRows.length === 0) return [];
+
+  const parentIds = parentRows.map((p) => p.id);
+  const [{ data: subs }, counts] = await Promise.all([
+    supabase
+      .from("categories")
+      .select("id, name, slug, image_path, parent_id")
+      .in("parent_id", parentIds)
+      .eq("is_active", true)
+      .order("sort_order")
+      .order("name"),
+    getCategoryProductCounts(supabase, parentIds),
+  ]);
+
+  const subsByParent = new Map<string, MegaMenuCategoryData["subcategories"]>();
+  for (const s of (subs ?? []) as {
+    id: string;
+    name: string;
+    slug: string;
+    image_path: string | null;
+    parent_id: string;
+  }[]) {
+    const list = subsByParent.get(s.parent_id) ?? [];
+    list.push({ id: s.id, name: s.name, slug: s.slug, image_path: s.image_path });
+    subsByParent.set(s.parent_id, list);
+  }
+
+  return parentRows.map((p) => ({
+    ...p,
+    product_count: counts[p.id] ?? 0,
+    subcategories: subsByParent.get(p.id) ?? [],
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Category product counts (used by homepage)
 // ---------------------------------------------------------------------------
 

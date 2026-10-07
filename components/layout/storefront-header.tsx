@@ -3,7 +3,6 @@ import { NAV_LINKS } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
-import { StorefrontSearchForm } from "@/components/storefront/storefront-search-form"
 import { Button } from "@/components/ui/button"
 
 type User = { email: string; user_type: string } | null
@@ -20,8 +19,7 @@ export function StorefrontHeader({
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
-      {/* ---- Tier 1: logo + nav + actions ---- */}
-      <div className="border-b border-border">
+      {/* ---- Tier 1: logo + nav + actions ---- */}      <div className="border-b border-border">
         <div className="mx-auto flex h-12 max-w-7xl items-center gap-2 px-4">
           {/* Mobile menu */}
           <MobileNav user={user} categories={categories} />
@@ -73,36 +71,6 @@ export function StorefrontHeader({
         </div>
       </div>
 
-      {/* ---- Tier 2: search (desktop) ---- */}
-      <div className="hidden border-b border-border bg-background lg:block">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2.5">
-          <StorefrontSearchForm showBrowseAll />
-        </div>
-      </div>
-
-      {/* ---- Tier 3: category rail (desktop) ---- */}
-      {categories.length > 0 && (
-        <div className="hidden bg-card lg:block">
-          <div className="mx-auto no-scrollbar flex max-w-7xl items-center gap-0.5 overflow-x-auto px-4 py-1.5">
-            <Link
-              href="/products"
-              className="shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
-            >
-              All Categories
-            </Link>
-            <span className="mx-1 shrink-0 text-border">|</span>
-            {categories.map((cat) => (
-              <Link
-                key={cat.slug}
-                href={`/category/${cat.slug}`}
-                className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-foreground/75 hover:bg-muted hover:text-foreground"
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </header>
   )
 }

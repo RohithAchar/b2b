@@ -1,13 +1,16 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowRight01Icon,
-  Camera01Icon,
   Search01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ImageSearchButton } from "@/components/storefront/image-search-button";
 import {
   publicTransformedImageUrl,
 } from "@/lib/storage";
@@ -80,12 +83,13 @@ function SubThumb({ sub }: { sub: MegaMenuSubcategory }) {
 }
 
 /**
- * Static Alibaba-style large search menu (visual only).
+ * Alibaba-style large search menu.
  *
- * No client logic: no form action, no router, no state, no data fetching.
- * The active category panel is driven by the `activeSlug` prop and the
- * suggestion dropdown by the `suggestions` prop, so stories can showcase
- * each state without interactivity.
+ * Client component with one piece of state: the highlighted category.
+ * Hovering (or focusing) a left-list row swaps the right panel; the search
+ * bar itself is a native GET form (same `/products?q=` + `page=1` contract
+ * as `StorefrontSearchForm`), image search reuses `ImageSearchButton`, and
+ * every category/trending entry links to a real route.
  */
 export function SearchMegaMenu({
   categories,
@@ -102,8 +106,13 @@ export function SearchMegaMenu({
   suggestions?: MegaMenuSuggestion[];
   visibleCount?: number;
 }) {
-  const active =
+  const initial =
     categories.find((c) => c.slug === activeSlug) ?? categories[0] ?? null;
+  const [activeSlugState, setActiveSlugState] = useState<string | null>(
+    initial?.slug ?? null,
+  );
+  const active =
+    categories.find((c) => c.slug === activeSlugState) ?? initial;
   const visible = categories.slice(0, visibleCount);
   const hasMore = categories.length > visible.length;
 
@@ -112,40 +121,44 @@ export function SearchMegaMenu({
       {/* One big panel holding every feature (visual only) */}
       <div className="flex flex-col rounded-lg border border-border bg-card">
         <div className="flex flex-col px-5 pt-5">
-          {/* Large search bar (visual only) */}
+          {/* Large search bar */}
           <div className="relative">
-          <div className="flex h-12 w-full items-stretch overflow-hidden rounded-md border-2 border-primary bg-card">
+          <form
+            action="/products"
+            method="get"
+            className="flex h-12 w-full items-stretch rounded-md border-2 border-primary bg-card"
+          >
+            <input type="hidden" name="page" value="1" />
             <div className="relative flex-1">
               <Input
-                readOnly
-                tabIndex={-1}
+                name="q"
                 defaultValue={query}
                 placeholder="Search products, suppliers, manufacturers..."
                 className="h-full rounded-none border-0 bg-transparent pl-4 text-sm shadow-none focus-visible:ring-0"
               />
             </div>
-            <span className="flex items-center pr-2 text-muted-foreground">
-              <span className="flex size-8 items-center justify-center rounded-sm border border-border bg-muted/50">
-                <HugeiconsIcon icon={Camera01Icon} strokeWidth={2} className="size-4" />
-              </span>
+            <span className="flex items-center pr-2">
+              <ImageSearchButton />
             </span>
             <Button
-              type="button"
-              tabIndex={-1}
-              className="h-full shrink-0 rounded-none px-8 text-sm font-bold"
+              type="submit"
+              className="h-full shrink-0 rounded-r-sm px-8 text-sm font-bold"
             >
               <HugeiconsIcon icon={Search01Icon} strokeWidth={2.5} className="size-4" />
               Search
             </Button>
-          </div>
+          </form>
 
-          {/* Suggestion dropdown (visual only) */}
+          {/* Suggestion dropdown */}
           {suggestions.length > 0 && (
             <div className="absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-md border-2 border-t-0 border-primary bg-card shadow-md">
               <ul className="flex max-h-64 flex-col overflow-y-auto py-1">
                 {suggestions.map((s) => (
                   <li key={s.id}>
-                      <span className="flex cursor-pointer items-center gap-2.5 px-4 py-2 text-sm text-foreground/85">
+                    <Link
+                      href={`/products?q=${encodeURIComponent(s.label)}`}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground/85 hover:bg-muted"
+                    >
                       <HugeiconsIcon
                         icon={Search01Icon}
                         strokeWidth={2}
@@ -159,7 +172,7 @@ export function SearchMegaMenu({
                           {s.hint}
                         </span>
                       )}
-                    </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -167,14 +180,19 @@ export function SearchMegaMenu({
           )}
         </div>
 
-        {/* Hot searches (visual only) */}
+        {/* Hot searches */}
         {trending.length > 0 && (
           <p className="mt-2 truncate px-1 text-xs text-muted-foreground">
             <span className="font-semibold">Hot: </span>
             {trending.map((term, i) => (
               <span key={term}>
                 {i > 0 && <span className="mx-1.5 text-border">|</span>}
-                <span className="cursor-pointer hover:text-primary hover:underline">{term}</span>
+                <Link
+                  href={`/products?q=${encodeURIComponent(term)}`}
+                  className="hover:text-primary hover:underline"
+                >
+                  {term}
+                </Link>
               </span>
             ))}
           </p>
@@ -202,12 +220,15 @@ export function SearchMegaMenu({
               const isActive = active?.slug === cat.slug;
               return (
                 <li key={cat.id} className="border-b border-border last:border-b-0">
-                  <span
+                  <Link
+                    href={`/category/${cat.slug}`}
                     aria-current={isActive ? "page" : undefined}
+                    onMouseEnter={() => setActiveSlugState(cat.slug)}
+                    onFocus={() => setActiveSlugState(cat.slug)}
                     className={
                       isActive
-                        ? "flex cursor-pointer items-center justify-between border-l-2 border-primary bg-background px-4 py-2.5 text-sm font-bold text-primary"
-                        : "flex cursor-pointer items-center justify-between border-l-2 border-transparent px-4 py-2.5 text-sm font-medium text-foreground/80"
+                        ? "flex items-center justify-between border-l-2 border-primary bg-background px-4 py-2.5 text-sm font-bold text-primary"
+                        : "flex items-center justify-between border-l-2 border-transparent px-4 py-2.5 text-sm font-medium text-foreground/80"
                     }
                   >
                     <span className="truncate">{cat.name}</span>
@@ -216,7 +237,7 @@ export function SearchMegaMenu({
                       strokeWidth={2}
                       className="size-3.5 shrink-0 text-muted-foreground"
                     />
-                  </span>
+                  </Link>
                 </li>
               );
             })}
@@ -239,7 +260,7 @@ export function SearchMegaMenu({
             )}
           </ul>
 
-          <div className="bg-background px-5 py-4">
+          <div className="bg-card px-5 py-4 lg:border-l lg:border-border">
             {active ? (
               <div className="flex flex-col gap-4">
                 <div className="flex items-baseline justify-between gap-2">
@@ -252,12 +273,15 @@ export function SearchMegaMenu({
                   <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                     {active.subcategories.map((sub) => (
                       <li key={sub.id}>
-                        <span className="flex cursor-pointer items-center gap-2.5 rounded-sm border border-border bg-card px-2 py-1.5 text-sm font-medium text-foreground/80 hover:border-primary/40">
+                        <Link
+                          href={`/category/${sub.slug}`}
+                          className="flex items-center gap-2.5 rounded-sm border border-border bg-card px-2 py-1.5 text-sm font-medium text-foreground/80 hover:border-primary/40"
+                        >
                           <SubThumb sub={sub} />
                           <span className="min-w-0 truncate hover:text-primary hover:underline">
                             {sub.name}
                           </span>
-                        </span>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -266,9 +290,12 @@ export function SearchMegaMenu({
                     No sub-categories yet — suppliers haven&apos;t listed here.
                   </p>
                 )}
-                <span className="cursor-pointer text-sm font-semibold text-primary">
+                <Link
+                  href={`/category/${active.slug}`}
+                  className="text-sm font-semibold text-primary"
+                >
                   View all {active.name} →
-                </span>
+                </Link>
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">
