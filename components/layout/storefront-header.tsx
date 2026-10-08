@@ -18,8 +18,8 @@ export function StorefrontHeader({
   cartCount?: number
 }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-card">
-      {/* ---- Tier 1: logo + nav + actions ---- */}      <div className="border-b border-border">
+    <header className="sticky top-0 z-50 bg-card">
+      {/* ---- Tier 1: logo + nav + actions ---- */}      <div>
         <div className="mx-auto flex h-12 max-w-7xl items-center gap-2 px-4">
           {/* Mobile menu */}
           <MobileNav user={user} categories={categories} />
