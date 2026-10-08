@@ -122,7 +122,7 @@ export function SearchMegaMenu({
       <div className="flex flex-col rounded-lg border border-border bg-card">
         <div className="flex min-w-0 flex-col px-4 pt-4 sm:px-5 sm:pt-5">
           {/* Large search bar */}
-          <div className="relative min-w-0">
+          <div className="relative min-w-0" data-mini-search-anchor>
           <form
             action="/products"
             method="get"

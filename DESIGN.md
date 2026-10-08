@@ -113,6 +113,17 @@ Three tiers on desktop: (1) logo + nav + auth actions, (2) full-width search,
 search tier, category rail and header auth actions are hidden because the
 [bottom navigation](#mobile-bottom-navigation) covers those destinations.
 
+### Mini search bar (`components/storefront/storefront-mini-search.tsx`)
+Compact sticky search bar rendered by `components/layout/storefront-shell.tsx`
+on browsing pages only (`/`, `/products`, `/category/*`, `/products/*` — never
+account/cart). It reuses `StorefrontSearchForm` unchanged. Hidden while a
+page-level search is on screen: on `/` an `IntersectionObserver` watches the
+hero search (`data-mini-search-anchor`); pages without an anchor fall back to a
+small scroll threshold. `fixed inset-x-0 top-12 z-40` with `border-b bg-card`
+— pinned under the sticky header, below `z-50` sheets/dropdowns, fixed so page
+content never shifts. Slide transition is `motion-safe:` gated; hidden state is
+`aria-hidden` + `inert`.
+
 ### Mobile bottom navigation (`components/layout/storefront-bottom-nav.tsx`)
 Fixed, buyer/storefront-only tab bar. Rendered by
 `components/layout/storefront-shell.tsx`, which wraps every public storefront
