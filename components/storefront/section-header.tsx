@@ -16,9 +16,9 @@ export function SectionHeader({
 }) {
   return (
     <div
-      className={`mb-3 flex items-end justify-between gap-4 border-b border-border pb-2 ${className ?? ""}`}
+      className={`mb-3 flex items-end justify-between gap-2 border-b border-border pb-2 sm:gap-4 ${className ?? ""}`}
     >
-      <div>
+      <div className="min-w-0 flex-1">
         <h2 className="text-lg font-bold tracking-tight text-foreground">
           {title}
         </h2>
@@ -27,7 +27,7 @@ export function SectionHeader({
         ) : null}
       </div>
       {actionLabel && actionHref ? (
-        <Link href={actionHref}>
+        <Link href={actionHref} className="shrink-0">
           <Button
             variant="link"
             size="sm"

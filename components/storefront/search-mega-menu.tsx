@@ -117,35 +117,36 @@ export function SearchMegaMenu({
   const hasMore = categories.length > visible.length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
       {/* One big panel holding every feature (visual only) */}
       <div className="flex flex-col rounded-lg border border-border bg-card">
-        <div className="flex flex-col px-5 pt-5">
+        <div className="flex min-w-0 flex-col px-4 pt-4 sm:px-5 sm:pt-5">
           {/* Large search bar */}
-          <div className="relative">
+          <div className="relative min-w-0">
           <form
             action="/products"
             method="get"
-            className="flex h-12 w-full items-stretch rounded-md border-2 border-primary bg-card"
+            className="flex h-12 w-full min-w-0 items-stretch rounded-md border-2 border-primary bg-card"
           >
             <input type="hidden" name="page" value="1" />
-            <div className="relative flex-1">
+            <div className="relative min-w-0 flex-1">
               <Input
                 name="q"
                 defaultValue={query}
-                placeholder="Search products, suppliers, manufacturers..."
-                className="h-full rounded-none border-0 bg-transparent pl-4 text-sm shadow-none focus-visible:ring-0"
+                placeholder="Search products, suppliers..."
+                className="h-full min-w-0 rounded-none border-0 bg-transparent pl-3 pr-1 text-sm shadow-none focus-visible:ring-0 sm:pl-4"
               />
             </div>
-            <span className="flex items-center pr-2">
+            <span className="flex shrink-0 items-center pr-1 sm:pr-2">
               <ImageSearchButton />
             </span>
             <Button
               type="submit"
-              className="h-full shrink-0 rounded-r-sm px-8 text-sm font-bold"
+              aria-label="Search"
+              className="h-full shrink-0 rounded-r-sm px-3 text-sm font-bold sm:px-8"
             >
               <HugeiconsIcon icon={Search01Icon} strokeWidth={2.5} className="size-4" />
-              Search
+              <span className="max-sm:hidden">Search</span>
             </Button>
           </form>
 
@@ -202,8 +203,39 @@ export function SearchMegaMenu({
         {/* Category browse section, divided from the search block above */}
         <nav
           aria-label="Browse categories"
-          className="mt-5 grid overflow-hidden rounded-b-lg border-t border-border lg:grid-cols-[260px_1fr]"
+          className="mt-4 grid overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:grid-cols-[260px_1fr]"
         >
+          {/* Mobile category switcher: desktop hover list is hidden below lg */}
+          <div className="border-b border-border bg-muted/40 px-3 py-2 lg:hidden">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar snap-x">
+              {visible.map((cat) => {
+                const isActive = active?.slug === cat.slug;
+                return (
+                  <Button
+                    key={cat.id}
+                    type="button"
+                    size="sm"
+                    variant={isActive ? "default" : "outline"}
+                    aria-pressed={isActive}
+                    onClick={() => setActiveSlugState(cat.slug)}
+                    className="h-7 shrink-0 snap-start px-2.5 text-xs font-semibold"
+                  >
+                    <span className="max-w-28 truncate">{cat.name}</span>
+                  </Button>
+                );
+              })}
+              {hasMore && (
+                <Link
+                  href="/categories"
+                  className="inline-flex h-7 shrink-0 snap-start items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-muted"
+                >
+                  <span className="max-w-28 truncate">
+                    All {categories.length}
+                  </span>
+                </Link>
+              )}
+            </div>
+          </div>
           <div className="border-b border-border bg-muted/40 px-4 py-2.5 max-lg:hidden">
             <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
               All Categories
@@ -260,7 +292,7 @@ export function SearchMegaMenu({
             )}
           </ul>
 
-          <div className="bg-card px-5 py-4 lg:border-l lg:border-border">
+          <div className="bg-card px-4 py-4 sm:px-5 lg:border-l lg:border-border">
             {active ? (
               <div className="flex flex-col gap-4">
                 <div className="flex items-baseline justify-between gap-2">

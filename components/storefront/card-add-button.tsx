@@ -28,7 +28,7 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
   }, [state, router]);
 
   return (
-    <form action={action}>
+    <form action={action} className="min-w-0">
       <input type="hidden" name="productId" value={productId} />
       <input type="hidden" name="quantity" value={Math.max(1, moq)} />
       <Button
@@ -37,7 +37,7 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
         variant="outline"
         disabled={pending}
         aria-label="Add to cart"
-        className="h-7 px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+        className="h-7 w-full px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground sm:w-auto"
       >
         <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-3.5" />
         Add
