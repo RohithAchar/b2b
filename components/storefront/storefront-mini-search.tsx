@@ -48,8 +48,8 @@ function MiniSearchBar() {
 /**
  * Minimal sticky search bar for browsing pages.
  *
- * Rendered by `StorefrontShell` on `/`, `/products`, `/category/*` and
- * `/products/*` (never account/cart). It stays hidden while a page-level
+ * Rendered by `StorefrontShell` on `/`, `/products`, `/categories`,
+ * `/category/*` and `/products/*` (never account/cart). It stays hidden while a page-level
  * search is on screen: on the homepage an `IntersectionObserver` watches the
  * hero search (marked with `data-mini-search-anchor`); pages without an
  * anchor fall back to a small scroll threshold. Reuses `StorefrontSearchForm`
@@ -62,6 +62,7 @@ export function StorefrontMiniSearch() {
   const enabled =
     pathname === "/" ||
     pathname === "/products" ||
+    pathname === "/categories" ||
     pathname.startsWith("/products/") ||
     pathname.startsWith("/category/")
 

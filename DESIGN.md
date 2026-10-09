@@ -115,7 +115,7 @@ search tier, category rail and header auth actions are hidden because the
 
 ### Mini search bar (`components/storefront/storefront-mini-search.tsx`)
 Compact sticky search bar rendered by `components/layout/storefront-shell.tsx`
-on browsing pages only (`/`, `/products`, `/category/*`, `/products/*` — never
+on browsing pages only (`/`, `/products`, `/categories`, `/category/*`, `/products/*` — never
 account/cart). It reuses `StorefrontSearchForm` unchanged. Hidden while a
 page-level search is on screen: on `/` an `IntersectionObserver` watches the
 hero search (`data-mini-search-anchor`); pages without an anchor fall back to a

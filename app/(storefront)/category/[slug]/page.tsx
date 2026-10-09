@@ -8,9 +8,17 @@ import {
   getCachedCategoryProductCount,
   getCachedProducts,
 } from "@/lib/storefront-cache"
-import { Breadcrumbs } from "@/components/layout/breadcrumbs"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
+import { Separator } from "@/components/ui/separator"
 import {
   Pagination,
   PaginationContent,
@@ -51,11 +59,15 @@ async function CategoryProductListings({
             <EmptyDescription>
               Suppliers haven&apos;t listed products here yet.
             </EmptyDescription>
-            <Link href="/products">
-              <Button variant="outline" size="sm" className="mt-3">
-                Browse all products
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/products" />}
+              className="mt-3"
+            >
+              Browse all products
+            </Button>
           </Empty>
         </div>
       ) : (
@@ -123,12 +135,20 @@ export default async function CategoryPage({
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
-      <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, { label: category.name }]}
-      />
+      <Breadcrumb className="mb-4">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link href="/" />}>Home</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{category.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* Category header */}
-      <div className="mb-5 flex items-center gap-4 border-b border-border pb-4">
+      <div className="mb-5 flex items-center gap-4 pb-4">
         {category.image_path && (
           <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
             <Image
@@ -148,6 +168,7 @@ export default async function CategoryPage({
           </p>
         </div>
       </div>
+      <Separator className="mb-5" />
 
       {/* Subcategories */}
       {category.subcategories.length > 0 && (
@@ -156,16 +177,16 @@ export default async function CategoryPage({
             Sub-categories:
           </span>
           {category.subcategories.map((sub) => (
-            <Link key={sub.id} href={`/category/${sub.slug}`}>
-              <Button
-                variant="outline"
-                size="sm"
-                nativeButton={false}
-                className="h-7 rounded-sm text-xs"
-              >
-                {sub.name}
-              </Button>
-            </Link>
+            <Button
+              key={sub.id}
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/category/${sub.slug}`} />}
+              className="h-7 rounded-sm text-xs"
+            >
+              {sub.name}
+            </Button>
           ))}
         </div>
       )}

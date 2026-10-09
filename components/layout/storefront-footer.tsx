@@ -52,7 +52,7 @@ export function StorefrontFooter() {
           title="For Buyers"
           links={[
             { label: "Browse Products", href: "/products" },
-            { label: "Browse Categories", href: "/products" },
+            { label: "Browse Categories", href: "/categories" },
             { label: "Wholesale Deals", href: "/products" },
           ]}
         />
