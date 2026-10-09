@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -11,6 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageSearchButton } from "@/components/storefront/image-search-button";
+import { SearchSuggestionsDropdown } from "@/components/storefront/search-suggestions";
+import { useSearchSuggestions } from "@/components/storefront/use-search-suggestions";
+import {
+  normalizeSuggestQuery,
+  SUGGEST_MIN_CHARS,
+} from "@/lib/search-suggest";
 import {
   publicTransformedImageUrl,
 } from "@/lib/storage";
@@ -111,6 +117,22 @@ export function SearchMegaMenu({
   const [activeSlugState, setActiveSlugState] = useState<string | null>(
     initial?.slug ?? null,
   );
+  // Live suggestions activate only after the user types, so the static
+  // `suggestions` fallback (used by Storybook) keeps rendering untouched.
+  const [value, setValue] = useState(query);
+  const [touched, setTouched] = useState(false);
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const {
+    products: liveProducts,
+    categories: liveCategories,
+    hasResults: liveHasResults,
+  } = useSearchSuggestions(open && touched ? value : "");
+  const showLive =
+    touched && normalizeSuggestQuery(value).length >= SUGGEST_MIN_CHARS;
+  const showLiveDropdown = open && showLive && liveHasResults;
+  const showFallbackDropdown =
+    !showLive && !showLiveDropdown && suggestions.length > 0;
   const active =
     categories.find((c) => c.slug === activeSlugState) ?? initial;
   const visible = categories.slice(0, visibleCount);
@@ -122,18 +144,39 @@ export function SearchMegaMenu({
       <div className="flex flex-col rounded-lg border border-border bg-card">
         <div className="flex min-w-0 flex-col px-4 pt-4 sm:px-5 sm:pt-5">
           {/* Large search bar */}
-          <div className="relative min-w-0" data-mini-search-anchor>
+          <div
+            className="relative min-w-0"
+            data-mini-search-anchor
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setOpen(false);
+              }
+            }}
+          >
           <form
             action="/products"
             method="get"
+            onSubmit={() => setOpen(false)}
             className="flex h-12 w-full min-w-0 items-stretch rounded-md border-2 border-primary bg-card"
           >
             <input type="hidden" name="page" value="1" />
             <div className="relative min-w-0 flex-1">
               <Input
                 name="q"
-                defaultValue={query}
+                value={value}
                 placeholder="Search products, suppliers..."
+                autoComplete="off"
+                aria-expanded={showLiveDropdown || showFallbackDropdown}
+                aria-controls={listId}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  setTouched(true);
+                  setOpen(true);
+                }}
+                onFocus={() => setOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setOpen(false);
+                }}
                 className="h-full min-w-0 rounded-none border-0 bg-transparent pl-3 pr-1 text-sm shadow-none focus-visible:ring-0 sm:pl-4"
               />
             </div>
@@ -150,9 +193,18 @@ export function SearchMegaMenu({
             </Button>
           </form>
 
-          {/* Suggestion dropdown */}
-          {suggestions.length > 0 && (
-            <div className="absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-md border-2 border-t-0 border-primary bg-card shadow-md">
+          {/* Suggestion dropdown: live product + category matches once the
+              user types, otherwise the static `suggestions` fallback. */}
+          {showLiveDropdown && (
+            <SearchSuggestionsDropdown
+              products={liveProducts}
+              categories={liveCategories}
+              listId={listId}
+              variant="hero"
+            />
+          )}
+          {showFallbackDropdown && (
+            <div id={listId} className="absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-md border-2 border-t-0 border-primary bg-card shadow-md">
               <ul className="flex max-h-64 flex-col overflow-y-auto py-1">
                 {suggestions.map((s) => (
                   <li key={s.id}>
