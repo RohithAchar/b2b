@@ -142,7 +142,7 @@ export function SearchMegaMenu({
     <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
       {/* One big panel holding every feature (visual only) */}
       <div className="flex flex-col rounded-lg border border-border bg-card">
-        <div className="flex min-w-0 flex-col px-4 pt-4 sm:px-5 sm:pt-5">
+        <div className="flex min-w-0 flex-col px-4 py-4 sm:px-5 sm:py-5 lg:pb-0">
           {/* Large search bar */}
           <div
             className="relative min-w-0"
@@ -233,62 +233,33 @@ export function SearchMegaMenu({
           )}
         </div>
 
-        {/* Hot searches */}
+        {/* Hot searches: native horizontal chip scroller on mobile */}
         {trending.length > 0 && (
-          <p className="mt-2 truncate px-1 text-xs text-muted-foreground">
-            <span className="font-semibold">Hot: </span>
-            {trending.map((term, i) => (
-              <span key={term}>
-                {i > 0 && <span className="mx-1.5 text-border">|</span>}
+          <div className="mt-3 flex items-center gap-2 px-1">
+            <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+              Hot:
+            </span>
+            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto no-scrollbar snap-x py-0.5 lg:flex-wrap lg:overflow-visible">
+              {trending.map((term) => (
                 <Link
+                  key={term}
                   href={`/products?q=${encodeURIComponent(term)}`}
-                  className="hover:text-primary hover:underline"
+                  className="inline-flex h-8 shrink-0 snap-start items-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground/80 transition-colors active:bg-muted lg:h-auto lg:shrink lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:hover:text-primary lg:hover:underline"
                 >
-                  {term}
+                  <span className="max-w-36 truncate">{term}</span>
                 </Link>
-              </span>
-            ))}
-          </p>
+              ))}
+            </div>
+          </div>
         )}
         </div>
 
-        {/* Category browse section, divided from the search block above */}
+        {/* Category browse: desktop-only hover grid (mobile uses bottom-nav Categories) */}
         <nav
           aria-label="Browse categories"
-          className="mt-4 grid overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:grid-cols-[260px_1fr]"
+          className="mt-4 hidden overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:grid lg:grid-cols-[260px_1fr]"
         >
-          {/* Mobile category switcher: desktop hover list is hidden below lg */}
-          <div className="border-b border-border bg-muted/40 px-3 py-2 lg:hidden">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar snap-x">
-              {visible.map((cat) => {
-                const isActive = active?.slug === cat.slug;
-                return (
-                  <Button
-                    key={cat.id}
-                    type="button"
-                    size="sm"
-                    variant={isActive ? "default" : "outline"}
-                    aria-pressed={isActive}
-                    onClick={() => setActiveSlugState(cat.slug)}
-                    className="h-7 shrink-0 snap-start px-2.5 text-xs font-semibold"
-                  >
-                    <span className="max-w-28 truncate">{cat.name}</span>
-                  </Button>
-                );
-              })}
-              {hasMore && (
-                <Link
-                  href="/categories"
-                  className="inline-flex h-7 shrink-0 snap-start items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-muted"
-                >
-                  <span className="max-w-28 truncate">
-                    All {categories.length}
-                  </span>
-                </Link>
-              )}
-            </div>
-          </div>
-          <div className="border-b border-border bg-muted/40 px-4 py-2.5 max-lg:hidden">
+          <div className="border-b border-border bg-muted/40 px-4 py-2.5">
             <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
               All Categories
             </p>
@@ -299,7 +270,7 @@ export function SearchMegaMenu({
             </p>
           </div>
 
-          <ul className="flex flex-col max-lg:hidden">
+          <ul className="flex flex-col">
             {visible.map((cat) => {
               const isActive = active?.slug === cat.slug;
               return (
