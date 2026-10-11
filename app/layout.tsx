@@ -2,6 +2,7 @@ import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
 import { Toaster } from "@/components/ui/toast"
+import { PhoneGate } from "@/components/auth/phone-gate"
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" })
@@ -23,6 +24,7 @@ export default function RootLayout({
     >
       <body>
         {children}
+        <PhoneGate />
         <Toaster />
       </body>
     </html>
