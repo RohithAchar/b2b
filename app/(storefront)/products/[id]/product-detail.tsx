@@ -29,7 +29,6 @@ import { SectionHeader } from "@/components/storefront/section-header";
 import { getSessionUser } from "@/lib/auth/session";
 import { isProductSaved } from "@/lib/buyer/queries";
 import { recordRecentlyViewed } from "@/lib/buyer/actions";
-import { EnquiryForm } from "./enquiry-form";
 import { SaveButton } from "./save-button";
 import { AddToCartForm } from "./add-to-cart-form";
 
@@ -271,7 +270,7 @@ export async function ProductDetail({ product }: { product: Product }) {
             </div>
           )}
 
-          {/* Buy / enquiry actions */}
+          {/* Buy actions */}
           <div className="flex flex-col gap-2">
             <AddToCartForm
               productId={product.id}
@@ -285,7 +284,6 @@ export async function ProductDetail({ product }: { product: Product }) {
               }))}
               signedIn={!!user}
             />
-            <EnquiryForm productId={product.id} />
             <div className="grid grid-cols-2 gap-2">
               <SaveButton productId={product.id} saved={saved} />
               {supplier && (

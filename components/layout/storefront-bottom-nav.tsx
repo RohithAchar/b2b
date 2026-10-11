@@ -7,7 +7,6 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import {
   GridViewIcon,
   Home01Icon,
-  Message01Icon,
   Search01Icon,
   UserCircleIcon,
 } from "@hugeicons/core-free-icons"
@@ -50,7 +49,6 @@ export function StorefrontBottomNav({ user }: { user: User }) {
   const categoriesActive =
     pathname.startsWith("/category") || (isProducts && !query)
   const searchActive = isProducts && Boolean(query)
-  const enquiriesActive = pathname === "/account"
   const accountActive = pathname.startsWith("/auth")
 
   return (
@@ -96,14 +94,6 @@ export function StorefrontBottomNav({ user }: { user: User }) {
             </div>
           </SheetContent>
         </Sheet>
-
-        <Link
-          href="/account?tab=enquiries"
-          aria-current={enquiriesActive ? "page" : undefined}
-          className={itemClass(enquiriesActive)}
-        >
-          <ItemContent icon={Message01Icon} label="Enquiries" />
-        </Link>
 
         {user ? (
           <AccountMenu

@@ -131,24 +131,22 @@ page (`/`, `/products`, `/category/[slug]`, `/products/[id]`). It is `lg:hidden`
 — desktop navigation is untouched. It is **separate from supplier/admin
 workspace navigation** and must not be added to `/supplier/*` or `/admin/*`.
 
-Five items, in order:
+Four items, in order:
 
 | Item | Action | Active when |
 |---|---|---|
 | Home | `/` | `pathname === "/"` |
 | Categories | `/products` (existing category-discovery flow) | `/category/*`, or `/products` without `?q` |
 | Search | opens a bottom sheet reusing `StorefrontSearchForm` (submits to `/products?q=…`) | `/products` with `?q` |
-| Enquiries | inert placeholder (`aria-disabled`, `title="Coming soon"`) — no route, workflow or counts exist yet | never |
 | Account | signed in: existing `AccountMenu` (opens upward); signed out: `/auth/login` | `/auth/*` |
 
 - Icons come from the existing Hugeicons set (`Home01Icon`, `GridViewIcon`,
-  `Search01Icon`, `Message01Icon`, `UserCircleIcon`). No new icon library.
+  `Search01Icon`, `UserCircleIcon`). No new icon library.
 - Active state is a semantic-token color shift only (`text-primary` vs
   `text-muted-foreground`) — no pills, fills or gradients. Links set
   `aria-current="page"`.
 - Semantic `<nav aria-label="Storefront">`; every item has a visible label and an
-  accessible name. The Enquiries placeholder is keyboard-reachable and announced
-  as disabled.
+  accessible name.
 - The bar is `fixed inset-x-0 bottom-0 z-40`; sheets/dropdowns (`z-50`) cover it.
 - Safe area: the bar adds `pb-(--safe-area-bottom)`; the interactive row is
   `h-(--bottom-nav-height)`. Both vars live in `app/globals.css`.
@@ -166,7 +164,9 @@ link columns under the brand block, bottom legal bar in `text-white/50`.
 ### Product card (`components/storefront/product-card.tsx`)
 Image (square, `object-cover`) → title → **price** (bold `lg`, unit muted) → MOQ →
 footer bar (`border-t bg-muted/30`): supplier name + verification shield + location
-| "Enquiry" outline button. `!gap-0 !py-0` card.
+| add-to-cart action. `!gap-0 !py-0` card composed with `CardContent`/`CardFooter`;
+Negotiable flag is a `Badge` (`default`); price uses `tabular-nums`; the shield
+icon carries an `sr-only` "Verified supplier" label (never color-alone).
 
 ### Category tile (`components/storefront/home-sections.tsx` `CategoryTile`)
 Compact visual category tile used by the homepage "Popular Categories" navigation grid.
@@ -208,10 +208,10 @@ Audience, Appearance, Plugins, Settings (expandable).
   the group opens and highlights when any product route is active, including product edits.
 - **Settings** is an expandable parent holding the existing **Business profile**
   (`/supplier/dashboard/business`) and **Verification** (`/supplier/dashboard/verification`)
-  entries so existing pages stay reachable.
+   entries so existing pages stay reachable.
 - Top-level items without a route yet (Orders, Delivery, Analytics, Payouts, Discounts,
   Audience, Appearance, Plugins) render as **inert "Coming soon"** entries — `aria-disabled`,
-  no link, no invented route — matching the storefront Enquiries placeholder convention.
+  no link, no invented route.
 - Icons come from the existing Hugeicons set; active state uses `isActive`/`data-active`
   sidebar tokens. Collapse/expand uses the sidebar `Collapsible` + `SidebarMenuSub` pattern
   (chevron rotates on the group's `data-open`). All header/footer/`SidebarRail` and

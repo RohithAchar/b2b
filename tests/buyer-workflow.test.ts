@@ -276,40 +276,4 @@ describe.skipIf(!available)("buyer workflow", () => {
     });
   });
 
-  describe("enquiries", () => {
-    it("buyer can create an enquiry", async () => {
-      const { error } = await fx.buyerClient
-        .from("enquiries")
-        .insert({
-          buyer_id: fx.buyerUserId,
-          product_id: fx.productId,
-          supplier_id: fx.companyId,
-          quantity: 100,
-          message: "Need a quote for 100 units.",
-        });
-      expect(error).toBeNull();
-    });
-
-    it("buyer only sees their own enquiries", async () => {
-      const { data } = await fx.buyerClient
-        .from("enquiries")
-        .select("id")
-        .eq("buyer_id", fx.buyerUserId);
-      expect(data?.length).toBeGreaterThan(0);
-
-      const { data: otherData } = await fx.otherBuyerClient
-        .from("enquiries")
-        .select("id")
-        .eq("buyer_id", fx.otherBuyerUserId);
-      expect(otherData ?? []).toHaveLength(0);
-    });
-
-    it("supplier can see enquiries for their company", async () => {
-      const { data } = await fx.supplierClient
-        .from("enquiries")
-        .select("id")
-        .eq("supplier_id", fx.companyId);
-      expect(data?.length).toBeGreaterThan(0);
-    });
-  });
 });

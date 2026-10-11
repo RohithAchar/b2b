@@ -3,65 +3,6 @@ import type { CustomerPrices } from "@/lib/pricing";
 import { fetchCustomerPriceMap } from "@/lib/storefront";
 
 // ---------------------------------------------------------------------------
-// Enquiry history
-// ---------------------------------------------------------------------------
-
-export type EnquiryRecord = {
-  id: string;
-  product_id: string;
-  supplier_id: string;
-  quantity: number | null;
-  message: string | null;
-  status: "pending" | "quoted" | "closed";
-  created_at: string;
-  updated_at: string;
-  product: {
-    id: string;
-    title: string;
-    unit: string;
-    images: { path: string; sort: number }[];
-  } | null;
-  supplier: {
-    id: string;
-    business_name: string;
-    city: string;
-    state: string;
-  } | null;
-};
-
-export async function getBuyerEnquiries(
-  supabase: SupabaseClient,
-  buyerId: string,
-  page = 1,
-  perPage = 10,
-) {
-  const from = (page - 1) * perPage;
-  const to = from + perPage - 1;
-
-  const { data, count } = await supabase
-    .from("enquiries")
-    .select(
-      `
-        id, product_id, supplier_id, quantity, message, status, created_at, updated_at,
-        product:product_id(id, title, unit, images:product_images(path, sort)),
-        supplier:supplier_id(id, business_name, city, state)
-      `,
-      { count: "exact" },
-    )
-    .eq("buyer_id", buyerId)
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  return {
-    enquiries: (data ?? []) as unknown as EnquiryRecord[],
-    total: count ?? 0,
-    page,
-    perPage,
-    totalPages: Math.ceil((count ?? 0) / perPage),
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Saved products
 // ---------------------------------------------------------------------------
 

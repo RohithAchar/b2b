@@ -60,7 +60,7 @@ export function PricingSection({
           <Field>
             <FieldLabel htmlFor="moq">Minimum order quantity</FieldLabel>
             <Input id="moq" name="moq" required type="number" min={1} step="1" aria-invalid={invalidFor("moq")} value={v("moq")} onChange={(e) => onValueChange("moq", e.target.value)} />
-            <FieldDescription>MOQ filters out irrelevant enquiries.</FieldDescription>
+            <FieldDescription>MOQ filters out small-quantity orders.</FieldDescription>
             {errorFor("moq")}
           </Field>
         </FieldGroup>

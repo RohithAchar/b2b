@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TABS = [
-  { value: "enquiries", label: "Enquiries" },
   { value: "saved", label: "Saved Products" },
   { value: "recent", label: "Recently Viewed" },
 ] as const;

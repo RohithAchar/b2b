@@ -3,14 +3,13 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { AccountTabs } from "./account-tabs";
-import { EnquiriesTab } from "./enquiries-tab";
 import { SavedTab } from "./saved-tab";
 import { RecentTab } from "./recent-tab";
 import { TabsContent } from "@/components/ui/tabs";
 
 export const metadata: Metadata = {
   title: "My Account",
-  description: "Manage your enquiries, saved products, and recently viewed items.",
+  description: "Manage your saved products and recently viewed items.",
 };
 
 export default async function AccountPage({
@@ -26,7 +25,7 @@ export default async function AccountPage({
   }
 
   const { tab } = await searchParams;
-  const activeTab = tab ?? "enquiries";
+  const activeTab = tab ?? "saved";
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -39,13 +38,9 @@ export default async function AccountPage({
           <TabsContent value="saved">
             <SavedTab />
           </TabsContent>
-        ) : activeTab === "recent" ? (
+        ) : (
           <TabsContent value="recent">
             <RecentTab />
-          </TabsContent>
-        ) : (
-          <TabsContent value="enquiries">
-            <EnquiriesTab />
           </TabsContent>
         )}
       </AccountTabs>

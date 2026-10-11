@@ -87,65 +87,6 @@ export async function unsaveProduct(
 }
 
 // ---------------------------------------------------------------------------
-// Enquiries
-// ---------------------------------------------------------------------------
-
-const enquirySchema = z.object({
-  productId: z.string().uuid("Invalid product ID."),
-  quantity: z.coerce.number().int().min(1).optional(),
-  message: z.string().trim().max(2000).optional(),
-});
-
-export async function createEnquiry(
-  _prev: BuyerActionState,
-  formData: FormData,
-): Promise<BuyerActionState> {
-  const parsed = enquirySchema.safeParse({
-    productId: formData.get("productId"),
-    quantity: formData.get("quantity"),
-    message: formData.get("message"),
-  });
-  if (!parsed.success) {
-    return errState("Check the form and try again.");
-  }
-
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
-  if (!user) {
-    return errState("You must be signed in to send an enquiry.");
-  }
-
-  // Fetch product to get supplier_id and verify it exists.
-  const { data: product } = await supabase
-    .from("products")
-    .select("id, supplier_id")
-    .eq("id", parsed.data.productId)
-    .eq("status", "approved")
-    .eq("is_hidden", false)
-    .maybeSingle();
-
-  if (!product) {
-    return errState("Product not found.");
-  }
-
-  const { error } = await supabase.from("enquiries").insert({
-    buyer_id: user.id,
-    product_id: parsed.data.productId,
-    supplier_id: product.supplier_id as string,
-    quantity: parsed.data.quantity ?? null,
-    message: parsed.data.message ?? null,
-  });
-
-  if (error) {
-    console.error("createEnquiry failed:", error.code, error.message);
-    return errState("Could not send the enquiry. Try again.");
-  }
-
-  revalidatePath("/account/enquiries");
-  return okState;
-}
-
-// ---------------------------------------------------------------------------
 // Recently viewed
 // ---------------------------------------------------------------------------
 

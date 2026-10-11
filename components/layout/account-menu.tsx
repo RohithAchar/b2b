@@ -9,7 +9,6 @@ import {
   DashboardSquare01Icon,
   HeartIcon,
   Logout01Icon,
-  Message01Icon,
   Package01Icon,
   ShieldCheckIcon,
 } from "@hugeicons/core-free-icons"
@@ -55,11 +54,6 @@ const ROLE_LINKS: Record<
   { label: string; href: string; icon: ReactNode }[]
 > = {
   buyer: [
-    {
-      label: "Enquiries",
-      href: "/account?tab=enquiries",
-      icon: <HugeiconsIcon icon={Message01Icon} strokeWidth={2} />,
-    },
     {
       label: "Saved Products",
       href: "/account?tab=saved",
