@@ -4,8 +4,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
 import { publicTransformedImageUrl } from "@/lib/storage";
 import type { CustomerPrices } from "@/lib/pricing";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { CardAddButton } from "@/components/storefront/card-add-button";
 
 export type ProductCardData = {
@@ -60,17 +60,15 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             />
           )}
           {product.negotiable && (
-            <span className="absolute left-2 top-2 rounded-sm bg-primary px-1.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
-              Negotiable
-            </span>
+            <Badge className="absolute left-2 top-2">Negotiable</Badge>
           )}
         </div>
 
-        <div className="flex flex-col gap-1 max-sm:px-2 px-3 max-sm:py-2 py-2.5">
+        <CardContent className="flex flex-col gap-1 px-3 py-2.5 max-sm:px-2 max-sm:py-2">
           <p className="line-clamp-1 text-sm font-medium">{product.title}</p>
 
           {product.pricing ? (
-            <p className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+            <p className="text-base font-bold tracking-tight text-foreground tabular-nums sm:text-lg">
               {formatPrice(product.pricing.customer_price)}
               <span className="ml-1 text-xs font-normal text-muted-foreground">
                 / {product.unit}
@@ -87,10 +85,10 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {product.unit}
             {product.moq > 1 ? "s" : ""}
           </p>
-        </div>
+        </CardContent>
       </Link>
 
-      <div className="flex flex-col gap-1.5 bg-muted/30 max-sm:px-2 px-3 max-sm:py-1.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-1">
+      <CardFooter className="flex-col items-stretch gap-1.5 bg-muted/30 px-3 py-2 max-sm:px-2 max-sm:py-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-1">
         <div className="min-w-0">
           {supplier ? (
             <div className="flex items-center gap-1">
@@ -99,6 +97,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               </p>
               <span className="inline-flex shrink-0 items-center text-success">
                 <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} className="size-3.5" />
+                <span className="sr-only">Verified supplier</span>
               </span>
             </div>
           ) : null}
@@ -109,19 +108,10 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             </p>
           ) : null}
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:flex sm:items-center">
+        <div className="shrink-0 sm:flex sm:items-center">
           <CardAddButton productId={product.id} moq={product.moq} />
-          <Link href={`/products/${product.id}`} className="min-w-0">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 w-full px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground sm:w-auto"
-            >
-              Enquiry
-            </Button>
-          </Link>
         </div>
-      </div>
+      </CardFooter>
     </Card>
   );
 }
