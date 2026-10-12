@@ -27,9 +27,10 @@ export function SaveButton({
         <Button
           type="submit"
           variant="outline"
-          className="w-full border-border bg-card"
+          size="lg"
+          className="w-full"
         >
-          <HugeiconsIcon icon={HeartIcon} strokeWidth={2} className="size-4 text-primary" />
+          <HugeiconsIcon icon={HeartIcon} strokeWidth={2} data-icon="inline-start" />
           Saved
         </Button>
       </form>
@@ -47,9 +48,10 @@ export function SaveButton({
       <Button
         type="submit"
         variant="outline"
-        className="w-full border-border bg-card"
+        size="lg"
+        className="w-full"
       >
-        <HugeiconsIcon icon={HeartIcon} strokeWidth={2} className="size-4" />
+        <HugeiconsIcon icon={HeartIcon} strokeWidth={2} data-icon="inline-start" />
         Save
       </Button>
     </form>

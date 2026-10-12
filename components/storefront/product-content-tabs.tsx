@@ -23,7 +23,7 @@ export function ProductDetailTabs({
 }) {
   return (
     <Tabs defaultValue="description">
-      <TabsList>
+      <TabsList className="max-w-full overflow-x-auto">
         <TabsTrigger value="description">Description</TabsTrigger>
         {specifications ? (
           <TabsTrigger value="specifications">Specifications</TabsTrigger>

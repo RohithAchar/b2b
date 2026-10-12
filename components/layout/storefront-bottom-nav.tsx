@@ -49,7 +49,7 @@ export function StorefrontBottomNav({ user }: { user: User }) {
   const categoriesActive =
     pathname.startsWith("/category") || (isProducts && !query)
   const searchActive = isProducts && Boolean(query)
-  const accountActive = pathname.startsWith("/auth")
+  const accountActive = pathname.startsWith("/auth") || pathname.startsWith("/account")
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 overflow-hidden border-t border-border bg-card pb-(--safe-area-bottom) lg:hidden">

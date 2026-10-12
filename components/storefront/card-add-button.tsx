@@ -33,13 +33,13 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
       <input type="hidden" name="quantity" value={Math.max(1, moq)} />
       <Button
         type="submit"
-        size="sm"
+        size="lg"
         variant="outline"
         disabled={pending}
         aria-label="Add to cart"
-        className="h-7 w-full px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground sm:w-auto"
+        className="w-full sm:w-auto"
       >
-        <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-3.5" />
+        <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} data-icon="inline-start" />
         Add
       </Button>
     </form>

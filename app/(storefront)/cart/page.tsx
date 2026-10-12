@@ -142,7 +142,7 @@ export default async function CartPage() {
                 </p>
               )}
             </div>
-            <Button disabled={!summary.meetsMinimum} className="mt-4 w-full" title="Checkout coming soon">
+            <Button disabled={!summary.meetsMinimum} size="lg" className="mt-4 w-full" title="Checkout coming soon">
               {summary.meetsMinimum ? "Checkout (coming soon)" : `Checkout · min ${formatRupees(MIN_CART_VALUE)}`}
             </Button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">

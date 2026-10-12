@@ -53,7 +53,7 @@ export function MobileNav({
               key={link.label}
               href={link.href}
               onClick={close}
-              className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+              className="rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
             >
               {link.label}
             </Link>
@@ -69,7 +69,7 @@ export function MobileNav({
                   key={cat.slug}
                   href={`/category/${cat.slug}`}
                   onClick={close}
-                  className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+                  className="rounded-md px-3 py-3 text-sm text-muted-foreground hover:bg-muted"
                 >
                   {cat.name}
                 </Link>
@@ -82,7 +82,7 @@ export function MobileNav({
                 <Link
                   href={dashboardHref(user.user_type)}
                   onClick={close}
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+                  className="block rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
                 >
                   Dashboard
                 </Link>
@@ -101,14 +101,14 @@ export function MobileNav({
                 <Link
                   href="/auth/login"
                   onClick={close}
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+                  className="block rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/supplier/onboarding"
                   onClick={close}
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+                  className="block rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
                 >
                   Become a Supplier
                 </Link>

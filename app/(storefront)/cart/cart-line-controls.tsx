@@ -62,7 +62,7 @@ export function CartLineControls({
         <div
           role="group"
           aria-label="Quantity"
-          className="flex h-8 items-center rounded-md border border-input bg-card"
+          className="flex h-10 items-center rounded-md border border-input bg-card"
         >
           <button
             type="button"
@@ -73,7 +73,7 @@ export function CartLineControls({
               fd.set("quantity", String(quantity - 1));
               void run(fd, updateCartQty);
             }}
-            className="flex h-full w-8 items-center justify-center font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
+            className="flex h-full w-10 items-center justify-center font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
           >
             −
           </button>
@@ -105,7 +105,7 @@ export function CartLineControls({
               fd.set("quantity", String(quantity + 1));
               void run(fd, updateCartQty);
             }}
-            className="flex h-full w-8 items-center justify-center font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
+            className="flex h-full w-10 items-center justify-center font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
           >
             +
           </button>
@@ -113,13 +113,11 @@ export function CartLineControls({
         <Button
           type="button"
           variant="outline"
-          size="sm"
           disabled={pending}
           aria-label="Remove item"
           onClick={() => void run(withItem(), removeFromCart)}
-          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive"
         >
-          <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="size-3.5" />
+          <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} data-icon="inline-start" />
           Remove
         </Button>
       </div>

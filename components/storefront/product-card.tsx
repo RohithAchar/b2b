@@ -65,7 +65,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         </div>
 
         <CardContent className="flex flex-col gap-1 px-3 py-2.5 max-sm:px-2 max-sm:py-2">
-          <p className="line-clamp-1 text-sm font-medium">{product.title}</p>
+          <p className="line-clamp-2 text-sm font-medium">{product.title}</p>
 
           {product.pricing ? (
             <p className="text-base font-bold tracking-tight text-foreground tabular-nums sm:text-lg">

@@ -4,10 +4,12 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useStorefrontCategories } from "@/components/layout/storefront-data"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -118,9 +120,8 @@ export function ProductsFilterBar() {
       <div className="flex flex-wrap gap-1.5">
         <Button
           variant={categorySlug ? "outline" : "default"}
-          size="sm"
           nativeButton={false}
-          className="h-7 rounded-sm text-xs"
+          className="rounded-sm"
           render={
             <Link
               href={
@@ -135,9 +136,8 @@ export function ProductsFilterBar() {
           <Button
             key={cat.id}
             variant={categorySlug === cat.slug ? "default" : "outline"}
-            size="sm"
             nativeButton={false}
-            className="h-7 rounded-sm text-xs"
+            className="rounded-sm"
             render={<Link href={buildCategoryLink(query, cat.slug, imageToken)} />}
           >
             {cat.name}
@@ -153,39 +153,37 @@ export function ProductsFilterBar() {
             router.push(buildUrl({ sort: value ?? undefined }))
           }}
         >
-          <SelectTrigger className="h-8 w-44 rounded-md text-xs">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            {SORT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              {SORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
 
         <Button
           variant={filtersOpen || activeFilterCount > 0 ? "default" : "outline"}
-          size="sm"
-          className="h-8 rounded-md text-xs"
           onClick={() => setFiltersOpen(!filtersOpen)}
           aria-expanded={filtersOpen}
         >
-          <HugeiconsIcon icon={FilterIcon} strokeWidth={2} className="size-3.5" />
+          <HugeiconsIcon icon={FilterIcon} strokeWidth={2} data-icon="inline-start" />
           Filters
           {activeFilterCount > 0 && (
-            <span className="ml-1 rounded-sm bg-primary-foreground px-1 text-[10px] font-bold text-primary">
+            <Badge variant="secondary" className="ml-1">
               {activeFilterCount}
-            </span>
+            </Badge>
           )}
         </Button>
 
         {activeFilterCount > 0 && (
           <Button
             variant="ghost"
-            size="sm"
-            className="h-8 rounded-md text-xs text-muted-foreground"
             render={<Link href={clearAllUrl()} />}
           >
             Clear all
@@ -205,7 +203,6 @@ export function ProductsFilterBar() {
                 type="number"
                 min={0}
                 placeholder="Min price"
-                className="h-8 rounded-md text-xs"
                 defaultValue={minPrice}
                 onBlur={(e) => {
                   if (e.target.value !== minPrice) {
@@ -229,7 +226,6 @@ export function ProductsFilterBar() {
                 type="number"
                 min={0}
                 placeholder="Max price"
-                className="h-8 rounded-md text-xs"
                 defaultValue={maxPrice}
                 onBlur={(e) => {
                   if (e.target.value !== maxPrice) {
@@ -253,7 +249,6 @@ export function ProductsFilterBar() {
                 type="number"
                 min={1}
                 placeholder="Min MOQ"
-                className="h-8 rounded-md text-xs"
                 defaultValue={minMoq}
                 onBlur={(e) => {
                   if (e.target.value !== minMoq) {
@@ -277,7 +272,6 @@ export function ProductsFilterBar() {
                 type="number"
                 min={1}
                 placeholder="Max MOQ"
-                className="h-8 rounded-md text-xs"
                 defaultValue={maxMoq}
                 onBlur={(e) => {
                   if (e.target.value !== maxMoq) {
@@ -295,36 +289,36 @@ export function ProductsFilterBar() {
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <label className="flex items-center gap-2 text-xs">
+            <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={inStock}
                 onChange={(e) => {
                   router.push(buildUrl({ inStock: e.target.checked ? "true" : undefined }))
                 }}
-                className="size-3.5 rounded-sm border-border"
+                className="size-5 rounded-sm border-border"
               />
               In stock only
             </label>
-            <label className="flex items-center gap-2 text-xs">
+            <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={negotiable}
                 onChange={(e) => {
                   router.push(buildUrl({ negotiable: e.target.checked ? "true" : undefined }))
                 }}
-                className="size-3.5 rounded-sm border-border"
+                className="size-5 rounded-sm border-border"
               />
               Price negotiable
             </label>
-            <label className="flex items-center gap-2 text-xs">
+            <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={sampleAvailable}
                 onChange={(e) => {
                   router.push(buildUrl({ sampleAvailable: e.target.checked ? "true" : undefined }))
                 }}
-                className="size-3.5 rounded-sm border-border"
+                className="size-5 rounded-sm border-border"
               />
               Sample available
             </label>

@@ -12,7 +12,6 @@ import { getCachedRelatedProducts } from "@/lib/storefront-cache";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -158,9 +157,7 @@ export async function ProductDetail({ product }: { product: Product }) {
                 / {product.unit}
               </span>
               {product.negotiable && (
-                <Button variant="outline" size="xs" className="ml-auto rounded-sm border-brand-amber/60 text-brand-dark">
-                  Price Negotiable
-                </Button>
+                <Badge className="ml-auto">Price Negotiable</Badge>
               )}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -339,32 +336,34 @@ export async function ProductDetail({ product }: { product: Product }) {
               variants={
                 sortedVariants.length > 0 ? (
                   <Card className="rounded-lg p-6">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Variant</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>MOQ</TableHead>
-                          <TableHead>Stock</TableHead>
-                          <TableHead>SKU</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedVariants.map((v) => (
-                          <TableRow key={v.id}>
-                            <TableCell className="font-medium">{v.label}</TableCell>
-                            <TableCell className="font-semibold">
-                              {v.customer_price != null
-                                ? formatPrice(v.customer_price)
-                                : "—"}
-                            </TableCell>
-                            <TableCell>{v.moq ?? product.moq}+</TableCell>
-                            <TableCell>{v.stock_qty}</TableCell>
-                            <TableCell className="text-muted-foreground">{v.seller_sku}</TableCell>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Variant</TableHead>
+                            <TableHead>Price</TableHead>
+                            <TableHead>MOQ</TableHead>
+                            <TableHead>Stock</TableHead>
+                            <TableHead>SKU</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedVariants.map((v) => (
+                            <TableRow key={v.id}>
+                              <TableCell className="font-medium">{v.label}</TableCell>
+                              <TableCell className="font-semibold">
+                                {v.customer_price != null
+                                  ? formatPrice(v.customer_price)
+                                  : "—"}
+                              </TableCell>
+                              <TableCell>{v.moq ?? product.moq}+</TableCell>
+                              <TableCell>{v.stock_qty}</TableCell>
+                              <TableCell className="text-muted-foreground">{v.seller_sku}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </Card>
                 ) : null
               }

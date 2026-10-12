@@ -310,11 +310,11 @@ async function ProductListings({
                 ? "Try a photo with more of the product in frame, or browse the full catalog."
                 : "Try a different search or clear the filters."}
             </EmptyDescription>
-            <Link href={clearAllUrl()}>
-              <Button variant="outline" size="sm" className="mt-3">
-                {imageProductIds ? "Browse all products" : "Clear filters"}
-              </Button>
-            </Link>
+              <Link href={clearAllUrl()}>
+                <Button variant="outline" className="mt-3">
+                  {imageProductIds ? "Browse all products" : "Clear filters"}
+                </Button>
+              </Link>
           </Empty>
         </div>
       ) : (
@@ -332,7 +332,7 @@ async function ProductListings({
       {totalPages > 1 && (
         <div className="mt-8">
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="flex-wrap justify-center">
               {page > 1 && (
                 <PaginationItem>
                   <PaginationPrevious

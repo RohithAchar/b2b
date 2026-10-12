@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Camera01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "cn";
 import {
   IMAGE_SEARCH_UPLOAD_FIELD,
   type ImageSearchResponse,
@@ -27,7 +28,14 @@ const ERROR_MESSAGE = "Couldn't search this image. Try another photo.";
  * is discarded when the panel closes — it is posted once to /api/search/image,
  * which embeds it and keeps nothing.
  */
-export function ImageSearchButton() {
+export function ImageSearchButton({
+  label,
+  className,
+}: {
+  /** Optional visible label; icon-only when omitted. */
+  label?: string;
+  className?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -137,7 +145,7 @@ export function ImageSearchButton() {
         type="button"
         variant="outline"
         size="lg"
-        className="px-3"
+        className={cn(!label && "px-3", className)}
         disabled={searching}
         aria-busy={searching}
         aria-label={searching ? "Searching for similar products" : "Search by image"}
@@ -147,8 +155,14 @@ export function ImageSearchButton() {
         {searching ? (
           <Spinner className="size-4" />
         ) : (
-          <HugeiconsIcon icon={Camera01Icon} strokeWidth={2} className="size-4" />
+          <HugeiconsIcon
+            icon={Camera01Icon}
+            strokeWidth={2}
+            className={cn(!label && "size-4")}
+            data-icon={label ? "inline-start" : undefined}
+          />
         )}
+        {label}
       </Button>
 
       {open && (

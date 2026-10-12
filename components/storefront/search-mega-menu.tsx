@@ -233,6 +233,11 @@ export function SearchMegaMenu({
           )}
         </div>
 
+        {/* Photo search: primary discovery mode on mobile */}
+        <div className="mt-3 lg:hidden">
+          <ImageSearchButton label="Take a photo to search" className="w-full" />
+        </div>
+
         {/* Hot searches: native horizontal chip scroller on mobile */}
         {trending.length > 0 && (
           <div className="mt-3 flex items-center gap-2 px-1">
@@ -244,7 +249,7 @@ export function SearchMegaMenu({
                 <Link
                   key={term}
                   href={`/products?q=${encodeURIComponent(term)}`}
-                  className="inline-flex h-8 shrink-0 snap-start items-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground/80 transition-colors active:bg-muted lg:h-auto lg:shrink lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:hover:text-primary lg:hover:underline"
+                  className="inline-flex h-9 shrink-0 snap-start items-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground/80 transition-colors active:bg-muted lg:h-auto lg:shrink lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:hover:text-primary lg:hover:underline"
                 >
                   <span className="max-w-36 truncate">{term}</span>
                 </Link>
