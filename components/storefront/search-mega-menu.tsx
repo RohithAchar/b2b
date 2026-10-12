@@ -180,7 +180,7 @@ export function SearchMegaMenu({
                 className="h-full min-w-0 rounded-none border-0 bg-transparent pl-3 pr-1 text-sm shadow-none focus-visible:ring-0 sm:pl-4"
               />
             </div>
-            <span className="flex shrink-0 items-center pr-1 sm:pr-2">
+            <span className="flex shrink-0 items-center pr-1 sm:pr-2 max-lg:hidden">
               <ImageSearchButton />
             </span>
             <Button
