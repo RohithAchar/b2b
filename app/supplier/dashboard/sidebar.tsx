@@ -32,6 +32,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   Collapsible,
@@ -64,6 +65,10 @@ export function SupplierSidebar({
   kybStatus: string
 }) {
   const pathname = usePathname()
+  const { setOpenMobile } = useSidebar()
+  // On mobile the sidebar renders as a Sheet with a hidden close button,
+  // so every navigation link must close it explicitly.
+  const closeMobile = () => setOpenMobile(false)
   const dashboardActive = pathname === "/supplier/dashboard"
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
@@ -85,6 +90,7 @@ export function SupplierSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
+              onClick={closeMobile}
               render={<Link href="/supplier/dashboard" />}
             >
               <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
@@ -106,6 +112,7 @@ export function SupplierSidebar({
             <SidebarMenuButton
               render={<Link href="/supplier/dashboard" />}
               isActive={dashboardActive}
+              onClick={closeMobile}
               tooltip="Dashboard"
             >
               <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />
@@ -151,6 +158,7 @@ export function SupplierSidebar({
                   <SidebarMenuSubButton
                     render={<Link href="/supplier/dashboard/products" />}
                     isActive={productsListActive}
+                    onClick={closeMobile}
                   >
                     <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />
                     <span>All products</span>
@@ -160,6 +168,7 @@ export function SupplierSidebar({
                   <SidebarMenuSubButton
                     render={<Link href="/supplier/dashboard/products/new" />}
                     isActive={addProductActive}
+                    onClick={closeMobile}
                   >
                     <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
                     <span>Add product</span>
@@ -171,6 +180,7 @@ export function SupplierSidebar({
                       <Link href="/supplier/dashboard/products/margin" />
                     }
                     isActive={marginActive}
+                    onClick={closeMobile}
                   >
                     <HugeiconsIcon icon={PercentIcon} strokeWidth={2} />
                     <span>Margin</span>
@@ -218,6 +228,7 @@ export function SupplierSidebar({
                   <SidebarMenuSubButton
                     render={<Link href="/supplier/dashboard/business" />}
                     isActive={businessActive}
+                    onClick={closeMobile}
                   >
                     <HugeiconsIcon icon={Building02Icon} strokeWidth={2} />
                     <span>Business profile</span>
@@ -227,6 +238,7 @@ export function SupplierSidebar({
                   <SidebarMenuSubButton
                     render={<Link href="/supplier/dashboard/verification" />}
                     isActive={verificationActive}
+                    onClick={closeMobile}
                   >
                     <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} />
                     <span>Verification</span>
