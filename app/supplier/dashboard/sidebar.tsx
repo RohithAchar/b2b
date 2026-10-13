@@ -48,7 +48,6 @@ function isEdit(productPath: string): boolean {
 
 const COMMING_SOON_TOP: [string, IconSvgElement][] = [
   ["Delivery", DeliveryTruck01Icon],
-  ["Analytics", ChartAverageIcon],
   ["Payouts", Wallet01Icon],
   ["Discounts", DiscountTag01Icon],
   ["Audience", UserGroup02Icon],
@@ -70,6 +69,8 @@ export function SupplierSidebar({
   const closeMobile = () => setOpenMobile(false)
   const dashboardActive = pathname === "/supplier/dashboard"
   const ordersActive = pathname.startsWith("/supplier/dashboard/orders")
+  const salesActive = pathname.startsWith("/supplier/dashboard/analytics/sales")
+  const analyticsActive = pathname.startsWith("/supplier/dashboard/analytics")
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
   const marginActive = pathname === "/supplier/dashboard/products/margin"
@@ -131,7 +132,7 @@ export function SupplierSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          {COMMING_SOON_TOP.slice(0, 2).map(([label, icon]) => (
+          {COMMING_SOON_TOP.slice(0, 1).map(([label, icon]) => (
             <SidebarMenuItem key={label}>
               <SidebarMenuButton
                 aria-disabled="true"
@@ -144,6 +145,60 @@ export function SupplierSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+
+          <Collapsible
+            defaultOpen={analyticsActive}
+            className="group/collapsible"
+            render={<SidebarMenuItem />}
+          >
+            <CollapsibleTrigger
+              render={
+                <SidebarMenuButton isActive={analyticsActive} tooltip="Analytics">
+                  <HugeiconsIcon icon={ChartAverageIcon} strokeWidth={2} />
+                  <span>Analytics</span>
+                  <HugeiconsIcon
+                    icon={ChevronRightIcon}
+                    strokeWidth={2}
+                    className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90"
+                  />
+                </SidebarMenuButton>
+              }
+            />
+            <CollapsibleContent>
+              <SidebarMenuSub>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    render={<Link href="/supplier/dashboard/analytics/sales" />}
+                    isActive={salesActive}
+                    onClick={closeMobile}
+                  >
+                    <HugeiconsIcon icon={ChartAverageIcon} strokeWidth={2} />
+                    <span>Sales</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                {(
+                  [
+                    ["Traffic", UserGroup02Icon],
+                    ["Products", Package01Icon],
+                  ] as [string, IconSvgElement][]
+                ).map(([label, icon]) => (
+                  <SidebarMenuSubItem key={label}>
+                    <SidebarMenuSubButton
+                      render={<span />}
+                      aria-disabled="true"
+                      title={`${label} analytics coming soon`}
+                    >
+                      <HugeiconsIcon icon={icon} strokeWidth={2} />
+                      <span>{label}</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        Soon
+                      </span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                ))}
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </Collapsible>
 
           <Collapsible
             defaultOpen={productsActive}
@@ -201,7 +256,7 @@ export function SupplierSidebar({
             </CollapsibleContent>
           </Collapsible>
 
-          {COMMING_SOON_TOP.slice(2).map(([label, icon]) => (
+          {COMMING_SOON_TOP.slice(1).map(([label, icon]) => (
             <SidebarMenuItem key={label}>
               <SidebarMenuButton
                 aria-disabled="true"

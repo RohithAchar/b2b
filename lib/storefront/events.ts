@@ -3,7 +3,12 @@
 // buyer flow. Reads go through RLS (supplier-only) in lib/supplier/analytics.
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { STOREFRONT_SESSION_COOKIE } from "@/lib/storefront/session-cookie";
+import {
+  STOREFRONT_SESSION_COOKIE,
+  STOREFRONT_SOURCE_COOKIE,
+  isTrafficSource,
+  type TrafficSource,
+} from "@/lib/storefront/session-cookie";
 
 export { STOREFRONT_SESSION_COOKIE };
 
@@ -21,20 +26,34 @@ export async function getStorefrontSessionId(): Promise<string> {
   return `ephemeral-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/** Acquisition bucket from the `b2b_src` cookie, or null when unset. */
+export async function getStorefrontSource(): Promise<TrafficSource | null> {
+  try {
+    const store = await cookies();
+    const source = store.get(STOREFRONT_SOURCE_COOKIE)?.value;
+    return isTrafficSource(source) ? source : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function logStorefrontEvent(input: {
   supplierId: string;
   productId?: string | null;
   sessionId?: string | null;
   event: StorefrontEventType;
   buyerId?: string | null;
+  source?: TrafficSource | null;
 }): Promise<void> {
   try {
     const supabase = await createClient();
+    const source = input.source ?? (await getStorefrontSource());
     const { error } = await supabase.from("storefront_events").insert({
       supplier_id: input.supplierId,
       product_id: input.productId ?? null,
       session_id: input.sessionId ?? (await getStorefrontSessionId()),
       event: input.event,
+      source,
       buyer_id: input.buyerId ?? null,
     });
     if (error) {

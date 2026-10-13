@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { STOREFRONT_SESSION_COOKIE } from "@/lib/storefront/session-cookie";
+import {
+  STOREFRONT_SESSION_COOKIE,
+  STOREFRONT_SOURCE_COOKIE,
+  classifyTrafficSource,
+} from "@/lib/storefront/session-cookie";
 
 function readCookie(name: string): string | null {
   const match = document.cookie
@@ -25,6 +29,9 @@ export function StorefrontSession() {
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       // Session cookie (no max-age): lasts until the tab closes.
       document.cookie = `${STOREFRONT_SESSION_COOKIE}=${encodeURIComponent(sessionId)}; path=/; SameSite=Lax`;
+      // Acquisition source, captured once per session from the referrer.
+      const source = classifyTrafficSource(document.referrer);
+      document.cookie = `${STOREFRONT_SOURCE_COOKIE}=${source}; path=/; SameSite=Lax`;
     }
   }, []);
 

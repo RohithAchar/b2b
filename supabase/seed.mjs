@@ -550,6 +550,24 @@ function statusForAge(daysAgo, rand) {
   return "delivered";
 }
 
+// Weighted attribution pools for the sales analytics widgets.
+const DEMO_REGIONS = [
+  ["Delhi", 14], ["Bangalore", 8], ["Allahabad", 6], ["Banka", 6], ["Anand", 5],
+  ["Surat", 9], ["Mumbai", 11], ["Pune", 7], ["Chennai", 7], ["Hyderabad", 7],
+  ["Ahmedabad", 6], ["Kolkata", 5],
+];
+const DEMO_SOURCES = [["direct", 35], ["search", 35], ["social", 15], ["referral", 15]];
+
+function pickWeighted(pool, rand) {
+  const total = pool.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = rand() * total;
+  for (const [value, weight] of pool) {
+    roll -= weight;
+    if (roll <= 0) return value;
+  }
+  return pool[0][0];
+}
+
 async function ensureDemoOrders(companyProducts) {
   const buyer = await ensureUser(DEMO_BUYER);
   const byCompany = new Map();
@@ -584,6 +602,8 @@ async function ensureDemoOrders(companyProducts) {
         lines.push({ entry, quantity, unitPrice });
       }
       const status = statusForAge(daysAgo, rand);
+      const region = pickWeighted(DEMO_REGIONS, rand);
+      const sessionSource = pickWeighted(DEMO_SOURCES, rand);
       const { data: order, error: orderError } = await admin
         .from("orders")
         .insert({
@@ -592,6 +612,7 @@ async function ensureDemoOrders(companyProducts) {
           status,
           subtotal,
           item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
+          region,
           created_at: createdAt,
           updated_at: createdAt,
         })
@@ -623,17 +644,20 @@ async function ensureDemoOrders(companyProducts) {
         product_id: lines[0].entry.id,
         session_id: sessionId,
         event: f.event,
+        source: sessionSource,
         buyer_id: buyer.id,
         created_at: new Date(new Date(createdAt).getTime() - f.offsetMin * 60 * 1000).toISOString(),
       }));
       for (let v = 0; v < extraViews; v++) {
         const entry = items[Math.floor(rand() * items.length)];
         const viewSession = `seed-${companyId.slice(0, 8)}-${oi}-browse-${v}`;
+        const browseSource = pickWeighted(DEMO_SOURCES, rand);
         events.push({
           supplier_id: companyId,
           product_id: entry.id,
           session_id: viewSession,
           event: "view",
+          source: browseSource,
           buyer_id: null,
           created_at: createdAt,
         });
@@ -644,6 +668,7 @@ async function ensureDemoOrders(companyProducts) {
             product_id: entry.id,
             session_id: viewSession,
             event: "cart",
+            source: browseSource,
             buyer_id: null,
             created_at: createdAt,
           });
@@ -656,6 +681,39 @@ async function ensureDemoOrders(companyProducts) {
     log("demo orders", `${companyId.slice(0, 8)} seeded`);
   }
   log("demo orders", `${orderCount} orders, ${eventCount} events`);
+}
+
+// Backfill attribution for rows seeded before region/source existed.
+// Deterministic round-robin by creation order; only touches nulls.
+async function backfillDemoAttribution() {
+  const { data: orders } = await admin
+    .from("orders")
+    .select("id")
+    .is("region", null)
+    .order("created_at", { ascending: true })
+    .limit(5000);
+  let orderUpdates = 0;
+  for (const [i, order] of (orders ?? []).entries()) {
+    const region = DEMO_REGIONS[i % DEMO_REGIONS.length][0];
+    const { error } = await admin.from("orders").update({ region }).eq("id", order.id);
+    if (error) throw error;
+    orderUpdates += 1;
+  }
+
+  const { data: events } = await admin
+    .from("storefront_events")
+    .select("id")
+    .is("source", null)
+    .order("created_at", { ascending: true })
+    .limit(10000);
+  let eventUpdates = 0;
+  for (const [i, event] of (events ?? []).entries()) {
+    const source = DEMO_SOURCES[i % DEMO_SOURCES.length][0];
+    const { error } = await admin.from("storefront_events").update({ source }).eq("id", event.id);
+    if (error) throw error;
+    eventUpdates += 1;
+  }
+  log("demo attribution", `${orderUpdates} orders, ${eventUpdates} events backfilled`);
 }
 
 async function main() {
@@ -776,6 +834,7 @@ async function main() {
   }
 
   await ensureDemoOrders(productIds);
+  await backfillDemoAttribution();
 
   log("done", `${productIds.length} products, ${allCategories.length} categories, ${SUPPLIERS.length} suppliers`);
   console.log("demo logins: " + SUPPLIERS.map((s) => s.email).join(", ") + " / " + PASSWORD);

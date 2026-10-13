@@ -4,6 +4,8 @@ import {
   parseDashboardRange,
   resolveRangeBounds,
 } from "../lib/supplier/analytics";
+import { changePct } from "../lib/supplier/sales-analytics";
+import { classifyTrafficSource } from "../lib/storefront/session-cookie";
 import { formatRupees } from "../lib/format";
 
 const NOW = new Date("2026-10-13T12:00:00Z");
@@ -98,5 +100,24 @@ describe("formatRupees", () => {
   it("uses Indian digit grouping", () => {
     expect(formatRupees(1157449)).toBe("₹11,57,449");
     expect(formatRupees(2500)).toBe("₹2,500");
+  });
+});
+
+describe("changePct", () => {
+  it("computes rounded change and null when previous is zero", () => {
+    expect(changePct(110, 100)).toBe(10);
+    expect(changePct(90, 100)).toBe(-10);
+    expect(changePct(0, 0)).toBeNull();
+    expect(changePct(50, 0)).toBeNull();
+  });
+});
+
+describe("classifyTrafficSource", () => {
+  it("buckets referrers coarsely", () => {
+    expect(classifyTrafficSource("")).toBe("direct");
+    expect(classifyTrafficSource("not a url")).toBe("direct");
+    expect(classifyTrafficSource("https://www.google.com/search?q=x")).toBe("search");
+    expect(classifyTrafficSource("https://instagram.com/p/1")).toBe("social");
+    expect(classifyTrafficSource("https://example-blog.com/post")).toBe("referral");
   });
 });
