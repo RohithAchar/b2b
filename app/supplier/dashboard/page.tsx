@@ -6,8 +6,12 @@ import {
   Add01Icon,
   ArrowRight01Icon,
   Building02Icon,
+  ChartAverageIcon,
+  DeliveryTruck01Icon,
   Package01Icon,
   ShieldCheckIcon,
+  ShoppingCart01Icon,
+  Wallet01Icon,
 } from "@hugeicons/core-free-icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,10 +38,20 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { fetchCustomerPricing } from "@/lib/pricing-data";
+import { formatRupees } from "@/lib/format";
+import {
+  DASHBOARD_RANGE_LABELS,
+  getDashboardMetrics,
+  parseDashboardRange,
+} from "@/lib/supplier/analytics";
 import { KpiStat } from "@/components/dashboard/kpi-stat";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/attention-panel";
 import { ProfileCompletionCard, profileChecklist } from "@/components/dashboard/profile-completion";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter";
+import { SalesChart } from "@/components/dashboard/sales-chart";
+import { ConversionChart } from "@/components/dashboard/conversion-chart";
+import { StoreLinkCard } from "@/components/dashboard/store-link-card";
 
 function logoUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${path}`;
@@ -52,7 +66,17 @@ function formatDate(value: string | null | undefined): string {
   });
 }
 
-export default async function SupplierOverviewPage() {
+const CARD_LINK_CLASS =
+  "block min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&>div]:h-full [&>div]:transition-shadow [&>div]:hover:shadow-md";
+
+export default async function SupplierOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range: rawRange } = await searchParams;
+  const range = parseDashboardRange(rawRange);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,6 +111,17 @@ export default async function SupplierOverviewPage() {
 
   const verified = company.kyb_status === "verified";
 
+  // Analytics resolve alongside the product stats so the range filter costs
+  // no extra latency. A failure here degrades to an inline error — the
+  // product sections below still render.
+  const metricsSettled = getDashboardMetrics(supabase, company.id as string, range).then(
+    (metrics) => ({ metrics, error: null as string | null }),
+    (error: unknown) => ({
+      metrics: null,
+      error: error instanceof Error ? error.message : "Could not load analytics.",
+    }),
+  );
+
   // eslint-disable-next-line react-hooks/purity -- server component: per-request timestamp
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -117,6 +152,8 @@ export default async function SupplierOverviewPage() {
         .eq("supplier_id", company.id)
         .gte("created_at", thirtyDaysAgo),
     ]);
+
+  const { metrics, error: metricsError } = await metricsSettled;
 
   const { data: recent } = await supabase
     .from("products")
@@ -194,6 +231,9 @@ export default async function SupplierOverviewPage() {
     rejected: "Needs changes",
   };
 
+  const hasSales = (metrics?.salesSeries ?? []).some((p) => p.sales > 0);
+  const hasSessions = (metrics?.sessions ?? 0) > 0;
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
@@ -245,6 +285,115 @@ export default async function SupplierOverviewPage() {
           <AlertDescription>{company.rejection_note}</AlertDescription>
         </Alert>
       ) : null}
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-base font-bold tracking-tight">Sales analytics</h2>
+          <p className="text-sm text-muted-foreground">
+            {DASHBOARD_RANGE_LABELS[range]} · live from your orders and store visits
+          </p>
+        </div>
+        <DashboardRangeFilter range={range} />
+      </div>
+
+      {metricsError || !metrics ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Couldn&apos;t load sales analytics
+            {metricsError ? `: ${metricsError}` : "."} Product stats below are unaffected.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Link href="/supplier/dashboard/orders" className={CARD_LINK_CLASS}>
+              <KpiStat
+                label="Total sales"
+                value={formatRupees(metrics.salesTotal)}
+                caption={`${metrics.orderCount} order${metrics.orderCount === 1 ? "" : "s"}`}
+                icon={Wallet01Icon}
+              />
+            </Link>
+            <Link href="#analytics-charts" className={CARD_LINK_CLASS}>
+              <KpiStat
+                label="Store conversion"
+                value={`${metrics.conversionPct}%`}
+                caption={`${metrics.sessions} session${metrics.sessions === 1 ? "" : "s"}`}
+                icon={ChartAverageIcon}
+              />
+            </Link>
+            <Link href="/supplier/dashboard/orders?status=new" className={CARD_LINK_CLASS}>
+              <KpiStat
+                label="New orders"
+                value={metrics.newOrders.count}
+                caption={formatRupees(metrics.newOrders.value)}
+                icon={ShoppingCart01Icon}
+              />
+            </Link>
+            <Link href="/supplier/dashboard/orders?status=new%2Cconfirmed" className={CARD_LINK_CLASS}>
+              <KpiStat
+                label="To ship"
+                value={metrics.shipQueue.count}
+                caption={formatRupees(metrics.shipQueue.value)}
+                icon={DeliveryTruck01Icon}
+              />
+            </Link>
+          </div>
+
+          <div id="analytics-charts" className="grid scroll-mt-4 grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales</CardTitle>
+                <CardDescription>
+                  Revenue per {metrics.salesSeries.length > 31 ? "month" : "day"} · {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hasSales ? (
+                  <SalesChart data={metrics.salesSeries} />
+                ) : (
+                  <Empty>
+                    <EmptyTitle>No sales in this range</EmptyTitle>
+                    <EmptyDescription>
+                      Orders placed in this period will appear here.
+                    </EmptyDescription>
+                  </Empty>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Conversion</CardTitle>
+                <CardDescription>
+                  Ordering sessions ÷ all store sessions · {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hasSessions ? (
+                  <ConversionChart data={metrics.conversionSeries} />
+                ) : (
+                  <Empty>
+                    <EmptyTitle>No store visits yet</EmptyTitle>
+                    <EmptyDescription>
+                      Share your store link to start tracking conversion.
+                    </EmptyDescription>
+                  </Empty>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <KpiStat
+              label="Abandoned checkouts"
+              value={metrics.abandonedCount}
+              caption="Carts with no order in this period"
+              icon={ShoppingCart01Icon}
+            />
+            <StoreLinkCard storePath={`/store/${company.id}`} />
+          </div>
+        </>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiStat

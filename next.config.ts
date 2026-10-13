@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
       "@hugeicons/react",
       "@base-ui/react",
       "embla-carousel-react",
+      "recharts",
       "@tiptap/react",
       "@tiptap/starter-kit",
       "@tiptap/extension-link",

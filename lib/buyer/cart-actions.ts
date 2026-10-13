@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { fetchCustomerPriceMap } from "@/lib/storefront";
+import { logStorefrontEvent } from "@/lib/storefront/events";
 import {
   MIN_CART_VALUE,
   moqViolation,
@@ -36,12 +37,12 @@ const addToCartSchema = z.object({
 async function approvedProduct(supabase: SupabaseClient, productId: string) {
   const { data } = await supabase
     .from("products")
-    .select("id, moq, unit")
+    .select("id, moq, unit, supplier_id")
     .eq("id", productId)
     .eq("status", "approved")
     .eq("is_hidden", false)
     .maybeSingle();
-  return data as { id: string; moq: number; unit: string } | null;
+  return data as { id: string; moq: number; unit: string; supplier_id: string } | null;
 }
 
 async function variantRow(
@@ -138,6 +139,13 @@ export async function addToCart(
   }
 
   revalidatePath("/cart");
+  // Best-effort analytics; never blocks the buyer flow.
+  await logStorefrontEvent({
+    supplierId: product.supplier_id,
+    productId,
+    event: "cart",
+    buyerId: user.id,
+  });
   return okState;
 }
 

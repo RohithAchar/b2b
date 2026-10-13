@@ -516,8 +516,153 @@ async function ensureBanner(spec) {
   return { id: data.id, created: true };
 }
 
+// Demo orders + storefront events for the supplier analytics dashboard.
+// Deterministic per company (hash-seeded) and idempotent: companies that
+// already have orders are skipped, so re-runs never duplicate history.
+const DEMO_BUYER = { email: "buyer.demo@seed.b2b", contact_person: "Demo Buyer" };
+const DEMO_ORDER_DAYS_AGO = [0, 1, 2, 4, 6, 9, 13, 18, 24, 31, 40, 52, 66, 80];
+
+function hashSeed(text) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function mulberry32(seed) {
+  let state = seed;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function statusForAge(daysAgo, rand) {
+  if (daysAgo <= 1) return rand() < 0.5 ? "new" : "confirmed";
+  if (daysAgo <= 4) return "confirmed";
+  if (daysAgo <= 10) return rand() < 0.5 ? "shipped" : "delivered";
+  if (rand() < 0.08) return "cancelled";
+  return "delivered";
+}
+
+async function ensureDemoOrders(companyProducts) {
+  const buyer = await ensureUser(DEMO_BUYER);
+  const byCompany = new Map();
+  for (const entry of companyProducts) {
+    if ((entry.product.status ?? "approved") !== "approved") continue;
+    if (!byCompany.has(entry.companyId)) byCompany.set(entry.companyId, []);
+    byCompany.get(entry.companyId).push(entry);
+  }
+
+  let orderCount = 0;
+  let eventCount = 0;
+  for (const [companyId, items] of byCompany) {
+    const { count } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", companyId);
+    if ((count ?? 0) > 0) continue;
+    if (items.length === 0) continue;
+
+    const rand = mulberry32(hashSeed(companyId));
+    const now = Date.now();
+    for (const [oi, daysAgo] of DEMO_ORDER_DAYS_AGO.entries()) {
+      const createdAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000).toISOString();
+      const lineCount = 1 + Math.floor(rand() * 2);
+      const lines = [];
+      let subtotal = 0;
+      for (let li = 0; li < lineCount; li++) {
+        const entry = items[Math.floor(rand() * items.length)];
+        const quantity = entry.product.moq * (1 + Math.floor(rand() * 3));
+        const unitPrice = Math.round(entry.product.price);
+        subtotal += unitPrice * quantity;
+        lines.push({ entry, quantity, unitPrice });
+      }
+      const status = statusForAge(daysAgo, rand);
+      const { data: order, error: orderError } = await admin
+        .from("orders")
+        .insert({
+          supplier_id: companyId,
+          buyer_id: buyer.id,
+          status,
+          subtotal,
+          item_count: lines.reduce((sum, l) => sum + l.quantity, 0),
+          created_at: createdAt,
+          updated_at: createdAt,
+        })
+        .select("id")
+        .single();
+      if (orderError) throw orderError;
+      const { error: itemsError } = await admin.from("order_items").insert(
+        lines.map((l) => ({
+          order_id: order.id,
+          product_id: l.entry.id,
+          variant_id: null,
+          quantity: l.quantity,
+          unit_price: l.unitPrice,
+        })),
+      );
+      if (itemsError) throw itemsError;
+      orderCount += 1;
+
+      // Funnel events for the ordering session + ambient browsing sessions.
+      const sessionId = `seed-${companyId.slice(0, 8)}-${oi}`;
+      const funnel = [
+        { event: "view", offsetMin: 25 },
+        { event: "cart", offsetMin: 12 },
+        { event: "order", offsetMin: 0 },
+      ];
+      const extraViews = 1 + Math.floor(rand() * 3);
+      const events = funnel.map((f) => ({
+        supplier_id: companyId,
+        product_id: lines[0].entry.id,
+        session_id: sessionId,
+        event: f.event,
+        buyer_id: buyer.id,
+        created_at: new Date(new Date(createdAt).getTime() - f.offsetMin * 60 * 1000).toISOString(),
+      }));
+      for (let v = 0; v < extraViews; v++) {
+        const entry = items[Math.floor(rand() * items.length)];
+        const viewSession = `seed-${companyId.slice(0, 8)}-${oi}-browse-${v}`;
+        events.push({
+          supplier_id: companyId,
+          product_id: entry.id,
+          session_id: viewSession,
+          event: "view",
+          buyer_id: null,
+          created_at: createdAt,
+        });
+        // Roughly one in three browsing sessions adds to cart and leaves.
+        if (rand() < 0.35) {
+          events.push({
+            supplier_id: companyId,
+            product_id: entry.id,
+            session_id: viewSession,
+            event: "cart",
+            buyer_id: null,
+            created_at: createdAt,
+          });
+        }
+      }
+      const { error: eventsError } = await admin.from("storefront_events").insert(events);
+      if (eventsError) throw eventsError;
+      eventCount += events.length;
+    }
+    log("demo orders", `${companyId.slice(0, 8)} seeded`);
+  }
+  log("demo orders", `${orderCount} orders, ${eventCount} events`);
+}
+
 async function main() {
   log("project", new URL(url).hostname);
+  // SEED_ONLY=orders skips media uploads + banners (slow, idempotent anyway)
+  // and only ensures rows + demo orders/events for the analytics dashboard.
+  const ordersOnly = process.env.SEED_ONLY === "orders";
 
   const idBySlug = {};
   for (const [pi, parent] of CATEGORIES.entries()) {
@@ -563,6 +708,7 @@ async function main() {
     }
   }
   await mapLimit(allCategories, CONCURRENCY, async (c) => {
+    if (ordersOnly) return;
     await uploadImage("category_images", c.path, `${IMAGE_BASE}cat-${c.slug}/600/600`);
   });
   log("category images", allCategories.length + " uploaded");
@@ -588,6 +734,7 @@ async function main() {
   }
 
   await mapLimit(missingMedia, CONCURRENCY, async ({ id, product }) => {
+    if (ordersOnly) return;
     const images = [];
     for (let i = 0; i < (product.images ?? 0); i++) {
       const path = `seed/${product.seller_sku.toLowerCase()}-${i}.jpg`;
@@ -616,15 +763,19 @@ async function main() {
 
   let bannerUploads = 0;
   const bannerResults = [];
-  for (const spec of BANNERS) {
-    const result = await ensureBanner(spec);
-    bannerResults.push({ spec, ...result });
-    if (result.created) bannerUploads += 1;
+  if (!ordersOnly) {
+    for (const spec of BANNERS) {
+      const result = await ensureBanner(spec);
+      bannerResults.push({ spec, ...result });
+      if (result.created) bannerUploads += 1;
+    }
+    await mapLimit(bannerResults, CONCURRENCY, async ({ spec }) => {
+      await uploadImage("banners", spec.imagePath, `${IMAGE_BASE}${spec.imageSeed}/${spec.imageSize}`);
+    });
+    log("banners", `${bannerUploads} created, ${BANNERS.length - bannerUploads} existing`);
   }
-  await mapLimit(bannerResults, CONCURRENCY, async ({ spec }) => {
-    await uploadImage("banners", spec.imagePath, `${IMAGE_BASE}${spec.imageSeed}/${spec.imageSize}`);
-  });
-  log("banners", `${bannerUploads} created, ${BANNERS.length - bannerUploads} existing`);
+
+  await ensureDemoOrders(productIds);
 
   log("done", `${productIds.length} products, ${allCategories.length} categories, ${SUPPLIERS.length} suppliers`);
   console.log("demo logins: " + SUPPLIERS.map((s) => s.email).join(", ") + " / " + PASSWORD);

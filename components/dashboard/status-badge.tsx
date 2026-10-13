@@ -24,10 +24,19 @@ export const VISIBILITY_STATUS: Record<string, StatusDef> = {
   inactive: { label: "Hidden", variant: "outline" },
 };
 
+export const ORDER_STATUS: Record<string, StatusDef> = {
+  new: { label: "New", variant: "warning" },
+  confirmed: { label: "Confirmed", variant: "secondary" },
+  shipped: { label: "Shipped", variant: "default" },
+  delivered: { label: "Delivered", variant: "success" },
+  cancelled: { label: "Cancelled", variant: "outline" },
+};
+
 const MAPS = {
   product: PRODUCT_STATUS,
   kyb: KYB_STATUS,
   visibility: VISIBILITY_STATUS,
+  order: ORDER_STATUS,
 } as const;
 
 export function StatusBadge({

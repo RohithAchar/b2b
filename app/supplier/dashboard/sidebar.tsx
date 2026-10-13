@@ -47,7 +47,6 @@ function isEdit(productPath: string): boolean {
 }
 
 const COMMING_SOON_TOP: [string, IconSvgElement][] = [
-  ["Orders", ShoppingCart01Icon],
   ["Delivery", DeliveryTruck01Icon],
   ["Analytics", ChartAverageIcon],
   ["Payouts", Wallet01Icon],
@@ -70,6 +69,7 @@ export function SupplierSidebar({
   // so every navigation link must close it explicitly.
   const closeMobile = () => setOpenMobile(false)
   const dashboardActive = pathname === "/supplier/dashboard"
+  const ordersActive = pathname.startsWith("/supplier/dashboard/orders")
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
   const marginActive = pathname === "/supplier/dashboard/products/margin"
@@ -117,6 +117,17 @@ export function SupplierSidebar({
             >
               <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />
               <span>Dashboard</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link href="/supplier/dashboard/orders" />}
+              isActive={ordersActive}
+              onClick={closeMobile}
+              tooltip="Orders"
+            >
+              <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} />
+              <span>Orders</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
 

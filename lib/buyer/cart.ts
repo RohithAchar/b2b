@@ -5,6 +5,9 @@
 
 import type { CustomerPrices } from "@/lib/pricing";
 
+// Re-exported from the shared formatter so existing imports keep working.
+export { formatRupees } from "@/lib/format";
+
 /** Shared cart-wide minimum subtotal (₹) required to check out. */
 export const MIN_CART_VALUE = 2500;
 
@@ -90,10 +93,6 @@ export function summarizeCart(
     meetsMinimum,
     shortfall: meetsMinimum ? 0 : roundCurrency(MIN_CART_VALUE - subtotal),
   };
-}
-
-export function formatRupees(value: number): string {
-  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 /**

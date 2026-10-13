@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { logStorefrontEvent } from "@/lib/storefront/events";
 
 // ---------------------------------------------------------------------------
 // Saved products
@@ -93,6 +94,24 @@ export async function unsaveProduct(
 export async function recordRecentlyViewed(productId: string): Promise<void> {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
+
+  // Analytics view event for every visitor, anonymous included — this is the
+  // conversion denominator, so it must not require sign-in.
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, supplier_id")
+    .eq("id", productId)
+    .eq("status", "approved")
+    .maybeSingle();
+  if (product) {
+    await logStorefrontEvent({
+      supplierId: product.supplier_id as string,
+      productId,
+      event: "view",
+      buyerId: user?.id ?? null,
+    });
+  }
+
   if (!user) return;
 
   // Upsert: update last_viewed_at if the row already exists.
