@@ -8,6 +8,26 @@ import { cn } from "cn";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+/** Inline ⓘ tooltip for card titles. */
+export function InfoTip({ label, info }: { label: string; info: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            aria-label={`About ${label}`}
+            className="flex shrink-0 items-center text-muted-foreground hover:text-foreground"
+          />
+        }
+      >
+        <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipContent>{info}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 /**
  * Metric card with an info tooltip and a previous-period delta.
  * Positive deltas use `text-success`, negative `text-destructive` — never
@@ -32,20 +52,7 @@ export function MetricCard({
       <CardContent className="flex flex-col gap-2 py-4">
         <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <span className="truncate">{label}</span>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label={`About ${label}`}
-                  className="flex shrink-0 items-center text-muted-foreground hover:text-foreground"
-                />
-              }
-            >
-              <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-3.5" />
-            </TooltipTrigger>
-            <TooltipContent>{info}</TooltipContent>
-          </Tooltip>
+          <InfoTip label={label} info={info} />
         </span>
         <span className="flex items-baseline justify-between gap-2">
           <span className="truncate text-2xl font-semibold tracking-tight tabular-nums">

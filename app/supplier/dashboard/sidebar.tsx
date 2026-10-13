@@ -70,6 +70,8 @@ export function SupplierSidebar({
   const dashboardActive = pathname === "/supplier/dashboard"
   const ordersActive = pathname.startsWith("/supplier/dashboard/orders")
   const salesActive = pathname.startsWith("/supplier/dashboard/analytics/sales")
+  const trafficActive = pathname.startsWith("/supplier/dashboard/analytics/traffic")
+  const productsAnalyticsActive = pathname.startsWith("/supplier/dashboard/analytics/products")
   const analyticsActive = pathname.startsWith("/supplier/dashboard/analytics")
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
@@ -176,26 +178,26 @@ export function SupplierSidebar({
                     <span>Sales</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
-                {(
-                  [
-                    ["Traffic", UserGroup02Icon],
-                    ["Products", Package01Icon],
-                  ] as [string, IconSvgElement][]
-                ).map(([label, icon]) => (
-                  <SidebarMenuSubItem key={label}>
-                    <SidebarMenuSubButton
-                      render={<span />}
-                      aria-disabled="true"
-                      title={`${label} analytics coming soon`}
-                    >
-                      <HugeiconsIcon icon={icon} strokeWidth={2} />
-                      <span>{label}</span>
-                      <span className="ml-auto text-[11px] text-muted-foreground">
-                        Soon
-                      </span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ))}
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    render={<Link href="/supplier/dashboard/analytics/traffic" />}
+                    isActive={trafficActive}
+                    onClick={closeMobile}
+                  >
+                    <HugeiconsIcon icon={UserGroup02Icon} strokeWidth={2} />
+                    <span>Traffic</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    render={<Link href="/supplier/dashboard/analytics/products" />}
+                    isActive={productsAnalyticsActive}
+                    onClick={closeMobile}
+                  >
+                    <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />
+                    <span>Products</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
               </SidebarMenuSub>
             </CollapsibleContent>
           </Collapsible>

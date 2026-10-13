@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 import {
+  STOREFRONT_DEVICE_COOKIE,
   STOREFRONT_SESSION_COOKIE,
   STOREFRONT_SOURCE_COOKIE,
+  classifyDevice,
   classifyTrafficSource,
 } from "@/lib/storefront/session-cookie";
 
@@ -32,6 +34,9 @@ export function StorefrontSession() {
       // Acquisition source, captured once per session from the referrer.
       const source = classifyTrafficSource(document.referrer);
       document.cookie = `${STOREFRONT_SOURCE_COOKIE}=${source}; path=/; SameSite=Lax`;
+      // Coarse device bucket only — the raw user-agent never leaves the browser.
+      const device = classifyDevice(navigator.userAgent);
+      document.cookie = `${STOREFRONT_DEVICE_COOKIE}=${device}; path=/; SameSite=Lax`;
     }
   }, []);
 

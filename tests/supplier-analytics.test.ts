@@ -5,7 +5,9 @@ import {
   resolveRangeBounds,
 } from "../lib/supplier/analytics";
 import { changePct } from "../lib/supplier/sales-analytics";
-import { classifyTrafficSource } from "../lib/storefront/session-cookie";
+import { buildTrafficSeries } from "../lib/supplier/traffic-analytics";
+import { buildUnitsSeries } from "../lib/supplier/product-analytics";
+import { classifyDevice, classifyTrafficSource } from "../lib/storefront/session-cookie";
 import { formatRupees } from "../lib/format";
 
 const NOW = new Date("2026-10-13T12:00:00Z");
@@ -119,5 +121,51 @@ describe("classifyTrafficSource", () => {
     expect(classifyTrafficSource("https://www.google.com/search?q=x")).toBe("search");
     expect(classifyTrafficSource("https://instagram.com/p/1")).toBe("social");
     expect(classifyTrafficSource("https://example-blog.com/post")).toBe("referral");
+  });
+});
+
+describe("classifyDevice", () => {
+  it("buckets user agents coarsely, tablets first", () => {
+    expect(classifyDevice("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("desktop");
+    expect(classifyDevice("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148")).toBe("mobile");
+    expect(classifyDevice("Mozilla/5.0 (Linux; Android 13; Pixel 7) Mobile Safari/537.36")).toBe("mobile");
+    expect(classifyDevice("Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) Mobile/15E148")).toBe("tablet");
+    expect(classifyDevice("")).toBe("desktop");
+  });
+});
+
+describe("buildTrafficSeries", () => {
+  it("counts views and distinct visitors per bucket, continuously", () => {
+    const points = buildTrafficSeries({
+      views: [
+        { created_at: "2026-10-10T09:05:00Z", session_id: "a" },
+        { created_at: "2026-10-10T09:40:00Z", session_id: "a" },
+        { created_at: "2026-10-10T10:10:00Z", session_id: "b" },
+      ],
+      from: new Date("2026-10-10T00:00:00Z"),
+      to: new Date("2026-10-10T23:59:59Z"),
+    });
+    const morning = points.find((p) => p.label === "9 AM");
+    expect(morning?.views).toBe(2);
+    expect(morning?.visitors).toBe(1);
+    expect(points.length).toBe(24);
+  });
+});
+
+describe("buildUnitsSeries", () => {
+  it("sums quantities per bucket, continuously", () => {
+    const points = buildUnitsSeries({
+      rows: [
+        { created_at: "2026-10-10T09:05:00Z", quantity: 4 },
+        { created_at: "2026-10-10T09:40:00Z", quantity: 6 },
+        { created_at: "2026-10-12T10:10:00Z", quantity: 2 },
+      ],
+      from: new Date("2026-10-10T00:00:00Z"),
+      to: new Date("2026-10-12T12:00:00Z"),
+    });
+    expect(points.map((p) => p.label)).toEqual(["10 Oct", "11 Oct", "12 Oct"]);
+    expect(points[0]?.units).toBe(10);
+    expect(points[1]?.units).toBe(0);
+    expect(points[2]?.units).toBe(2);
   });
 });

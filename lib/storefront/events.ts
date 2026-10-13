@@ -4,9 +4,12 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import {
+  STOREFRONT_DEVICE_COOKIE,
   STOREFRONT_SESSION_COOKIE,
   STOREFRONT_SOURCE_COOKIE,
+  isDeviceClass,
   isTrafficSource,
+  type DeviceClass,
   type TrafficSource,
 } from "@/lib/storefront/session-cookie";
 
@@ -37,6 +40,17 @@ export async function getStorefrontSource(): Promise<TrafficSource | null> {
   }
 }
 
+/** Coarse device bucket from the `b2b_dev` cookie, or null when unset. */
+export async function getStorefrontDevice(): Promise<DeviceClass | null> {
+  try {
+    const store = await cookies();
+    const device = store.get(STOREFRONT_DEVICE_COOKIE)?.value;
+    return isDeviceClass(device) ? device : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function logStorefrontEvent(input: {
   supplierId: string;
   productId?: string | null;
@@ -44,16 +58,19 @@ export async function logStorefrontEvent(input: {
   event: StorefrontEventType;
   buyerId?: string | null;
   source?: TrafficSource | null;
+  device?: DeviceClass | null;
 }): Promise<void> {
   try {
     const supabase = await createClient();
     const source = input.source ?? (await getStorefrontSource());
+    const device = input.device ?? (await getStorefrontDevice());
     const { error } = await supabase.from("storefront_events").insert({
       supplier_id: input.supplierId,
       product_id: input.productId ?? null,
       session_id: input.sessionId ?? (await getStorefrontSessionId()),
       event: input.event,
       source,
+      device,
       buyer_id: input.buyerId ?? null,
     });
     if (error) {

@@ -557,6 +557,7 @@ const DEMO_REGIONS = [
   ["Ahmedabad", 6], ["Kolkata", 5],
 ];
 const DEMO_SOURCES = [["direct", 35], ["search", 35], ["social", 15], ["referral", 15]];
+const DEMO_DEVICES = [["mobile", 65], ["desktop", 28], ["tablet", 7]];
 
 function pickWeighted(pool, rand) {
   const total = pool.reduce((sum, [, weight]) => sum + weight, 0);
@@ -604,6 +605,7 @@ async function ensureDemoOrders(companyProducts) {
       const status = statusForAge(daysAgo, rand);
       const region = pickWeighted(DEMO_REGIONS, rand);
       const sessionSource = pickWeighted(DEMO_SOURCES, rand);
+      const sessionDevice = pickWeighted(DEMO_DEVICES, rand);
       const { data: order, error: orderError } = await admin
         .from("orders")
         .insert({
@@ -645,6 +647,7 @@ async function ensureDemoOrders(companyProducts) {
         session_id: sessionId,
         event: f.event,
         source: sessionSource,
+        device: sessionDevice,
         buyer_id: buyer.id,
         created_at: new Date(new Date(createdAt).getTime() - f.offsetMin * 60 * 1000).toISOString(),
       }));
@@ -652,12 +655,14 @@ async function ensureDemoOrders(companyProducts) {
         const entry = items[Math.floor(rand() * items.length)];
         const viewSession = `seed-${companyId.slice(0, 8)}-${oi}-browse-${v}`;
         const browseSource = pickWeighted(DEMO_SOURCES, rand);
+        const browseDevice = pickWeighted(DEMO_DEVICES, rand);
         events.push({
           supplier_id: companyId,
           product_id: entry.id,
           session_id: viewSession,
           event: "view",
           source: browseSource,
+          device: browseDevice,
           buyer_id: null,
           created_at: createdAt,
         });
@@ -669,6 +674,7 @@ async function ensureDemoOrders(companyProducts) {
             session_id: viewSession,
             event: "cart",
             source: browseSource,
+            device: browseDevice,
             buyer_id: null,
             created_at: createdAt,
           });
@@ -700,16 +706,19 @@ async function backfillDemoAttribution() {
     orderUpdates += 1;
   }
 
-  const { data: events } = await admin
+  // Existing rows may already carry a source (backfilled earlier) but no
+  // device — fill whichever attribution columns are still null.
+  const { data: unattributedEvents } = await admin
     .from("storefront_events")
-    .select("id")
-    .is("source", null)
+    .select("id, source")
+    .is("device", null)
     .order("created_at", { ascending: true })
     .limit(10000);
   let eventUpdates = 0;
-  for (const [i, event] of (events ?? []).entries()) {
-    const source = DEMO_SOURCES[i % DEMO_SOURCES.length][0];
-    const { error } = await admin.from("storefront_events").update({ source }).eq("id", event.id);
+  for (const [i, event] of (unattributedEvents ?? []).entries()) {
+    const patch = { device: DEMO_DEVICES[i % DEMO_DEVICES.length][0] };
+    if (!event.source) patch.source = DEMO_SOURCES[i % DEMO_SOURCES.length][0];
+    const { error } = await admin.from("storefront_events").update(patch).eq("id", event.id);
     if (error) throw error;
     eventUpdates += 1;
   }
