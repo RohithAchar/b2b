@@ -49,7 +49,6 @@ function isEdit(productPath: string): boolean {
 const COMMING_SOON_TOP: [string, IconSvgElement][] = [
   ["Delivery", DeliveryTruck01Icon],
   ["Payouts", Wallet01Icon],
-  ["Audience", UserGroup02Icon],
   ["Appearance", PaintBrush01Icon],
   ["Plugins", PuzzleIcon],
 ]
@@ -73,6 +72,7 @@ export function SupplierSidebar({
   const productsAnalyticsActive = pathname.startsWith("/supplier/dashboard/analytics/products")
   const analyticsActive = pathname.startsWith("/supplier/dashboard/analytics")
   const discountsActive = pathname.startsWith("/supplier/dashboard/discounts")
+  const audienceActive = pathname.startsWith("/supplier/dashboard/audience")
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
   const marginActive = pathname === "/supplier/dashboard/products/margin"
@@ -211,6 +211,18 @@ export function SupplierSidebar({
             >
               <HugeiconsIcon icon={DiscountTag01Icon} strokeWidth={2} />
               <span>Discounts</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link href="/supplier/dashboard/audience" />}
+              isActive={audienceActive}
+              onClick={closeMobile}
+              tooltip="Audience"
+            >
+              <HugeiconsIcon icon={UserGroup02Icon} strokeWidth={2} />
+              <span>Audience</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
 

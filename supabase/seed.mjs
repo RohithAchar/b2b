@@ -843,6 +843,56 @@ async function ensureDemoCoupons(companyProducts) {
   }
 }
 
+// Demo customers for the Audience page. Idempotent: companies that already
+// have customers are skipped. Includes a deliberate near-duplicate phone to
+// demonstrate duplicate review, and links the shared demo buyer so
+// returning/new classification has real order history behind it.
+async function ensureDemoCustomers() {
+  const buyer = await ensureUser(DEMO_BUYER);
+  const { data: companies } = await admin.from("companies").select("id").limit(50);
+  const manualSpecs = [
+    { name: "Ramesh Patel", phone: "9825011111", email: "ramesh.p@example.com", city: "Ahmedabad", source: "manual" },
+    { name: "Kavya Reddy", phone: "9848011111", email: "kavya.r@example.com", city: "Hyderabad", source: "manual" },
+  ];
+  const importSpecs = [
+    { name: "Suresh Gupta", phone: "9811011111", email: "suresh.g@example.com", city: "Delhi", source: "import" },
+    { name: "Anita Sharma", phone: "9830011111", email: null, city: "Kolkata", source: "import" },
+  ];
+  for (const company of companies ?? []) {
+    const { count } = await admin
+      .from("store_customers")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id);
+    if ((count ?? 0) > 0) continue;
+    const rows = [
+      {
+        supplier_id: company.id,
+        buyer_id: buyer.id,
+        name: "Demo Buyer",
+        phone: "9000000001",
+        email: DEMO_BUYER.email,
+        city: "Bengaluru",
+        source: "order",
+      },
+      // Near-duplicate of the linked buyer (shared phone) for review demo.
+      {
+        supplier_id: company.id,
+        buyer_id: null,
+        name: "D. Buyer",
+        phone: "9000000001",
+        email: null,
+        city: "Bengaluru",
+        source: "manual",
+      },
+      ...manualSpecs.map((s) => ({ ...s, supplier_id: company.id, buyer_id: null })),
+      ...importSpecs.map((s) => ({ ...s, supplier_id: company.id, buyer_id: null })),
+    ];
+    const { error } = await admin.from("store_customers").insert(rows);
+    if (error) throw error;
+    log("demo customers", `${company.id.slice(0, 8)} seeded ${rows.length}`);
+  }
+}
+
 async function main() {
   log("project", new URL(url).hostname);
   // SEED_ONLY=orders skips media uploads + banners (slow, idempotent anyway)
@@ -963,6 +1013,7 @@ async function main() {
   await ensureDemoOrders(productIds);
   await backfillDemoAttribution();
   await ensureDemoCoupons(productIds);
+  await ensureDemoCustomers();
 
   log("done", `${productIds.length} products, ${allCategories.length} categories, ${SUPPLIERS.length} suppliers`);
   console.log("demo logins: " + SUPPLIERS.map((s) => s.email).join(", ") + " / " + PASSWORD);
