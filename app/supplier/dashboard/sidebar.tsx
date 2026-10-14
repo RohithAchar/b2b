@@ -49,7 +49,6 @@ function isEdit(productPath: string): boolean {
 const COMMING_SOON_TOP: [string, IconSvgElement][] = [
   ["Delivery", DeliveryTruck01Icon],
   ["Payouts", Wallet01Icon],
-  ["Discounts", DiscountTag01Icon],
   ["Audience", UserGroup02Icon],
   ["Appearance", PaintBrush01Icon],
   ["Plugins", PuzzleIcon],
@@ -73,6 +72,7 @@ export function SupplierSidebar({
   const trafficActive = pathname.startsWith("/supplier/dashboard/analytics/traffic")
   const productsAnalyticsActive = pathname.startsWith("/supplier/dashboard/analytics/products")
   const analyticsActive = pathname.startsWith("/supplier/dashboard/analytics")
+  const discountsActive = pathname.startsWith("/supplier/dashboard/discounts")
   const productsListActive = pathname === "/supplier/dashboard/products"
   const addProductActive = pathname === "/supplier/dashboard/products/new"
   const marginActive = pathname === "/supplier/dashboard/products/margin"
@@ -201,6 +201,18 @@ export function SupplierSidebar({
               </SidebarMenuSub>
             </CollapsibleContent>
           </Collapsible>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link href="/supplier/dashboard/discounts" />}
+              isActive={discountsActive}
+              onClick={closeMobile}
+              tooltip="Discounts"
+            >
+              <HugeiconsIcon icon={DiscountTag01Icon} strokeWidth={2} />
+              <span>Discounts</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
           <Collapsible
             defaultOpen={productsActive}

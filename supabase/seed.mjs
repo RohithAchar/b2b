@@ -725,6 +725,124 @@ async function backfillDemoAttribution() {
   log("demo attribution", `${orderUpdates} orders, ${eventUpdates} events backfilled`);
 }
 
+// Demo coupons + order attribution for the Discounts page. Idempotent:
+// companies that already have coupons are skipped, and only unattributed
+// orders are assigned, so re-runs never duplicate history.
+async function ensureDemoCoupons(companyProducts) {
+  const byCompany = new Map();
+  for (const entry of companyProducts) {
+    if ((entry.product.status ?? "approved") !== "approved") continue;
+    if (!byCompany.has(entry.companyId)) byCompany.set(entry.companyId, []);
+    byCompany.get(entry.companyId).push(entry);
+  }
+
+  const kinds = ["percent", "flat", "freebie", "loyalty", "buy_x_get_y", "free_shipping"];
+  let companyIndex = 0;
+  for (const [companyId, items] of byCompany) {
+    const { data: existing } = await admin
+      .from("coupons")
+      .select("id")
+      .eq("supplier_id", companyId)
+      .limit(1);
+    const thirdKind = kinds[companyIndex % kinds.length];
+    let couponIds = (existing ?? []).map((c) => c.id);
+    if (couponIds.length === 0 && items.length > 0) {
+      const firstProduct = items[0];
+      const specs = [
+        {
+          code: "FESTIVE10",
+          type: "percent",
+          percent_value: 10,
+          max_discount: 9999,
+          min_order_value: 5000,
+          is_active: true,
+        },
+        {
+          code: "FLAT500",
+          type: "flat",
+          flat_value: 500,
+          min_order_value: 2500,
+          is_active: true,
+        },
+        thirdKind === "freebie"
+          ? {
+              code: "FREEBIE",
+              type: "freebie",
+              free_product_id: firstProduct.id,
+              min_order_value: 5000,
+              is_active: true,
+            }
+          : thirdKind === "loyalty"
+            ? {
+                code: "LOYAL100",
+                type: "loyalty",
+                loyalty_points: 100,
+                min_order_value: 0,
+                is_active: false,
+              }
+            : thirdKind === "buy_x_get_y"
+              ? {
+                  code: "BOGO",
+                  type: "buy_x_get_y",
+                  buy_quantity: 2,
+                  get_quantity: 1,
+                  min_order_value: 0,
+                  is_active: true,
+                }
+              : {
+                  code: "FREESHIP",
+                  type: "free_shipping",
+                  min_order_value: 5000,
+                  is_active: false,
+                },
+      ];
+      const { data: created, error } = await admin
+        .from("coupons")
+        .insert(specs.map((s) => ({ ...s, supplier_id: companyId })))
+        .select("id");
+      if (error) throw error;
+      couponIds = created.map((c) => c.id);
+      log("demo coupons", `${companyId.slice(0, 8)} created ${couponIds.length}`);
+    }
+    companyIndex += 1;
+
+    // Attribute roughly half the unattributed orders, round-robin.
+    const { data: unattributed } = await admin
+      .from("orders")
+      .select("id")
+      .eq("supplier_id", companyId)
+      .is("coupon_id", null)
+      .order("created_at", { ascending: true })
+      .limit(5000);
+    let attributed = 0;
+    for (const [i, order] of (unattributed ?? []).entries()) {
+      if (i % 2 === 1 || couponIds.length === 0) continue;
+      const couponId = couponIds[(i >> 1) % couponIds.length];
+      const { error } = await admin.from("orders").update({ coupon_id: couponId }).eq("id", order.id);
+      if (error) throw error;
+      attributed += 1;
+    }
+    if (attributed > 0) {
+      // Recompute used_count from attributed orders (source of truth).
+      const { data: attributedRows } = await admin
+        .from("orders")
+        .select("coupon_id")
+        .eq("supplier_id", companyId)
+        .not("coupon_id", "is", null)
+        .limit(5000);
+      const counts = new Map();
+      for (const row of attributedRows ?? []) {
+        counts.set(row.coupon_id, (counts.get(row.coupon_id) ?? 0) + 1);
+      }
+      for (const [couponId, count] of counts) {
+        const { error } = await admin.from("coupons").update({ used_count: count }).eq("id", couponId);
+        if (error) throw error;
+      }
+      log("demo coupons", `${companyId.slice(0, 8)} attributed ${attributed}`);
+    }
+  }
+}
+
 async function main() {
   log("project", new URL(url).hostname);
   // SEED_ONLY=orders skips media uploads + banners (slow, idempotent anyway)
@@ -844,6 +962,7 @@ async function main() {
 
   await ensureDemoOrders(productIds);
   await backfillDemoAttribution();
+  await ensureDemoCoupons(productIds);
 
   log("done", `${productIds.length} products, ${allCategories.length} categories, ${SUPPLIERS.length} suppliers`);
   console.log("demo logins: " + SUPPLIERS.map((s) => s.email).join(", ") + " / " + PASSWORD);

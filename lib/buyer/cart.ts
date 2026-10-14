@@ -24,6 +24,9 @@ export type CartLinePricing = {
   stockQty: number;
   quantity: number;
   imagePath: string | null;
+  /** Owning supplier (filled by getCartSummary; absent in unit-test fixtures). */
+  supplierId?: string;
+  supplierName?: string;
 };
 
 export type PricedCartLine = CartLinePricing & {
@@ -117,4 +120,36 @@ export function moqViolation(quantity: number, moq: number, unit: string): strin
     return `Minimum order is ${moq} ${unit}.`;
   }
   return null;
+}
+
+export type CartSupplierGroup = {
+  supplierId: string;
+  supplierName: string;
+  lines: PricedCartLine[];
+  subtotal: number;
+};
+
+/**
+ * Group priced lines by owning supplier for per-store coupon boxes.
+ * Lines without supplier info (legacy/test fixtures) fall into an
+ * "unknown store" bucket so they are never dropped from the cart.
+ */
+export function groupCartLinesBySupplier(lines: PricedCartLine[]): CartSupplierGroup[] {
+  const groups = new Map<string, CartSupplierGroup>();
+  for (const line of lines) {
+    const supplierId = line.supplierId ?? "unknown";
+    let group = groups.get(supplierId);
+    if (!group) {
+      group = {
+        supplierId,
+        supplierName: line.supplierName ?? "Unknown store",
+        lines: [],
+        subtotal: 0,
+      };
+      groups.set(supplierId, group);
+    }
+    group.lines.push(line);
+    group.subtotal += line.lineTotal;
+  }
+  return [...groups.values()];
 }

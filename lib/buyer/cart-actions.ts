@@ -8,6 +8,11 @@ import { getSessionUser } from "@/lib/auth/session";
 import { fetchCustomerPriceMap } from "@/lib/storefront";
 import { logStorefrontEvent } from "@/lib/storefront/events";
 import {
+  describeCoupon,
+  validateCouponForOrder,
+  type CouponRule,
+} from "@/lib/supplier/coupons";
+import {
   MIN_CART_VALUE,
   moqViolation,
   priceForQuantity,
@@ -281,6 +286,7 @@ type CartProductRow = {
   unit: string;
   moq: number;
   stock_qty: number;
+  supplier_id: string;
   images: { path: string; sort: number }[] | null;
 };
 
@@ -313,7 +319,7 @@ export async function getCartSummary(
   const [{ data: products }, { data: variants }, priceMap] = await Promise.all([
     supabase
       .from("products")
-      .select("id, title, unit, moq, stock_qty, images:product_images(path, sort)")
+      .select("id, title, unit, moq, stock_qty, supplier_id, images:product_images(path, sort)")
       .in("id", productIds)
       .eq("status", "approved")
       .eq("is_hidden", false),
@@ -328,6 +334,20 @@ export async function getCartSummary(
 
   const productMap = new Map(((products ?? []) as CartProductRow[]).map((p) => [p.id, p]));
   const variantMap = new Map(((variants ?? []) as CartVariantRow[]).map((v) => [v.id, v]));
+
+  // Supplier display names via the public verified-only projection (buyers
+  // cannot read the companies table directly).
+  const supplierNames = new Map<string, string>();
+  const supplierIds = [...new Set([...productMap.values()].map((p) => p.supplier_id))];
+  if (supplierIds.length > 0) {
+    const { data: suppliers } = await supabase
+      .from("storefront_suppliers")
+      .select("id, business_name")
+      .in("id", supplierIds);
+    for (const supplier of (suppliers ?? []) as { id: string; business_name: string }[]) {
+      supplierNames.set(supplier.id, supplier.business_name);
+    }
+  }
 
   const lines: CartLinePricing[] = [];
   let unavailableCount = 0;
@@ -364,6 +384,8 @@ export async function getCartSummary(
       stockQty: variant?.stock_qty ?? product.stock_qty,
       quantity: row.quantity,
       imagePath: images[0]?.path ?? null,
+      supplierId: product.supplier_id,
+      supplierName: supplierNames.get(product.supplier_id) ?? "Unknown store",
     });
   }
 
@@ -381,4 +403,133 @@ export async function getCartCount(supabase: SupabaseClient, buyerId: string): P
     .select("id", { count: "exact", head: true })
     .eq("buyer_id", buyerId);
   return count ?? 0;
+}
+
+/** Applied coupon codes by supplier, for hydrating the cart on load. */
+export async function getCartCoupons(
+  supabase: SupabaseClient,
+  buyerId: string,
+): Promise<Record<string, string>> {
+  const { data } = await supabase
+    .from("cart_coupons")
+    .select("supplier_id, code")
+    .eq("buyer_id", buyerId);
+  const map: Record<string, string> = {};
+  for (const row of (data ?? []) as { supplier_id: string; code: string }[]) {
+    map[row.supplier_id] = row.code;
+  }
+  return map;
+}
+
+/** Persist an applied code (upsert — one code per store). Best-effort. */
+export async function saveCartCoupon(supplierId: string, rawCode: string): Promise<void> {
+  try {
+    const code = rawCode.trim().toUpperCase();
+    if (!code) return;
+    const supabase = await createClient();
+    const user = await getSessionUser(supabase);
+    if (!user) return;
+    const { error } = await supabase.from("cart_coupons").upsert(
+      { buyer_id: user.id, supplier_id: supplierId, code },
+      { onConflict: "buyer_id,supplier_id" },
+    );
+    if (error) {
+      console.error("saveCartCoupon failed:", error.code, error.message);
+    }
+  } catch (error) {
+    console.error("saveCartCoupon failed:", error);
+  }
+}
+
+/** Drop a persisted code. Best-effort. */
+export async function clearCartCoupon(supplierId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const user = await getSessionUser(supabase);
+    if (!user) return;
+    const { error } = await supabase
+      .from("cart_coupons")
+      .delete()
+      .eq("buyer_id", user.id)
+      .eq("supplier_id", supplierId);
+    if (error) {
+      console.error("clearCartCoupon failed:", error.code, error.message);
+    }
+  } catch (error) {
+    console.error("clearCartCoupon failed:", error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Coupon quotes (read-only; checkout revalidates before writing orders)
+// ---------------------------------------------------------------------------
+
+export type CouponQuote =
+  | { ok: true; code: string; discount: number; description: string }
+  | { ok: false; message: string };
+
+const COUPON_RULE_COLUMNS =
+  "id, code, type, is_active, percent_value, max_discount, flat_value, min_order_value, buy_quantity, get_quantity, free_product_id, loyalty_points, usage_limit, used_count, expires_at";
+
+/**
+ * Validate a coupon code against one supplier's lines in the buyer's cart.
+ * The group subtotal is recomputed server-side — never trusted from the
+ * client. A supplier with no lines in this cart is rejected, so codes
+ * cannot be probed against stores the buyer is not buying from.
+ */
+export async function quoteCoupon(supplierId: string, rawCode: string): Promise<CouponQuote> {
+  const code = rawCode.trim().toUpperCase();
+  if (!code) {
+    return { ok: false, message: "Enter a coupon code." };
+  }
+
+  const supabase = await createClient();
+  const user = await getSessionUser(supabase);
+  if (!user) {
+    return { ok: false, message: "You must be signed in." };
+  }
+
+  const summary = await getCartSummary(supabase, user.id);
+  const groupSubtotal = summary.lines
+    .filter((line) => line.supplierId === supplierId)
+    .reduce((sum, line) => sum + line.lineTotal, 0);
+  if (groupSubtotal <= 0) {
+    return { ok: false, message: "No items from this store in your cart." };
+  }
+
+  // Authenticated buyers may read active coupons (coupons_select_active).
+  // The code match stays exact so inactive/unknown codes are indistinguishable.
+  const { data } = await supabase
+    .from("coupons")
+    .select(COUPON_RULE_COLUMNS)
+    .eq("supplier_id", supplierId)
+    .eq("code", code)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!data) {
+    return { ok: false, message: "This code is not valid for this store." };
+  }
+  const coupon = data as unknown as CouponRule;
+
+  const result = validateCouponForOrder(coupon, groupSubtotal);
+  if (!result.ok) {
+    return { ok: false, message: result.reason };
+  }
+
+  let freeProductTitle: string | null = null;
+  if (coupon.free_product_id) {
+    const { data: product } = await supabase
+      .from("products")
+      .select("title")
+      .eq("id", coupon.free_product_id)
+      .maybeSingle();
+    freeProductTitle = (product?.title as string | undefined) ?? null;
+  }
+
+  return {
+    ok: true,
+    code: coupon.code,
+    discount: result.discount,
+    description: describeCoupon(coupon, freeProductTitle),
+  };
 }

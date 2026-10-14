@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   MIN_CART_VALUE,
+  groupCartLinesBySupplier,
   moqViolation,
   parseQuantityInput,
   priceForQuantity,
   summarizeCart,
   type CartLinePricing,
+  type PricedCartLine,
 } from "../lib/buyer/cart";
 import type { CustomerPrices } from "../lib/pricing";
 
@@ -161,5 +163,43 @@ describe("summarizeCart", () => {
       meetsMinimum: false,
       shortfall: MIN_CART_VALUE,
     });
+  });
+});
+
+describe("groupCartLinesBySupplier", () => {
+  function priced(overrides: Partial<PricedCartLine> = {}): PricedCartLine {
+    return {
+      cartItemId: "c1",
+      productId: "p1",
+      variantId: null,
+      title: "Widget",
+      unit: "pcs",
+      moq: 5,
+      stockQty: 100,
+      quantity: 2,
+      imagePath: null,
+      unitPrice: 100,
+      lineTotal: 200,
+      ...overrides,
+    };
+  }
+
+  it("groups lines by supplier with per-group subtotals", () => {
+    const groups = groupCartLinesBySupplier([
+      priced({ cartItemId: "c1", supplierId: "s1", supplierName: "Store One", lineTotal: 200 }),
+      priced({ cartItemId: "c2", supplierId: "s2", supplierName: "Store Two", lineTotal: 500 }),
+      priced({ cartItemId: "c3", supplierId: "s1", supplierName: "Store One", lineTotal: 300 }),
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toMatchObject({ supplierId: "s1", supplierName: "Store One", subtotal: 500 });
+    expect(groups[0]?.lines).toHaveLength(2);
+    expect(groups[1]).toMatchObject({ supplierId: "s2", subtotal: 500 });
+  });
+
+  it("buckets lines without supplier info instead of dropping them", () => {
+    const groups = groupCartLinesBySupplier([priced({ lineTotal: 200 })]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.supplierId).toBe("unknown");
+    expect(groups[0]?.subtotal).toBe(200);
   });
 });
