@@ -41,6 +41,7 @@ export async function approveProduct(
   revalidateTag("home", "max");
   revalidatePath("/");
   revalidatePath("/products");
+  revalidatePath(`/products/${parsed.data.id}`);
   return { ok: true, message: "Approved." };
 }
 
@@ -75,6 +76,8 @@ export async function rejectProduct(
   }
   revalidatePath("/admin/dashboard/products");
   revalidateTag("products", "max");
+  revalidatePath("/products");
+  revalidatePath(`/products/${parsed.data.id}`);
   return { ok: true, message: "Sent back with note." };
 }
 

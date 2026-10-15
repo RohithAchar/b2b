@@ -1,11 +1,10 @@
 import Image from "next/image";
+import { Suspense } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ShieldCheckIcon,
   Location01Icon,
-  PinLocation01Icon,
 } from "@hugeicons/core-free-icons";
-import { createClient } from "@/lib/supabase/server";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { publicImageUrl } from "@/lib/storage";
 import { getCachedRelatedProducts } from "@/lib/storefront-cache";
@@ -25,11 +24,8 @@ import { ProductCard, type ProductCardData } from "@/components/storefront/produ
 import { ProductGallery, type GalleryImage } from "@/components/storefront/product-gallery";
 import { ProductDetailTabs } from "@/components/storefront/product-content-tabs";
 import { SectionHeader } from "@/components/storefront/section-header";
-import { getSessionUser } from "@/lib/auth/session";
-import { isProductSaved } from "@/lib/buyer/queries";
-import { recordRecentlyViewed } from "@/lib/buyer/actions";
-import { SaveButton } from "./save-button";
-import { AddToCartForm } from "./add-to-cart-form";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProductActionsIsland } from "./product-actions-island";
 
 function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -74,7 +70,7 @@ function SpecItem({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export async function ProductDetail({ product }: { product: Product }) {
+export function ProductDetail({ product }: { product: Product }) {
   const images: GalleryImage[] = [...product.images].sort((a, b) => a.sort - b.sort);
   const supplier = product.supplier;
   const attributeEntries = Object.entries(product.attributes);
@@ -92,16 +88,8 @@ export async function ProductDetail({ product }: { product: Product }) {
     .map((v) => ({ ...v, customer_price: variantPrices.get(v.id) }))
     .sort((a, b) => a.sort - b.sort);
 
-  // Check if the current user has saved this product.
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
-  const saved = user ? await isProductSaved(supabase, user.id, product.id) : false;
-
-  // Recently-viewed is a per-user write — never block the cached PDP body on
-  // it. It runs after the response starts streaming; failures only log.
-  if (user) {
-    void recordRecentlyViewed(product.id);
-  }
+  // Personalized buy box streams in separately (own Suspense below) so the
+  // cached body never waits for per-user lookups.
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -267,9 +255,19 @@ export async function ProductDetail({ product }: { product: Product }) {
             </div>
           )}
 
-          {/* Buy actions */}
-          <div className="flex flex-col gap-2">
-            <AddToCartForm
+          {/* Buy actions: personalized island streams in after the cached body */}
+          <Suspense
+            fallback={
+              <div className="flex flex-col gap-2" aria-hidden>
+                <Skeleton className="h-11 w-full rounded-md" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Skeleton className="h-10 rounded-md" />
+                  <Skeleton className="h-4 self-center rounded-sm" />
+                </div>
+              </div>
+            }
+          >
+            <ProductActionsIsland
               productId={product.id}
               moq={product.moq}
               unit={product.unit}
@@ -279,18 +277,9 @@ export async function ProductDetail({ product }: { product: Product }) {
                 customer_price: v.customer_price,
                 moq: v.moq,
               }))}
-              signedIn={!!user}
+              shipFrom={supplier ? `${supplier.city}, ${supplier.state}` : null}
             />
-            <div className="grid grid-cols-2 gap-2">
-              <SaveButton productId={product.id} saved={saved} />
-              {supplier && (
-                <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                  <HugeiconsIcon icon={PinLocation01Icon} strokeWidth={2} className="size-3.5" />
-                  Ships from {supplier.city}, {supplier.state}
-                </p>
-              )}
-            </div>
-          </div>
+          </Suspense>
 
           {/* Description / specifications / variants */}
           <div className="w-full">

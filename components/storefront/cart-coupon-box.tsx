@@ -136,7 +136,7 @@ export function CartCouponBox({
               type="button"
               onClick={remove}
               aria-label={`Remove coupon ${applied.code}`}
-              className="flex items-center rounded-sm text-muted-foreground hover:text-foreground"
+              className="flex min-h-8 min-w-8 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
             >
               <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-4" />
             </button>

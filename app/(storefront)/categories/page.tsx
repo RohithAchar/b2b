@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import type { Metadata } from "next"
 import { getCachedMegaMenuCategories } from "@/lib/storefront-cache"
 import { publicTransformedImageUrl } from "@/lib/storage"
 import {
@@ -24,6 +25,13 @@ import {
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+
+export const metadata: Metadata = {
+  title: "Browse Categories",
+  description:
+    "Explore wholesale categories — textiles, electronics, chemicals, packaging, machinery and more from verified Indian suppliers.",
+  alternates: { canonical: "/categories" },
+}
 
 function CategoriesSkeleton() {
   return (

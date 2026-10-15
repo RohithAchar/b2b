@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { publicImageUrl } from "@/lib/storage"
 import {
   getCachedCategoryBySlug,
@@ -32,6 +33,22 @@ import {
   type ProductCardData,
 } from "@/components/storefront/product-card"
 import { ProductGridSkeleton } from "@/components/storefront/skeletons"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const category = await getCachedCategoryBySlug(slug)
+  const name = (category?.name as string | undefined) ?? slug
+  const title = `${name} — Wholesale Products`
+  return {
+    title,
+    description: `Source wholesale ${name} products with live pricing and MOQs from verified Indian suppliers.`,
+    alternates: { canonical: `/category/${slug}` },
+  }
+}
 
 async function CategoryProductListings({
   slug,

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Building02Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,25 @@ type SupplierRow = {
   state: string;
   logo_path: string | null;
 };
+
+export async function generateMetadata({ params }: StorePageProps): Promise<Metadata> {
+  const { companyId } = await params;
+  const supabase = await createClient();
+  const { data: supplier } = await supabase
+    .from("storefront_suppliers")
+    .select("business_name, city, state")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (!supplier) return {};
+  const store = supplier as Pick<SupplierRow, "business_name" | "city" | "state">;
+  const location = [store.city, store.state].filter(Boolean).join(", ");
+  const title = `${store.business_name} — Verified Supplier Store`;
+  return {
+    title,
+    description: `Shop wholesale products from ${store.business_name}${location ? `, ${location}` : ""} — a verified supplier with live pricing and MOQs.`,
+    alternates: { canonical: `/store/${companyId}` },
+  };
+}
 
 type ProductRow = {
   id: string;

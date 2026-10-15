@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -7,6 +8,14 @@ import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { AdminSidebar } from "./sidebar";
+
+// Private workspace: never indexed.
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function AdminLayout({
   children,

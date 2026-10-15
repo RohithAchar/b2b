@@ -282,22 +282,29 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
 
     // Step 2: Get prices for those IDs in bounded chunks — a single
     // `.in()` with 1k+ IDs risks URL length / 414 and slow plans.
+    // Chunks are independent reads, so they run concurrently.
     const priceById = new Map<string, number>();
+    const chunks: string[][] = [];
     for (let i = 0; i < allIds.length; i += 200) {
-      const chunk = allIds.slice(i, i + 200);
-      let priceQb = supabase
-        .from("storefront_prices")
-        .select("product_id, customer_price")
-        .in("product_id", chunk);
+      chunks.push(allIds.slice(i, i + 200));
+    }
+    const chunkResults = await Promise.all(
+      chunks.map((chunk) => {
+        let priceQb = supabase
+          .from("storefront_prices")
+          .select("product_id, customer_price")
+          .in("product_id", chunk);
 
-      if (minPrice != null) {
-        priceQb = priceQb.gte("customer_price", minPrice);
-      }
-      if (maxPrice != null) {
-        priceQb = priceQb.lte("customer_price", maxPrice);
-      }
-
-      const { data: priceRows } = await priceQb;
+        if (minPrice != null) {
+          priceQb = priceQb.gte("customer_price", minPrice);
+        }
+        if (maxPrice != null) {
+          priceQb = priceQb.lte("customer_price", maxPrice);
+        }
+        return priceQb;
+      }),
+    );
+    for (const { data: priceRows } of chunkResults) {
       for (const r of (priceRows ?? []) as { product_id: string; customer_price: number }[]) {
         priceById.set(r.product_id as string, Number(r.customer_price));
       }

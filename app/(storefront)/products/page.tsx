@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import Link from "next/link"
+import type { Metadata } from "next"
 import { getCachedNavigationCategories, getCachedProducts } from "@/lib/storefront-cache"
 import type { ProductSort } from "@/lib/storefront"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
@@ -38,6 +39,13 @@ type SearchParams = {
 }
 
 const VALID_SORTS: ProductSort[] = ["relevance", "newest", "price_asc", "price_desc", "moq_asc"]
+
+export const metadata: Metadata = {
+  title: "Browse Wholesale Products",
+  description:
+    "Browse wholesale products with live pricing and MOQs from verified Indian suppliers. Filter by category, price, MOQ and availability.",
+  alternates: { canonical: "/products" },
+}
 
 function parseSort(value: string | undefined): ProductSort {
   if (value && VALID_SORTS.includes(value as ProductSort)) {
@@ -250,6 +258,11 @@ async function ProductListings({
 
       {/* Results meta */}
       <div className="mb-4 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1">
+        {!imageProductIds && (
+          <h1 className="sr-only">
+            {query ? `Wholesale ${query} products` : "Wholesale products"}
+          </h1>
+        )}
         <p className="text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{total}</span> product
           {total !== 1 ? "s" : ""} found

@@ -55,24 +55,28 @@ export default async function EditSupplierProductPage({
     );
   }
 
-  const { data: images } = await supabase
-    .from("product_images")
-    .select("id, path")
-    .eq("product_id", id)
-    .order("sort");
-  const { data: variants } = await supabase
-    .from("product_variants")
-    .select("id, label, attrs, seller_sku, moq, stock_qty")
-    .eq("product_id", id)
-    .order("sort");
-
-  // Base prices are private, so they come from the supplier_prices view rather
-  // than the products table.
-  const { data: basePrices, error: basePricesError } = await supabase
-    .from("supplier_prices")
-    .select("product_id, price_per_unit, sample_price, variants")
-    .eq("product_id", id)
-    .maybeSingle();
+  // Images, variants, base prices and categories are independent reads.
+  const [{ data: images }, { data: variants }, { data: basePrices, error: basePricesError }, { data: categories }] =
+    await Promise.all([
+      supabase.from("product_images").select("id, path").eq("product_id", id).order("sort"),
+      supabase
+        .from("product_variants")
+        .select("id, label, attrs, seller_sku, moq, stock_qty")
+        .eq("product_id", id)
+        .order("sort"),
+      // Base prices are private, so they come from the supplier_prices view
+      // rather than the products table.
+      supabase
+        .from("supplier_prices")
+        .select("product_id, price_per_unit, sample_price, variants")
+        .eq("product_id", id)
+        .maybeSingle(),
+      supabase
+        .from("categories")
+        .select("id, name, parent:parent_id(name)")
+        .eq("is_active", true)
+        .order("sort_order"),
+    ]);
 
   // Never fall through to a zero base price here: the form would prefill 0 and
   // the supplier's real price would look like a mistake.
@@ -91,12 +95,6 @@ export default async function EditSupplierProductPage({
       Number(v.price),
     ]),
   );
-
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name, parent:parent_id(name)")
-    .eq("is_active", true)
-    .order("sort_order");
 
   const existing: ExistingProduct = {
     id: product.id,

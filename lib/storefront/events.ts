@@ -62,12 +62,16 @@ export async function logStorefrontEvent(input: {
 }): Promise<void> {
   try {
     const supabase = await createClient();
-    const source = input.source ?? (await getStorefrontSource());
-    const device = input.device ?? (await getStorefrontDevice());
+    // One cookies() read serves all three fallbacks.
+    const [source, device, sessionId] = await Promise.all([
+      input.source ?? getStorefrontSource(),
+      input.device ?? getStorefrontDevice(),
+      input.sessionId ?? getStorefrontSessionId(),
+    ]);
     const { error } = await supabase.from("storefront_events").insert({
       supplier_id: input.supplierId,
       product_id: input.productId ?? null,
-      session_id: input.sessionId ?? (await getStorefrontSessionId()),
+      session_id: sessionId,
       event: input.event,
       source,
       device,

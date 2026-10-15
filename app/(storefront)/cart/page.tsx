@@ -24,16 +24,17 @@ export default async function CartPage() {
     redirect("/auth/login?next=/cart");
   }
 
-  const summary = await getCartSummary(supabase, user.id);
+  // Summary and saved coupons are independent reads.
+  const [summary, savedCoupons] = await Promise.all([
+    getCartSummary(supabase, user.id),
+    // Table may not exist until the cart_coupons migration is applied; a
+    // missing table degrades to no saved codes rather than a broken cart.
+    getCartCoupons(supabase, user.id).catch((error) => {
+      console.error("Cart coupons lookup failed:", error);
+      return {} as Record<string, string>;
+    }),
+  ]);
   const groups = groupCartLinesBySupplier(summary.lines);
-  // Table may not exist until the cart_coupons migration is applied; a
-  // missing table degrades to no saved codes rather than a broken cart.
-  let savedCoupons: Record<string, string> = {};
-  try {
-    savedCoupons = await getCartCoupons(supabase, user.id);
-  } catch (error) {
-    console.error("Cart coupons lookup failed:", error);
-  }
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">

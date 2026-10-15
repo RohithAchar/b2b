@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import type { Metadata } from "next"
 import { AllProductsSection } from "@/components/storefront/home-sections"
 import { SearchMegaMenuSection } from "@/components/storefront/search-mega-menu-section"
 import { ProductGridSkeleton } from "@/components/storefront/skeletons"
@@ -39,10 +40,20 @@ function SearchHeroSkeleton() {
   )
 }
 
+export const metadata: Metadata = {
+  title: "Wholesale Marketplace from India",
+  description:
+    "Source wholesale products across textiles, electronics, chemicals, packaging and more — directly from verified Indian suppliers with live pricing.",
+  alternates: { canonical: "/" },
+};
+
 export default function HomePage() {
   return (
     <>
       {/* Search hero */}
+      <h1 className="sr-only">
+        Wholesale marketplace — source directly from verified Indian suppliers
+      </h1>
       <Suspense fallback={<SearchHeroSkeleton />}>
         <SearchMegaMenuSection />
       </Suspense>

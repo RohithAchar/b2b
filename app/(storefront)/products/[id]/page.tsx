@@ -76,8 +76,34 @@ export default async function ProductPage({
 
   const catId = getRootCategoryId(product)
 
+  const pricing = product.pricing as { customer_price?: number } | null
+  const stockQty = (product.stock_qty as number | null) ?? 0
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    ...(product.description ? { description: (product.description as string).slice(0, 500) } : {}),
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
+    ...(pricing?.customer_price != null
+      ? {
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: pricing.customer_price,
+            availability:
+              stockQty > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url: `/products/${id}`,
+          },
+        }
+      : {}),
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Suspense
         fallback={
           <div className="mx-auto w-full max-w-7xl px-4 py-5">

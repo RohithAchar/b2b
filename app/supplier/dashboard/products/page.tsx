@@ -126,15 +126,20 @@ export default async function SupplierProductsPage({
     rejected: 0,
     draft: 0,
   };
-  for (const status of STATUS_KEYS) {
-    const { count } = await supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("supplier_id", company.id)
-      .eq("status", status);
-    counts[status] = count ?? 0;
-    counts.all += count ?? 0;
-  }
+  const statusCounts = await Promise.all(
+    STATUS_KEYS.map((status) =>
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .eq("status", status),
+    ),
+  );
+  STATUS_KEYS.forEach((status, index) => {
+    const count = statusCounts[index]?.count ?? 0;
+    counts[status] = count;
+    counts.all += count;
+  });
 
   let countQuery = supabase
     .from("products")

@@ -187,7 +187,7 @@ export function CustomerTable({
           </button>
         </div>
       )}
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

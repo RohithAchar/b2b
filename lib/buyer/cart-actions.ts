@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
@@ -144,13 +145,16 @@ export async function addToCart(
   }
 
   revalidatePath("/cart");
-  // Best-effort analytics; never blocks the buyer flow.
-  await logStorefrontEvent({
-    supplierId: product.supplier_id,
-    productId,
-    event: "cart",
-    buyerId: user.id,
-  });
+  // Analytics must never delay the purchase response; it runs after the
+  // response is sent and never throws (best-effort inside).
+  after(() =>
+    logStorefrontEvent({
+      supplierId: product.supplier_id,
+      productId,
+      event: "cart",
+      buyerId: user.id,
+    }),
+  );
   return okState;
 }
 

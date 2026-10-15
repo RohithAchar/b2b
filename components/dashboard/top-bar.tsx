@@ -14,7 +14,8 @@ export function TopBar({
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-3", className)}>
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <h1 className="truncate text-sm font-medium">{title}</h1>
+        {/* p, not h1: every dashboard page renders its own h1. */}
+        <p className="truncate text-sm font-medium">{title}</p>
         {description ? (
           <p className="truncate text-xs text-muted-foreground">{description}</p>
         ) : null}

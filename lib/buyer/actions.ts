@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
@@ -95,21 +96,27 @@ export async function recordRecentlyViewed(productId: string): Promise<void> {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
 
-  // Analytics view event for every visitor, anonymous included — this is the
-  // conversion denominator, so it must not require sign-in.
+  // Supplier lookup for the analytics event below (public approved read).
   const { data: product } = await supabase
     .from("products")
     .select("id, supplier_id")
     .eq("id", productId)
     .eq("status", "approved")
     .maybeSingle();
+
+  // Analytics view event for every visitor, anonymous included — this is the
+  // conversion denominator, so it must not require sign-in. Runs after the
+  // response so it never delays the history write below.
   if (product) {
-    await logStorefrontEvent({
-      supplierId: product.supplier_id as string,
-      productId,
-      event: "view",
-      buyerId: user?.id ?? null,
-    });
+    const supplierId = product.supplier_id as string;
+    after(() =>
+      logStorefrontEvent({
+        supplierId,
+        productId,
+        event: "view",
+        buyerId: user?.id ?? null,
+      }),
+    );
   }
 
   if (!user) return;
