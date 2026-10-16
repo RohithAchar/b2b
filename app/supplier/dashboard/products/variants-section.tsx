@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
@@ -50,7 +52,8 @@ export function VariantsSection({
           {hasVariants ? (
             <Field>
               <FieldDescription>Empty MOQ uses the base MOQ. Up to {MAX_VARIANTS} variants.</FieldDescription>
-              <Table>
+              <div className="overflow-x-auto">
+              <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Label</TableHead>
@@ -89,11 +92,15 @@ export function VariantsSection({
                   ))}
                 </TableBody>
               </Table>
+              </div>
               {invalidField?.id.startsWith("variant-") ? (
                 <FieldError>{invalidField.message}</FieldError>
               ) : null}
               <ButtonGroup>
-                <Button type="button" variant="outline" onClick={addVariant}>Add variant</Button>
+                <Button type="button" variant="outline" onClick={addVariant} disabled={variants.length >= MAX_VARIANTS}>
+                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                  Add variant
+                </Button>
                 {variants.length > 1 ? (
                   <Button type="button" variant="ghost" onClick={removeLastVariant}>Remove last</Button>
                 ) : null}
