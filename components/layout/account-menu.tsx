@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { signOut } from "@/lib/auth/actions"
 
-type AccountUser = { email: string; user_type: string }
+type AccountUser = { email: string; user_type: string; isStaff?: boolean }
 
 function initials(value: string): string {
   const name = value.includes("@") ? value.split("@")[0] : value
@@ -39,14 +39,14 @@ function initials(value: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-function roleLabel(userType: string): string {
+function roleLabel(user: AccountUser): string {
   const label =
-    userType === "admin"
+    user.user_type === "admin"
       ? "Admin"
-      : userType === "supplier"
+      : user.user_type === "supplier"
         ? "Supplier"
         : "Buyer"
-  return `${label} account`
+  return `${label} account${user.isStaff ? " · Staff" : ""}`
 }
 
 const ROLE_LINKS: Record<
@@ -96,6 +96,37 @@ const ROLE_LINKS: Record<
   ],
 }
 
+// Staff keep their own account type but gain supplier-dashboard access.
+// Owner-only entries (Business profile, Verification) are withheld from
+// staff — those pages redirect them out, so linking them would be a dead end.
+const OWNER_ONLY_HREFS = new Set([
+  "/supplier/dashboard/business",
+  "/supplier/dashboard/verification",
+])
+
+const STAFF_LINKS: { label: string; href: string; icon: ReactNode }[] = [
+  {
+    label: "Supplier dashboard",
+    href: "/supplier/dashboard",
+    icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
+  },
+  {
+    label: "Products",
+    href: "/supplier/dashboard/products",
+    icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />,
+  },
+]
+
+function linksFor(user: AccountUser): { label: string; href: string; icon: ReactNode }[] {
+  const base = ROLE_LINKS[user?.user_type || ""] ?? []
+  if (!user?.isStaff) return base
+  const reachable = base.filter((link) => !OWNER_ONLY_HREFS.has(link.href))
+  if (reachable.some((link) => link.href === "/supplier/dashboard")) {
+    return reachable
+  }
+  return [...STAFF_LINKS, ...reachable]
+}
+
 export function AccountMenu({
   user,
   trigger,
@@ -108,7 +139,7 @@ export function AccountMenu({
   side?: "top" | "bottom"
 }) {
   const fallback = user?.email ? initials(user.email) : "U"
-  const links = ROLE_LINKS[user?.user_type || ""] ?? []
+  const links = linksFor(user)
 
   return (
     <DropdownMenu>
@@ -145,7 +176,7 @@ export function AccountMenu({
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user?.email}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {roleLabel(user?.user_type || "buyer")}
+                  {roleLabel(user)}
                 </span>
               </div>
             </div>

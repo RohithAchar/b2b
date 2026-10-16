@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet"
 import { StorefrontSearchForm } from "@/components/storefront/storefront-search-form"
 
-type User = { email: string; user_type: string } | null
+type User = { email: string; user_type: string; isStaff?: boolean } | null
 
 function itemClass(active: boolean): string {
   return cn(

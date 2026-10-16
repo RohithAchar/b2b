@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { signOut } from "@/lib/auth/actions";
 
-type User = { email: string; user_type: string } | null;
+type User = { email: string; user_type: string; isStaff?: boolean } | null;
 type NavCategory = { slug: string; name: string };
 
 export function MobileNav({
@@ -80,7 +80,7 @@ export function MobileNav({
             {user ? (
               <>
                 <Link
-                  href={dashboardHref(user.user_type)}
+                  href={dashboardHref(user.user_type, user.isStaff)}
                   onClick={close}
                   className="block rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
                 >

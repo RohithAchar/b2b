@@ -5,7 +5,7 @@ import { MobileNav } from "@/components/layout/mobile-nav"
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
 import { Button } from "@/components/ui/button"
 
-type User = { email: string; user_type: string } | null
+type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
 
 export function StorefrontHeader({

@@ -5,7 +5,7 @@ import { StorefrontBottomNav } from "@/components/layout/storefront-bottom-nav"
 import { StorefrontMiniSearch } from "@/components/storefront/storefront-mini-search"
 import { StorefrontSession } from "@/components/storefront/storefront-session"
 
-type User = { email: string; user_type: string } | null
+type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
 
 export function StorefrontShell({

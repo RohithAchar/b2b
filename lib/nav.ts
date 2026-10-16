@@ -5,8 +5,8 @@ export const NAV_LINKS = [
   { label: "New Arrivals", href: "/products" },
 ];
 
-export function dashboardHref(userType: string): string {
-  if (userType === "admin") return "/admin/dashboard";
-  if (userType === "supplier") return "/supplier/dashboard";
+export function dashboardHref(userType: string, isStaff = false): string {
+  if (userType === "admin" && !isStaff) return "/admin/dashboard";
+  if (userType === "supplier" || isStaff) return "/supplier/dashboard";
   return "/";
 }
