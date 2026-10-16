@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/empty";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { SearchInput } from "@/components/dashboard/search-input";
 import { CouponCard } from "@/components/dashboard/coupon-card";
 import {
@@ -52,15 +53,11 @@ export default async function SupplierDiscountsPage({
     redirect(LOGIN_PATH);
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) {
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
     redirect("/supplier/onboarding");
   }
-  const supplierId = company.id as string;
+  const supplierId = ctx.companyId;
   const storePath = `/store/${supplierId}`;
 
   let coupons: CouponRow[] = [];

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { CouponForm } from "@/components/dashboard/coupon-form";
 
 export default async function NewCouponPage() {
@@ -23,19 +24,15 @@ export default async function NewCouponPage() {
     redirect(LOGIN_PATH);
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) {
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
     redirect("/supplier/onboarding");
   }
 
   const { data: products } = await supabase
     .from("products")
     .select("id, title")
-    .eq("supplier_id", company.id)
+    .eq("supplier_id", ctx.companyId)
     .order("title", { ascending: true })
     .limit(100);
 

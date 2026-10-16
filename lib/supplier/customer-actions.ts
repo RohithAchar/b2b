@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSupplierContext } from "@/lib/auth/guard";
 import {
   mapCustomerCsvRows,
   parseCustomerCsv,
@@ -26,12 +27,8 @@ async function supplierCompanyId(
     data: { user },
   } = await supplierClient.auth.getUser();
   if (!user) return null;
-  const { data: company } = await supplierClient
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  return (company?.id as string | undefined) ?? null;
+  const ctx = await getSupplierContext(supplierClient, user.id);
+  return ctx?.companyId ?? null;
 }
 
 /** Manually add one customer (source: manual). Redirects on success, which

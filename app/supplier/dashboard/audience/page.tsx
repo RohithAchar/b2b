@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/empty";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { parseDashboardRange, resolveRangeBounds } from "@/lib/supplier/analytics";
 import {
   CUSTOMER_TABS,
@@ -53,12 +54,8 @@ export default async function SupplierAudiencePage({
     redirect(LOGIN_PATH);
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) {
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
     redirect("/supplier/onboarding");
   }
 
@@ -66,7 +63,7 @@ export default async function SupplierAudiencePage({
   let loadError: string | null = null;
   try {
     const { from, to } = resolveRangeBounds(range, new Date());
-    customers = await getAudienceCustomers(supabase, company.id as string, { q, from, to });
+    customers = await getAudienceCustomers(supabase, ctx.companyId, { q, from, to });
   } catch (error) {
     loadError = error instanceof Error ? error.message : "Could not load customers.";
   }

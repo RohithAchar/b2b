@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, getSupplierContext, requireOwnerCompany } from "@/lib/auth/guard";
 import {
   businessProfileSchema,
   kybSchema,
@@ -44,6 +44,16 @@ export async function submitKyb(
   formData: FormData,
 ): Promise<KybActionState | never> {
   const { supabase, user } = await requireUser();
+
+  // Verification is owner-only: staff manage the catalogue, never the KYB
+  // application. (submit_kyb stays owner-only at the database level too.)
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (ctx?.role === "staff") {
+    return {
+      ok: false,
+      message: "Only the business owner can manage verification.",
+    };
+  }
 
   const parsed = kybSchema.safeParse({
     business_name: formData.get("business_name"),
@@ -237,10 +247,12 @@ export async function updateBusinessProfile(
     };
   }
 
+  const companyId = await requireOwnerCompany(supabase, user.id);
+
   const { data: existing } = await supabase
     .from("companies")
     .select("id, logo_path")
-    .eq("owner_id", user.id)
+    .eq("id", companyId)
     .maybeSingle();
   if (!existing) {
     redirect("/supplier/onboarding");
@@ -277,7 +289,7 @@ export async function updateBusinessProfile(
       contact_person: parsed.data.contact_person,
       logo_path: logoPath,
     })
-    .eq("owner_id", user.id);
+    .eq("id", companyId);
   if (error) {
     console.error("updateBusinessProfile failed:", error);
     return { ok: false, message: "Could not save. Try again." };
@@ -314,7 +326,7 @@ export async function updateMargin(
   const { data, error } = await supabase
     .from("companies")
     .update({ margin_pct: parsed.data })
-    .eq("owner_id", user.id)
+    .eq("id", await requireOwnerCompany(supabase, user.id))
     .select("id")
     .maybeSingle();
   if (error) {

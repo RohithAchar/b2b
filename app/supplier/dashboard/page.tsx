@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { fetchCustomerPricing } from "@/lib/pricing-data";
 import { formatRupees } from "@/lib/format";
 import {
@@ -86,12 +87,17 @@ export default async function SupplierOverviewPage({
     redirect(LOGIN_PATH);
   }
 
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
+    redirect("/supplier/onboarding");
+  }
+
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
       "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, logo_path, submitted_at, margin_pct",
     )
-    .eq("owner_id", user.id)
+    .eq("id", ctx.companyId)
     .maybeSingle();
 
   // See app/supplier/dashboard/business/page.tsx: a failed read must not be

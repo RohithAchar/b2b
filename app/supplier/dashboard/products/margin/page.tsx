@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { requireOwnerCompany } from "@/lib/auth/guard";
 import { MarginForm } from "./margin-form";
 
 export default async function SupplierMarginPage() {
@@ -19,10 +20,12 @@ export default async function SupplierMarginPage() {
     redirect(LOGIN_PATH);
   }
 
+  const companyId = await requireOwnerCompany(supabase, user.id);
+
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("id, margin_pct")
-    .eq("owner_id", user.id)
+    .eq("id", companyId)
     .maybeSingle();
 
   // Same distinction as app/supplier/dashboard/business/page.tsx: a failed read

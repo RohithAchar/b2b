@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ProductForm, type ExistingProduct } from "../../product-form";
@@ -18,13 +19,10 @@ export default async function EditSupplierProductPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(LOGIN_PATH);
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id, kyb_status")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) redirect("/supplier/onboarding");
-  if (company.kyb_status !== "verified") redirect("/supplier/dashboard");
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) redirect("/supplier/onboarding");
+  if (!ctx.verified) redirect("/supplier/dashboard");
+  const companyId = ctx.companyId;
 
   const { data: product } = await supabase
     .from("products")
@@ -32,7 +30,7 @@ export default async function EditSupplierProductPage({
       "id, title, category_id, brand, seller_sku, hsn_code, description, unit, moq, stock_qty, negotiable, sample_available, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
     )
     .eq("id", id)
-    .eq("supplier_id", company.id)
+    .eq("supplier_id", companyId)
     .maybeSingle();
   if (!product) notFound();
 

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/empty";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { formatRupees } from "@/lib/format";
 import {
   DASHBOARD_RANGE_LABELS,
@@ -60,19 +61,15 @@ export default async function SalesAnalyticsPage({
     redirect(LOGIN_PATH);
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) {
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
     redirect("/supplier/onboarding");
   }
 
   let analytics = null;
   let analyticsError: string | null = null;
   try {
-    analytics = await getSalesAnalytics(supabase, company.id as string, range);
+    analytics = await getSalesAnalytics(supabase, ctx.companyId, range);
   } catch (error) {
     analyticsError = error instanceof Error ? error.message : "Could not load sales analytics.";
   }

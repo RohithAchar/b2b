@@ -56,9 +56,11 @@ const COMMING_SOON_TOP: [string, IconSvgElement][] = [
 export function SupplierSidebar({
   user,
   kybStatus,
+  isStaff = false,
 }: {
   user: { name: string; email: string }
   kybStatus: string
+  isStaff?: boolean
 }) {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
@@ -84,7 +86,8 @@ export function SupplierSidebar({
   const verificationActive = pathname.startsWith(
     "/supplier/dashboard/verification"
   )
-  const settingsActive = businessActive || verificationActive
+  const teamActive = pathname.startsWith("/supplier/dashboard/team")
+  const settingsActive = businessActive || verificationActive || teamActive
 
   return (
     <Sidebar collapsible="icon">
@@ -266,18 +269,20 @@ export function SupplierSidebar({
                     <span>Add product</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    render={
-                      <Link href="/supplier/dashboard/products/margin" />
-                    }
-                    isActive={marginActive}
-                    onClick={closeMobile}
-                  >
-                    <HugeiconsIcon icon={PercentIcon} strokeWidth={2} />
-                    <span>Margin</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
+                {isStaff ? null : (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      render={
+                        <Link href="/supplier/dashboard/products/margin" />
+                      }
+                      isActive={marginActive}
+                      onClick={closeMobile}
+                    >
+                      <HugeiconsIcon icon={PercentIcon} strokeWidth={2} />
+                      <span>Margin</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
               </SidebarMenuSub>
             </CollapsibleContent>
           </Collapsible>
@@ -296,49 +301,61 @@ export function SupplierSidebar({
             </SidebarMenuItem>
           ))}
 
-          <Collapsible
-            defaultOpen={settingsActive}
-            className="group/collapsible"
-            render={<SidebarMenuItem />}
-          >
-            <CollapsibleTrigger
-              render={
-                <SidebarMenuButton isActive={settingsActive} tooltip="Settings">
-                  <HugeiconsIcon icon={SettingsIcon} strokeWidth={2} />
-                  <span>Settings</span>
-                  <HugeiconsIcon
-                    icon={ChevronRightIcon}
-                    strokeWidth={2}
-                    className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90"
-                  />
-                </SidebarMenuButton>
-              }
-            />
-            <CollapsibleContent>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    render={<Link href="/supplier/dashboard/business" />}
-                    isActive={businessActive}
-                    onClick={closeMobile}
-                  >
-                    <HugeiconsIcon icon={Building02Icon} strokeWidth={2} />
-                    <span>Business profile</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    render={<Link href="/supplier/dashboard/verification" />}
-                    isActive={verificationActive}
-                    onClick={closeMobile}
-                  >
-                    <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} />
-                    <span>Verification</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </CollapsibleContent>
-          </Collapsible>
+          {isStaff ? null : (
+            <Collapsible
+              defaultOpen={settingsActive}
+              className="group/collapsible"
+              render={<SidebarMenuItem />}
+            >
+              <CollapsibleTrigger
+                render={
+                  <SidebarMenuButton isActive={settingsActive} tooltip="Settings">
+                    <HugeiconsIcon icon={SettingsIcon} strokeWidth={2} />
+                    <span>Settings</span>
+                    <HugeiconsIcon
+                      icon={ChevronRightIcon}
+                      strokeWidth={2}
+                      className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90"
+                    />
+                  </SidebarMenuButton>
+                }
+              />
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      render={<Link href="/supplier/dashboard/business" />}
+                      isActive={businessActive}
+                      onClick={closeMobile}
+                    >
+                      <HugeiconsIcon icon={Building02Icon} strokeWidth={2} />
+                      <span>Business profile</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      render={<Link href="/supplier/dashboard/verification" />}
+                      isActive={verificationActive}
+                      onClick={closeMobile}
+                    >
+                      <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} />
+                      <span>Verification</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      render={<Link href="/supplier/dashboard/team" />}
+                      isActive={teamActive}
+                      onClick={closeMobile}
+                    >
+                      <HugeiconsIcon icon={UserGroup02Icon} strokeWidth={2} />
+                      <span>Team</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>

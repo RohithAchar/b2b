@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { parseDashboardRange, resolveRangeBounds } from "@/lib/supplier/analytics";
 import {
   filterAudienceByTab,
@@ -28,14 +29,11 @@ export async function GET(request: Request) {
     return new Response("Sign in required.", { status: 401 });
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) {
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
     return new Response("Supplier onboarding required.", { status: 403 });
   }
+  const companyId = ctx.companyId;
 
   const params = new URL(request.url).searchParams;
   const q = (params.get("q") ?? "").trim();
@@ -52,7 +50,7 @@ export async function GET(request: Request) {
 
   try {
     const { from, to } = resolveRangeBounds(range, new Date());
-    const customers = await getAudienceCustomers(supabase, company.id as string, { q, from, to });
+    const customers = await getAudienceCustomers(supabase, companyId, { q, from, to });
     let rows = filterAudienceByTab(customers, tab);
     if (ids.size > 0) {
       rows = rows.filter((row) => ids.has(row.id));
