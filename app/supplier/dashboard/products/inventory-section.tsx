@@ -1,5 +1,11 @@
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
 import { Switch } from "@/components/ui/switch";
 import { FormSection } from "@/components/dashboard/form-section";
 import type { FieldErrorHelpers } from "./product-form-types";
@@ -52,8 +58,13 @@ export function InventorySection({
           </Field>
           {sampleAvailable ? (
             <Field>
-              <FieldLabel htmlFor="sample_price">Sample price (₹)</FieldLabel>
-              <Input id="sample_price" name="sample_price" type="number" min={0.01} step="0.01" aria-invalid={invalidFor("sample_price")} value={v("sample_price")} onChange={(e) => onValueChange("sample_price", e.target.value)} />
+              <FieldLabel htmlFor="sample_price">Sample price</FieldLabel>
+              <InputGroup>
+                <InputGroupInput id="sample_price" name="sample_price" type="number" min={0.01} step="0.01" aria-invalid={invalidFor("sample_price")} value={v("sample_price")} onChange={(e) => onValueChange("sample_price", e.target.value)} />
+                <InputGroupAddon align="inline-start">
+                  <InputGroupText>₹</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
               {errorFor("sample_price")}
             </Field>
           ) : null}

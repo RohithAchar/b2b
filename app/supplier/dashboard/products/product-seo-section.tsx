@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type RefObject } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, Delete02Icon, Edit02Icon, Image01Icon } from "@hugeicons/core-free-icons";
+import { Delete02Icon, Edit02Icon, Image01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import {
   Attachment,
   AttachmentActions,
@@ -12,6 +12,14 @@ import {
   AttachmentTitle,
 } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -158,42 +166,50 @@ export function ProductSeoSection({
             <FieldDescription>
               JPG, PNG or WEBP under 2 MB. Stored separately from your gallery — it never counts toward the 3-image minimum for submission.
             </FieldDescription>
-            <AttachmentGroup>
-              <Attachment orientation="vertical" state="done">
-                <AttachmentMedia variant="image">
-                  {seoImageSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img loading="lazy" decoding="async" src={seoImageSrc} alt="Search preview image" />
-                  ) : (
-                    <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
-                  )}
-                </AttachmentMedia>
-                <AttachmentContent>
-                  <AttachmentTitle>{seoImageSrc ? "Search image" : "No search image"}</AttachmentTitle>
-                  <AttachmentDescription>
-                    {seoImageSrc ? (seoFile ? "Ready to save" : "Saved") : "Falls back to your cover image"}
-                  </AttachmentDescription>
-                </AttachmentContent>
-                <AttachmentActions>
-                  <AttachmentAction type="button" aria-label="Edit search image" onClick={() => setCropOpen(true)}>
-                    <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
-                  </AttachmentAction>
-                  <AttachmentAction type="button" aria-label="Choose search image" onClick={() => seoImageInputRef.current?.click()}>
-                    <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
-                  </AttachmentAction>
-                  {seoImageSrc ? (
+            {seoImageSrc ? (
+              <AttachmentGroup>
+                <Attachment orientation="vertical" state="done">
+                  <AttachmentActions>
+                    <AttachmentAction type="button" aria-label="Edit search image" onClick={() => setCropOpen(true)}>
+                      <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
+                    </AttachmentAction>
                     <AttachmentAction type="button" aria-label="Remove search image" onClick={onSeoImageRemove}>
                       <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
                     </AttachmentAction>
-                  ) : null}
-                </AttachmentActions>
-              </Attachment>
-            </AttachmentGroup>
-            {seoFile ? (
-              <FieldDescription>
-                {seoFile.name} · {Math.max(1, Math.round(seoFile.size / 1024))} KB
-              </FieldDescription>
-            ) : null}
+                  </AttachmentActions>
+                  <AttachmentMedia variant="image">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img loading="lazy" decoding="async" src={seoImageSrc} alt="Search preview image" />
+                  </AttachmentMedia>
+                  <AttachmentContent>
+                    <AttachmentTitle>Search image</AttachmentTitle>
+                    <AttachmentDescription>
+                      {seoFile
+                        ? `${seoFile.name} · ${Math.max(1, Math.round(seoFile.size / 1024))} KB`
+                        : "Saved"}
+                    </AttachmentDescription>
+                  </AttachmentContent>
+                </Attachment>
+              </AttachmentGroup>
+            ) : (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
+                  </EmptyMedia>
+                  <EmptyTitle>No search image</EmptyTitle>
+                  <EmptyDescription>
+                    Falls back to your cover image. Upload a 4:3 image for the sharpest social preview.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button type="button" variant="outline" onClick={() => seoImageInputRef.current?.click()}>
+                    <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                    Add search image
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            )}
           </Field>
         </FieldGroup>
       </FieldSet>

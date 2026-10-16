@@ -5,6 +5,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import { cn } from "cn";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 function ToolButton({
   label,
@@ -20,23 +22,19 @@ function ToolButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
       title={title}
       aria-label={title}
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={cn(
-        "inline-flex h-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors",
-        active
-          ? "bg-primary/15 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-        disabled && "pointer-events-none opacity-40",
-      )}
+      variant="ghost"
+      size="xs"
+      className={cn(active && "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary")}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -109,7 +107,7 @@ export function RichTextEditor({
         <ToolButton label="B" title="Bold" active={editor?.isActive("bold") ?? false} onClick={() => editor?.chain().focus().toggleBold().run()} />
         <ToolButton label="I" title="Italic" active={editor?.isActive("italic") ?? false} onClick={() => editor?.chain().focus().toggleItalic().run()} />
         <ToolButton label="S" title="Strikethrough" active={editor?.isActive("strike") ?? false} onClick={() => editor?.chain().focus().toggleStrike().run()} />
-        <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
+        <Separator orientation="vertical" className="mx-0.5 h-4" />
         <ToolButton label="H2" title="Heading" active={editor?.isActive("heading", { level: 2 }) ?? false} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} />
         <ToolButton label="H3" title="Subheading" active={editor?.isActive("heading", { level: 3 }) ?? false} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} />
         <ToolButton label="• List" title="Bullet list" active={editor?.isActive("bulletList") ?? false} onClick={() => editor?.chain().focus().toggleBulletList().run()} />
@@ -117,7 +115,7 @@ export function RichTextEditor({
         <ToolButton label="❝" title="Quote" active={editor?.isActive("blockquote") ?? false} onClick={() => editor?.chain().focus().toggleBlockquote().run()} />
         <ToolButton label="🔗" title="Link" active={editor?.isActive("link") ?? false} onClick={setLink} />
         <ToolButton label="Unlink" title="Remove link" active={editor?.isActive("link") ?? false} disabled={!(editor?.isActive("link") ?? false)} onClick={unsetLink} />
-        <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
+        <Separator orientation="vertical" className="mx-0.5 h-4" />
         <ToolButton label="↶" title="Undo" active={false} disabled={!(editor?.can().undo() ?? false)} onClick={() => editor?.chain().focus().undo().run()} />
         <ToolButton label="↷" title="Redo" active={false} disabled={!(editor?.can().redo() ?? false)} onClick={() => editor?.chain().focus().redo().run()} />
       </div>

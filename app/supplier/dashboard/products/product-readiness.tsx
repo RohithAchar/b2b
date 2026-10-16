@@ -1,3 +1,15 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "cn";
 import { MIN_PRODUCT_IMAGES, MAX_PRODUCT_IMAGES } from "@/lib/supplier/products";
 import { DESCRIPTION_MIN_TEXT_CHARS, plainTextLength } from "@/lib/supplier/rich-text";
@@ -35,38 +47,51 @@ export function ProductReadiness({
   const done = checks.filter((c) => c.ok).length;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">Product readiness</p>
-        <span className="text-xs tabular-nums text-muted-foreground">{done} / {checks.length}</span>
-      </div>
-      <div className="mt-3 flex flex-col gap-2">
-        {checks.map((c) => (
-          <div
-            key={c.label}
-            className="flex items-start gap-2 text-sm"
-            data-ready={c.ok ? "true" : "false"}
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[10px] font-bold",
-                c.ok ? "bg-success/15 text-success" : "bg-muted text-muted-foreground",
-              )}
+    <Card>
+      <CardHeader>
+        <CardTitle>Product readiness</CardTitle>
+        <CardDescription>
+          Guidance only — the server re-validates everything when you submit.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <Progress value={(done / checks.length) * 100}>
+          <ProgressLabel>Checklist</ProgressLabel>
+          <ProgressValue>{() => `${done} / ${checks.length}`}</ProgressValue>
+        </Progress>
+        <ul className="flex flex-col gap-2">
+          {checks.map((c) => (
+            <li
+              key={c.label}
+              className="flex items-start gap-2 text-sm"
+              data-ready={c.ok ? "true" : "false"}
             >
-              {c.ok ? "✓" : "•"}
-            </span>
-            <span className={c.ok ? "text-foreground" : "text-muted-foreground"}>{c.label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
-        <span className="text-muted-foreground">Variants</span>
-        <span className="font-medium tabular-nums">{variantCount}</span>
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        This checklist is guidance only — the server re-validates everything when you submit.
-      </p>
-    </div>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm",
+                  c.ok ? "text-success" : "text-muted-foreground",
+                )}
+              >
+                {c.ok ? (
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} />
+                ) : (
+                  <span className="size-1.5 rounded-sm bg-muted-foreground/40" />
+                )}
+              </span>
+              <span className={c.ok ? "text-foreground" : "text-muted-foreground"}>
+                <span className="sr-only">{c.ok ? "Done: " : "Pending: "}</span>
+                {c.label}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <Separator />
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Variants</span>
+          <Badge variant="secondary">{variantCount}</Badge>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

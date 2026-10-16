@@ -1,5 +1,11 @@
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { FormSection } from "@/components/dashboard/form-section";
@@ -42,8 +48,13 @@ export function PricingSection({
             {errorFor("unit")}
           </Field>
           <Field>
-            <FieldLabel htmlFor="price_per_unit">Base price (₹ per unit)</FieldLabel>
-            <Input id="price_per_unit" name="price_per_unit" required type="number" min={0.01} step="0.01" aria-invalid={invalidFor("price_per_unit")} value={v("price_per_unit")} onChange={(e) => onValueChange("price_per_unit", e.target.value)} />
+            <FieldLabel htmlFor="price_per_unit">Base price per unit</FieldLabel>
+            <InputGroup>
+              <InputGroupInput id="price_per_unit" name="price_per_unit" required type="number" min={0.01} step="0.01" aria-invalid={invalidFor("price_per_unit")} value={v("price_per_unit")} onChange={(e) => onValueChange("price_per_unit", e.target.value)} />
+              <InputGroupAddon align="inline-start">
+                <InputGroupText>₹</InputGroupText>
+              </InputGroupAddon>
+            </InputGroup>
             <FieldDescription>Variants can override this with their own absolute price. Margin is added to variant prices too.</FieldDescription>
             {errorFor("price_per_unit")}
           </Field>

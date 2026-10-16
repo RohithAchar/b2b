@@ -1,6 +1,6 @@
 import { useMemo, useState, type RefObject } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon, CloudIcon, Delete02Icon, Edit02Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, CloudUploadIcon, Delete02Icon, Edit02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import {
   Attachment,
   AttachmentActions,
@@ -11,6 +11,15 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from "@/components/ui/attachment";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { FormSection } from "@/components/dashboard/form-section";
@@ -185,30 +194,29 @@ export function ProductMediaSection({
           })}
         </AttachmentGroup>
         {canAddMore ? (
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Add product images"
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
+          <Empty
+            className="border"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="grid min-h-44 w-full cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-card px-6 py-8 text-center transition-colors hover:border-ring/60 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            <div>
-              <HugeiconsIcon icon={CloudIcon} strokeWidth={2} className="mx-auto size-8 text-muted-foreground" />
-              <p className="mt-2 text-sm font-medium">Click to upload or drag &amp; drop</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon icon={CloudUploadIcon} strokeWidth={2} />
+              </EmptyMedia>
+              <EmptyTitle>Upload product images</EmptyTitle>
+              <EmptyDescription>
                 JPG, PNG or WEBP, under 2 MB each · {MAX_PRODUCT_IMAGES - totalImages} slot
-                {MAX_PRODUCT_IMAGES - totalImages === 1 ? "" : "s"} left
-              </p>
-            </div>
-          </div>
+                {MAX_PRODUCT_IMAGES - totalImages === 1 ? "" : "s"} left. You can also drag
+                &amp; drop files here.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                Add images
+              </Button>
+            </EmptyContent>
+          </Empty>
         ) : (
           <FieldDescription>
             You&apos;ve reached the {MAX_PRODUCT_IMAGES}-image limit. Remove one to add another, or re-crop an existing image.
