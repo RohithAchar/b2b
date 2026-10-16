@@ -34,7 +34,7 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
       <Button
         type="submit"
         size="lg"
-        variant="outline"
+        variant="default"
         disabled={pending}
         aria-label="Add to cart"
         className="w-full sm:w-auto"
