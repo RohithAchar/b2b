@@ -19,6 +19,7 @@ type StaffCandidate = {
   user_id: string;
   user_type: string;
   owns_company_id: string | null;
+  email: string | null;
 };
 
 const TEAM_PATH = "/supplier/dashboard/team";
@@ -41,8 +42,10 @@ export async function addStaff(
     return errState("Enter a valid email address.", "email");
   }
 
+  // Resolved over RPC: owners cannot read other users' profiles rows
+  // through RLS, so the public.staff_candidate wrapper (owner-derived
+  // company, SECURITY DEFINER) performs the lookup.
   const { data: rows, error: lookupError } = await supabase.rpc("staff_candidate", {
-    p_company_id: companyId,
     p_email: email,
   });
   if (lookupError) {
@@ -72,7 +75,7 @@ export async function addStaff(
   const { error: insertError } = await supabase.from("company_members").insert({
     company_id: companyId,
     user_id: candidate.user_id,
-    email,
+    email: candidate.email ?? email,
     invited_by: user.id,
   });
   if (insertError) {
