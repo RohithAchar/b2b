@@ -48,7 +48,7 @@ export default async function SupplierDashboardLayout({
     if (!promoteError) userType = "supplier";
   }
 
-  if (userType !== "supplier") {
+  if (userType !== "supplier" && ctx?.role !== "staff") {
     redirect("/");
   }
 

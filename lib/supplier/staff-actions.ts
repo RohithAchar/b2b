@@ -68,9 +68,6 @@ export async function addStaff(
       "email",
     );
   }
-  if (candidate.user_type !== "supplier" && candidate.user_type !== "buyer") {
-    return errState("This account can't be added as staff.", "email");
-  }
 
   const { error: insertError } = await supabase.from("company_members").insert({
     company_id: companyId,
