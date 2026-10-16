@@ -5,7 +5,6 @@ import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
 import { publicTransformedImageUrl } from "@/lib/storage";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CardAddButton } from "@/components/storefront/card-add-button";
 
 export type ProductCardData = {
@@ -58,9 +57,6 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
-          )}
-          {product.negotiable && (
-            <Badge className="absolute left-2 top-2">Negotiable</Badge>
           )}
         </div>
 

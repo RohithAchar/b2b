@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { getSupplierContext } from "@/lib/auth/guard";
 
 const STATUS_COPY: Record<string, { title: string; body: string }> = {
   pending: {
@@ -39,10 +40,15 @@ export default async function SupplierStatusPage() {
     redirect("/auth/login");
   }
 
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
+    redirect("/supplier/onboarding");
+  }
+
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("business_name, kyb_status, rejection_note")
-    .eq("owner_id", user.id)
+    .eq("id", ctx.companyId)
     .maybeSingle();
 
   // Throwing rather than redirecting: on a failed read this page and

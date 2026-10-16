@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { ProductForm } from "../product-form";
 
 export default async function NewSupplierProductPage() {
@@ -10,13 +11,9 @@ export default async function NewSupplierProductPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect(LOGIN_PATH);
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id, kyb_status")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) redirect("/supplier/onboarding");
-  if (company.kyb_status !== "verified") redirect("/supplier/dashboard");
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) redirect("/supplier/onboarding");
+  if (!ctx.verified) redirect("/supplier/dashboard");
 
   const { data: categories } = await supabase
     .from("categories")

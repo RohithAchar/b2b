@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function OnboardingPage() {
@@ -10,6 +11,13 @@ export default async function OnboardingPage() {
 
   if (!user) {
     redirect("/auth/login");
+  }
+
+  // Staff help manage someone else's business; they cannot onboard their
+  // own company while staffing (keeps "my company" unambiguous).
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (ctx?.role === "staff") {
+    redirect("/supplier/dashboard");
   }
 
   const { data: company, error: companyError } = await supabase

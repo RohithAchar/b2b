@@ -21,6 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { requireOwnerCompany } from "@/lib/auth/guard";
 import { VerificationChecklistCard } from "@/components/dashboard/verification-checklist";
 import { BusinessProfileForm } from "./business-form";
 
@@ -45,12 +46,14 @@ export default async function SupplierBusinessPage() {
     redirect(LOGIN_PATH);
   }
 
+  const companyId = await requireOwnerCompany(supabase, user.id);
+
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
       "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, logo_path, kyb_status",
     )
-    .eq("owner_id", user.id)
+    .eq("id", companyId)
     .maybeSingle();
 
   // Distinguish "no company yet" (onboarding) from a failed read. Without this a

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
@@ -29,14 +30,35 @@ export default async function SupplierDashboardLayout({
     redirect(LOGIN_PATH);
   }
 
-  const [{ data: profile }, { data: company }] = await Promise.all([
+  const [{ data: profile }, ctx] = await Promise.all([
     supabase.from("profiles").select("user_type").eq("id", user.id).maybeSingle(),
-    supabase.from("companies").select("business_name, kyb_status").eq("owner_id", user.id).maybeSingle(),
+    getSupplierContext(supabase, user.id),
   ]);
 
-  if (profile?.user_type !== "supplier") {
+  let userType = profile?.user_type;
+  // Staff usually join with a buyer account. Promote on first dashboard
+  // visit: this is the trigger-allowed *self* buyer->supplier transition (an
+  // owner cannot flip another user: profiles RLS + prevent_role_escalation
+  // block cross-user changes).
+  if (ctx?.role === "staff" && userType === "buyer") {
+    const { error: promoteError } = await supabase
+      .from("profiles")
+      .update({ user_type: "supplier" })
+      .eq("id", user.id);
+    if (!promoteError) userType = "supplier";
+  }
+
+  if (userType !== "supplier" && ctx?.role !== "staff") {
     redirect("/");
   }
+
+  const { data: company } = ctx
+    ? await supabase
+        .from("companies")
+        .select("business_name, kyb_status")
+        .eq("id", ctx.companyId)
+        .maybeSingle()
+    : { data: null };
 
   return (
     <SidebarProvider>
@@ -47,6 +69,7 @@ export default async function SupplierDashboardLayout({
             email: user.email ?? "",
           }}
           kybStatus={company?.kyb_status ?? "draft"}
+          isStaff={ctx?.role === "staff"}
         />
       </Suspense>
       <SidebarInset className="@container/content">

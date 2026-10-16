@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { requireOwnerCompany } from "@/lib/auth/guard";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { VerificationChecklistCard } from "@/components/dashboard/verification-checklist";
 
@@ -38,12 +39,14 @@ export default async function SupplierVerificationPage() {
     redirect(LOGIN_PATH);
   }
 
+  const companyId = await requireOwnerCompany(supabase, user.id);
+
   const { data: company } = await supabase
     .from("companies")
     .select(
       "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, submitted_at",
     )
-    .eq("owner_id", user.id)
+    .eq("id", companyId)
     .maybeSingle();
 
   if (!company) {

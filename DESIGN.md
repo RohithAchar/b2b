@@ -206,9 +206,13 @@ Audience, Appearance, Plugins, Settings (expandable).
   plus **Margin** (`/supplier/dashboard/products/margin`) — the supplier's single
   `companies.margin_pct` markup, kept out of the business profile;
   the group opens and highlights when any product route is active, including product edits.
+  **Margin** is owner-only and hidden from staff.
 - **Settings** is an expandable parent holding the existing **Business profile**
   (`/supplier/dashboard/business`) and **Verification** (`/supplier/dashboard/verification`)
-   entries so existing pages stay reachable.
+   entries so existing pages stay reachable, plus **Team**
+  (`/supplier/dashboard/team`) — the owner's staff list (add by email, revoke).
+  Settings is owner-only: staff neither see the group nor its pages (page-level
+  `requireOwnerCompany` redirects them to the dashboard).
 - Top-level items without a route yet (Orders, Delivery, Analytics, Payouts, Discounts,
   Audience, Appearance, Plugins) render as **inert "Coming soon"** entries — `aria-disabled`,
   no link, no invented route.

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { fetchCustomerPricing } from "@/lib/pricing-data";
 import { ProductTable, type ProductRow } from "@/components/dashboard/product-table";
 import {
@@ -100,10 +101,13 @@ export default async function SupplierProductsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(LOGIN_PATH);
 
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) redirect("/supplier/onboarding");
+
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("id, kyb_status, margin_pct")
-    .eq("owner_id", user.id)
+    .eq("id", ctx.companyId)
     .maybeSingle();
   // See app/supplier/dashboard/business/page.tsx: a failed read must not be
   // mistaken for a missing company.

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getSupplierContext } from "@/lib/auth/guard";
 import { formatRupees, formatDateMed } from "@/lib/format";
 import { KpiStat } from "@/components/dashboard/kpi-stat";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -48,19 +49,15 @@ export default async function CustomerDetailPage({
     redirect(LOGIN_PATH);
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!company) {
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx) {
     redirect("/supplier/onboarding");
   }
 
   let detail = null;
   let loadError: string | null = null;
   try {
-    detail = await getCustomerDetail(supabase, company.id as string, id);
+    detail = await getCustomerDetail(supabase, ctx.companyId, id);
   } catch (error) {
     loadError = error instanceof Error ? error.message : "Could not load the customer.";
   }
