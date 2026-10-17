@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { getBuyerAddresses } from "@/lib/buyer/address-queries";
+import { AddressListSkeleton } from "@/components/storefront/skeletons";
 import { AccountTabs } from "./account-tabs";
 import { SavedTab } from "./saved-tab";
 import { RecentTab } from "./recent-tab";
@@ -47,7 +49,9 @@ export default async function AccountPage({
           </TabsContent>
         ) : activeTab === "addresses" ? (
           <TabsContent value="addresses">
-            <AddressesTab addresses={addresses} />
+            <Suspense fallback={<AddressListSkeleton />}>
+              <AddressesTab addresses={addresses} />
+            </Suspense>
           </TabsContent>
         ) : (
           <TabsContent value="recent">

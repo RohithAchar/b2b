@@ -227,3 +227,41 @@ export function ListingShellSkeleton({
     </div>
   );
 }
+
+export function AddressCardSkeleton() {
+  return (
+    <li className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-5 w-16 rounded-sm" />
+        </div>
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <Skeleton className="h-8 w-16 rounded-md" />
+        <Skeleton className="h-8 w-16 rounded-md" />
+        <Skeleton className="h-8 w-20 rounded-md" />
+      </div>
+    </li>
+  );
+}
+
+export function AddressListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div aria-hidden className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-4 w-72 max-w-full" />
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </div>
+      <ul className="flex flex-col gap-3">
+        {Array.from({ length: count }, (_, i) => (
+          <AddressCardSkeleton key={i} />
+        ))}
+      </ul>
+      <Skeleton className="h-px w-full" />
+      <Skeleton className="h-3 w-2/3" />
+    </div>
+  );
+}

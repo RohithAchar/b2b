@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState, useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon, Edit02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import {
+  Delete02Icon,
+  Edit02Icon,
+  MapPinIcon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +28,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import {
@@ -32,6 +38,7 @@ import {
   type AddressActionState,
 } from "@/lib/buyer/address-actions";
 import { getStoredUserPhone } from "@/lib/user-phone";
+import { detectAddressFromDevice } from "@/lib/buyer/geolocation";
 import { formatDeliveryLine, type BuyerAddress } from "@/lib/orders/delivery";
 
 const initialState: AddressActionState = { ok: false, message: "" };
@@ -195,6 +202,31 @@ function AddressForm({
 }) {
   const [state, action, pending] = useActionState(saveAddress, initialState);
   const phoneRef = useRef<HTMLInputElement>(null);
+  const line1Ref = useRef<HTMLInputElement>(null);
+  const cityRef = useRef<HTMLInputElement>(null);
+  const stateRef = useRef<HTMLInputElement>(null);
+  const pincodeRef = useRef<HTMLInputElement>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+
+  async function fillFromLocation() {
+    setLocating(true);
+    setLocateError(null);
+    const detected = await detectAddressFromDevice();
+    setLocating(false);
+    if (!detected) {
+      setLocateError(
+        "Couldn't read your location. Type the address instead, or allow location access and retry.",
+      );
+      return;
+    }
+    // Best-effort convenience prefill only, mirroring the phone prefill above:
+    // the values are validated and saved server-side like any other input.
+    if (detected.line1 && line1Ref.current) line1Ref.current.value = detected.line1;
+    if (detected.city && cityRef.current) cityRef.current.value = detected.city;
+    if (detected.state && stateRef.current) stateRef.current.value = detected.state;
+    if (detected.pincode && pincodeRef.current) pincodeRef.current.value = detected.pincode;
+  }
 
   useEffect(() => {
     // Best-effort convenience prefill only; the value is validated and saved
@@ -252,11 +284,31 @@ function AddressForm({
           <Input
             id="line1"
             name="line1"
+            ref={line1Ref}
             autoComplete="address-line1"
             defaultValue={initial?.line1 ?? ""}
             required
           />
         </Field>
+
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={locating || pending}
+            onClick={() => void fillFromLocation()}
+          >
+            {locating ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <HugeiconsIcon icon={MapPinIcon} strokeWidth={2} data-icon="inline-start" />
+            )}
+            {locating ? "Finding your location…" : "Fill from my location"}
+          </Button>
+          {locateError ? (
+            <p className="text-xs text-muted-foreground">{locateError}</p>
+          ) : null}
+        </div>
 
         <Field>
           <FieldLabel htmlFor="line2">Address line 2 (optional)</FieldLabel>
@@ -274,6 +326,7 @@ function AddressForm({
             <Input
               id="city"
               name="city"
+              ref={cityRef}
               autoComplete="address-level2"
               defaultValue={initial?.city ?? ""}
               required
@@ -284,6 +337,7 @@ function AddressForm({
             <Input
               id="state"
               name="state"
+              ref={stateRef}
               autoComplete="address-level1"
               defaultValue={initial?.state ?? ""}
               required
@@ -294,6 +348,7 @@ function AddressForm({
             <Input
               id="pincode"
               name="pincode"
+              ref={pincodeRef}
               inputMode="numeric"
               autoComplete="postal-code"
               defaultValue={initial?.pincode ?? ""}
