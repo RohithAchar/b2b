@@ -25,11 +25,21 @@ export const VISIBILITY_STATUS: Record<string, StatusDef> = {
 };
 
 export const ORDER_STATUS: Record<string, StatusDef> = {
-  new: { label: "New", variant: "warning" },
+  new: { label: "Awaiting review", variant: "warning" },
+  quoted: { label: "Quoted", variant: "secondary" },
   confirmed: { label: "Confirmed", variant: "secondary" },
+  processing: { label: "Processing", variant: "default" },
   shipped: { label: "Shipped", variant: "default" },
   delivered: { label: "Delivered", variant: "success" },
   cancelled: { label: "Cancelled", variant: "outline" },
+};
+
+// Payment is tracked separately from order progress; only the supplier
+// confirms it (never the platform, never the buyer).
+export const PAYMENT_STATUS: Record<string, StatusDef> = {
+  not_requested: { label: "Not requested", variant: "outline" },
+  pending: { label: "Awaiting payment", variant: "warning" },
+  paid: { label: "Paid", variant: "success" },
 };
 
 const MAPS = {
@@ -37,6 +47,7 @@ const MAPS = {
   kyb: KYB_STATUS,
   visibility: VISIBILITY_STATUS,
   order: ORDER_STATUS,
+  payment: PAYMENT_STATUS,
 } as const;
 
 export function StatusBadge({

@@ -193,9 +193,17 @@ export function CartGroups({
             </p>
           )}
         </div>
-        <Button disabled={!meetsMinimum} size="lg" className="mt-4 w-full" title="Checkout coming soon">
-          {meetsMinimum ? "Checkout (coming soon)" : `Checkout · min ${formatRupees(MIN_CART_VALUE)}`}
-        </Button>
+        {meetsMinimum ? (
+          <Link href="/checkout" className="mt-4 block">
+            <Button size="lg" className="w-full">
+              Proceed to Checkout
+            </Button>
+          </Link>
+        ) : (
+          <Button disabled size="lg" className="mt-4 w-full">
+            {`Checkout · min ${formatRupees(MIN_CART_VALUE)}`}
+          </Button>
+        )}
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Prices include applicable slabs and are confirmed at checkout.
         </p>

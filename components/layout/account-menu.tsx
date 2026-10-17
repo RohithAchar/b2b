@@ -8,6 +8,7 @@ import {
   Clock01Icon,
   DashboardSquare01Icon,
   HeartIcon,
+  Location01Icon,
   Logout01Icon,
   Package01Icon,
   ShieldCheckIcon,
@@ -55,6 +56,11 @@ const ROLE_LINKS: Record<
 > = {
   buyer: [
     {
+      label: "My Orders",
+      href: "/orders",
+      icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />,
+    },
+    {
       label: "Saved Products",
       href: "/account?tab=saved",
       icon: <HugeiconsIcon icon={HeartIcon} strokeWidth={2} />,
@@ -63,6 +69,11 @@ const ROLE_LINKS: Record<
       label: "Recently Viewed",
       href: "/account?tab=recent",
       icon: <HugeiconsIcon icon={Clock01Icon} strokeWidth={2} />,
+    },
+    {
+      label: "Delivery Addresses",
+      href: "/account?tab=addresses",
+      icon: <HugeiconsIcon icon={Location01Icon} strokeWidth={2} />,
     },
   ],
   supplier: [

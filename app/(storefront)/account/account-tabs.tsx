@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const TABS = [
   { value: "saved", label: "Saved Products" },
   { value: "recent", label: "Recently Viewed" },
+  { value: "addresses", label: "Delivery Addresses" },
 ] as const;
 
 export function AccountTabs({
@@ -30,7 +31,7 @@ export function AccountTabs({
       onValueChange={handleTabChange}
       className="mt-5"
     >
-      <TabsList>
+      <TabsList className="max-w-full overflow-x-auto">
         {TABS.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value}>
             {tab.label}
