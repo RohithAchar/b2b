@@ -300,8 +300,19 @@ begin
 
   v_supplier_side := internal.is_company_member(new.supplier_id);
   if not v_supplier_side then
-    -- Buyers never edit orders directly (quote responses go through RPCs);
-    -- RLS already blocks this, this is defense in depth.
+    -- The only buyer-side order write is the quote-rejection path performed
+    -- by respond_to_quotation: status quoted -> new, nothing else touched,
+    -- and only on their own order. RLS gives buyers no UPDATE policy at all,
+    -- so this branch is reachable only via that SECURITY DEFINER RPC.
+    if new.buyer_id = v_uid
+       and old.status = 'quoted' and new.status = 'new'
+       and new.payment_status is not distinct from old.payment_status
+       and new.subtotal is not distinct from old.subtotal
+       and new.delivery is not distinct from old.delivery
+       and new.buyer_note is not distinct from old.buyer_note
+       and new.supplier_note is not distinct from old.supplier_note then
+      return new;
+    end if;
     raise exception 'Only the supplier can update an order directly';
   end if;
 

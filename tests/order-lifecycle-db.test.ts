@@ -596,6 +596,28 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
     });
   });
 
+  describe("order supplier contact view (DB)", () => {
+    it("shows the buyer the supplier's phone for their own order", async () => {
+      const { data } = await buyerClient
+        .from("order_supplier_contact")
+        .select("order_id, supplier_name, phone")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      expect(data?.order_id).toBe(orderId);
+      expect(data?.phone).toBe("+91 9000000000");
+      expect(data?.supplier_name).toBe("OL Supplier Co");
+    });
+
+    it("never exposes one buyer's order contact to another buyer", async () => {
+      const { data } = await strangerClient
+        .from("order_supplier_contact")
+        .select("order_id")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      expect(data).toBeNull();
+    });
+  });
+
   describe("order events", () => {
     it("are visible to the buyer and hidden from strangers", async () => {
       const buyer = await buyerClient.from("order_events").select("id").eq("order_id", orderId);
