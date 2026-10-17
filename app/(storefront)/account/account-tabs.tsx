@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const TABS = [
   { value: "saved", label: "Saved Products" },
   { value: "recent", label: "Recently Viewed" },
+  { value: "addresses", label: "Delivery Addresses" },
 ] as const;
 
 export function AccountTabs({
