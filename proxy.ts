@@ -9,6 +9,8 @@ export const config = {
   matcher: [
     "/account/:path*",
     "/cart/:path*",
+    "/checkout/:path*",
+    "/orders/:path*",
     "/supplier/:path*",
     "/admin/:path*",
     "/auth/:path*",
