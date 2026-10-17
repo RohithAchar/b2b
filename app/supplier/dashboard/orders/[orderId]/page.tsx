@@ -217,6 +217,18 @@ export default async function SupplierOrderDetailPage({
           </h1>
           <StatusBadge status="order" value={orderRow.status} />
           <StatusBadge status="payment" value={orderRow.payment_status} />
+          {orderRow.status === "new" || orderRow.status === "quoted" ? (
+            <Button
+              render={
+                <Link href={`/supplier/dashboard/orders/${orderRow.id}/quote`} />
+              }
+              nativeButton={false}
+              variant="outline"
+              size="sm"
+            >
+              Send quotation
+            </Button>
+          ) : null}
         </div>
         <p className="text-sm text-muted-foreground">
           Placed {formatDateTime(orderRow.created_at)}
