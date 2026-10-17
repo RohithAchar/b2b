@@ -31,7 +31,7 @@ export function AccountTabs({
       onValueChange={handleTabChange}
       className="mt-5"
     >
-      <TabsList>
+      <TabsList className="max-w-full overflow-x-auto">
         {TABS.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value}>
             {tab.label}
