@@ -32,8 +32,10 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 
 const ORDER_TABS = [
   { key: "all", label: "All" },
-  { key: "new", label: "New" },
+  { key: "new", label: "Awaiting review" },
+  { key: "quoted", label: "Quoted" },
   { key: "confirmed", label: "Confirmed" },
+  { key: "processing", label: "Processing" },
   { key: "shipped", label: "Shipped" },
   { key: "delivered", label: "Delivered" },
   { key: "cancelled", label: "Cancelled" },
@@ -42,7 +44,15 @@ const ORDER_TABS = [
 type TabKey = (typeof ORDER_TABS)[number]["key"];
 type OrderStatus = Exclude<TabKey, "all">;
 
-const ORDER_STATUS_KEYS: OrderStatus[] = ["new", "confirmed", "shipped", "delivered", "cancelled"];
+const ORDER_STATUS_KEYS: OrderStatus[] = [
+  "new",
+  "quoted",
+  "confirmed",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+];
 
 const BASE = "/supplier/dashboard/orders";
 const PAGE_SIZE = 50;
@@ -57,10 +67,14 @@ function formatDate(value: string): string {
 
 type OrderRow = {
   id: string;
+  reference: string;
   status: string;
+  payment_status: string;
   subtotal: number;
   item_count: number;
   created_at: string;
+  updated_at: string;
+  delivery: { fullName?: string } | null;
 };
 
 export default async function SupplierOrdersPage({
@@ -94,7 +108,9 @@ export default async function SupplierOrdersPage({
 
   let query = supabase
     .from("orders")
-    .select("id, status, subtotal, item_count, created_at")
+    .select(
+      "id, reference, status, payment_status, subtotal, item_count, created_at, updated_at, delivery",
+    )
     .eq("supplier_id", companyId)
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
@@ -182,17 +198,28 @@ export default async function SupplierOrdersPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Order</TableHead>
+                  <TableHead className="hidden md:table-cell">Buyer</TableHead>
                   <TableHead className="hidden sm:table-cell">Date</TableHead>
                   <TableHead className="text-right tabular-nums">Items</TableHead>
                   <TableHead className="text-right tabular-nums">Value</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Payment</TableHead>
+                  <TableHead className="hidden xl:table-cell">Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
                   <TableRow key={order.id}>
-                    <TableCell className="font-mono text-xs">
-                      #{order.id.slice(0, 8)}
+                    <TableCell>
+                      <Link
+                        href={`${BASE}/${order.id}`}
+                        className="font-mono text-xs font-medium underline-offset-2 hover:underline"
+                      >
+                        {order.reference}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="hidden max-w-32 truncate text-muted-foreground md:table-cell">
+                      {order.delivery?.fullName ?? "—"}
                     </TableCell>
                     <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
                       {formatDate(order.created_at)}
@@ -203,6 +230,12 @@ export default async function SupplierOrdersPage({
                     </TableCell>
                     <TableCell>
                       <StatusBadge status="order" value={order.status} />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <StatusBadge status="payment" value={order.payment_status} />
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
+                      {formatDate(order.updated_at)}
                     </TableCell>
                   </TableRow>
                 ))}

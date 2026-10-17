@@ -507,6 +507,95 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
     });
   });
 
+  describe("supplier fulfilment actions (DB)", () => {
+    let fulfilOrderId: string;
+
+    beforeAll(async () => {
+      fulfilOrderId = await makeOrder(companyId, buyerUserId, { status: "new" });
+    });
+
+    it("lets staff of the owning company act on the order", async () => {
+      const { error } = await staffClient
+        .from("orders")
+        .update({ status: "confirmed" })
+        .eq("id", fulfilOrderId);
+      expect(error).toBeNull();
+      const { data } = await service
+        .from("orders")
+        .select("status")
+        .eq("id", fulfilOrderId)
+        .single();
+      expect(data?.status).toBe("confirmed");
+    });
+
+    it("records rejection reason and stage timestamps", async () => {
+      const rejectOrderId = await makeOrder(companyId, buyerUserId, { status: "new" });
+      const { error } = await supplierClient
+        .from("orders")
+        .update({
+          status: "cancelled",
+          rejection_reason: "Out of stock for two weeks.",
+          rejected_at: new Date().toISOString(),
+        })
+        .eq("id", rejectOrderId);
+      expect(error).toBeNull();
+
+      const { data } = await service
+        .from("orders")
+        .select("status, rejection_reason, rejected_at, cancelled_at")
+        .eq("id", rejectOrderId)
+        .single();
+      expect(data?.status).toBe("cancelled");
+      expect(data?.rejection_reason).toBe("Out of stock for two weeks.");
+      expect(data?.rejected_at).not.toBeNull();
+      expect(data?.cancelled_at).not.toBeNull();
+
+      const { data: events } = await service
+        .from("order_events")
+        .select("event, data")
+        .eq("order_id", rejectOrderId)
+        .eq("event", "order_cancelled");
+      expect((events ?? []).length).toBe(1);
+      expect(events?.[0]?.data?.reason).toBe("Out of stock for two weeks.");
+    });
+
+    it("persists shipment details and stamps shipped_at", async () => {
+      await supplierClient
+        .from("orders")
+        .update({ status: "processing" })
+        .eq("id", fulfilOrderId);
+      const { error } = await supplierClient
+        .from("orders")
+        .update({
+          status: "shipped",
+          carrier: "Delhivery",
+          tracking_ref: "DLV123456",
+          shipment_notes: "Packed in two boxes.",
+        })
+        .eq("id", fulfilOrderId);
+      expect(error).toBeNull();
+
+      const { data } = await service
+        .from("orders")
+        .select("status, carrier, tracking_ref, shipment_notes, shipped_at")
+        .eq("id", fulfilOrderId)
+        .single();
+      expect(data?.status).toBe("shipped");
+      expect(data?.carrier).toBe("Delhivery");
+      expect(data?.tracking_ref).toBe("DLV123456");
+      expect(data?.shipment_notes).toBe("Packed in two boxes.");
+      expect(data?.shipped_at).not.toBeNull();
+    });
+
+    it("blocks moving a shipped order backwards", async () => {
+      const { error } = await supplierClient
+        .from("orders")
+        .update({ status: "confirmed" })
+        .eq("id", fulfilOrderId);
+      expect(error?.message).toContain("cannot move from shipped to confirmed");
+    });
+  });
+
   describe("order events", () => {
     it("are visible to the buyer and hidden from strangers", async () => {
       const buyer = await buyerClient.from("order_events").select("id").eq("order_id", orderId);
