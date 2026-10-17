@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierContext } from "@/lib/auth/guard";
+import { queueAndDeliver } from "@/lib/notifications/order-notifications";
 import { parseOrderStatus } from "@/lib/orders/lifecycle";
 import {
   QUOTATION_MAX_MONEY,
@@ -153,6 +154,8 @@ export async function sendQuotation(
   revalidatePath(`/supplier/dashboard/orders/${parsedOrderId.data}`);
   revalidatePath("/supplier/dashboard/orders");
   revalidatePath(`/orders/${parsedOrderId.data}`);
+  // Best-effort buyer alert; the quotation itself is already committed.
+  await queueAndDeliver(supabase, parsedOrderId.data, "quotation_sent_buyer");
   return ok(
     payload ? `Quotation v${payload.version} sent to the buyer.` : "Quotation sent.",
     payload?.version,

@@ -596,6 +596,67 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
     });
   });
 
+  describe("notification outbox (DB)", () => {
+    it("queues a supplier-addressed alert with the resolved recipient", async () => {
+      const { data: outboxId, error } = await buyerClient.rpc(
+        "queue_order_notification",
+        { p_order_id: orderId, p_template: "new_order_supplier" },
+      );
+      expect(error).toBeNull();
+
+      const { data: row } = await service
+        .from("notification_outbox")
+        .select("recipient_user_id, recipient_phone, template, status, payload")
+        .eq("id", outboxId as string)
+        .single();
+      expect(row?.recipient_user_id).toBe(supplierUserId);
+      expect(row?.recipient_phone).toBe("+91 9000000000");
+      expect(row?.template).toBe("new_order_supplier");
+      expect(row?.status).toBe("pending");
+      expect(row?.payload?.reference).toBeTruthy();
+      // The payload must never carry the delivery address.
+      expect(JSON.stringify(row?.payload)).not.toContain("12 MG Road");
+    });
+
+    it("rejects unknown templates and foreign orders", async () => {
+      const badTemplate = await buyerClient.rpc("queue_order_notification", {
+        p_order_id: orderId,
+        p_template: "spam_everyone",
+      });
+      expect(badTemplate.error?.message).toContain("Unknown notification template");
+
+      const foreign = await strangerClient.rpc("queue_order_notification", {
+        p_order_id: orderId,
+        p_template: "new_order_supplier",
+      });
+      expect(foreign.error?.message).toContain("your own orders");
+    });
+
+    it("keeps the trail invisible to unrelated users", async () => {
+      const { data } = await strangerClient
+        .from("notification_outbox")
+        .select("id")
+        .eq("order_id", orderId);
+      expect(data ?? []).toHaveLength(0);
+    });
+
+    it("lets the supplier mark delivery results the provider confirmed", async () => {
+      const { data: rows } = await supplierClient
+        .from("notification_outbox")
+        .select("id, status")
+        .eq("order_id", orderId)
+        .eq("status", "pending");
+      const row = (rows ?? [])[0];
+      expect(row).toBeTruthy();
+
+      const { error } = await supplierClient
+        .from("notification_outbox")
+        .update({ status: "sent", provider: "mock", provider_message_id: "mock-1" })
+        .eq("id", row!.id as string);
+      expect(error).toBeNull();
+    });
+  });
+
   describe("order supplier contact view (DB)", () => {
     it("shows the buyer the supplier's phone for their own order", async () => {
       const { data } = await buyerClient

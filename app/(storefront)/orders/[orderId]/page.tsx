@@ -41,6 +41,7 @@ import {
   whatsappContactLink,
 } from "@/lib/orders/whatsapp-link";
 import { QuoteResponseButtons } from "./quote-response-buttons";
+import { OrderNotifications } from "@/components/orders/order-notifications";
 
 export const metadata: Metadata = { title: "Order details" };
 
@@ -647,6 +648,9 @@ export default async function BuyerOrderPage({
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Notifications ---------------------------------------------------------- */}
+      <OrderNotifications orderId={orderRow.id} />
 
       {/* History ---------------------------------------------------------------- */}
       <Card className="!gap-0 !pb-0">

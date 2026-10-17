@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierContext } from "@/lib/auth/guard";
+import { queueAndDeliver } from "@/lib/notifications/order-notifications";
 import {
   availableSupplierActions,
   parseOrderStatus,
@@ -89,6 +90,7 @@ export async function acceptOrder(orderId: string): Promise<OrderActionResult> {
     console.error("acceptOrder failed:", error.code, error.message);
     return err("Could not confirm the order. Try again.");
   }
+  await queueAndDeliver(supabase, order.id, "order_confirmed_buyer");
   refreshOrderPaths(order.id);
   return ok("Order confirmed.");
 }
@@ -140,6 +142,7 @@ export async function rejectOrder(
     console.error("rejectOrder failed:", error.code, error.message);
     return err("Could not reject the order. Try again.");
   }
+  await queueAndDeliver(supabase, order.id, "order_rejected_buyer");
   refreshOrderPaths(order.id);
   return ok("Order rejected. The buyer can see your reason.");
 }
@@ -189,6 +192,9 @@ export async function setOrderPaymentStatus(
     console.error("setOrderPaymentStatus failed:", error.code, error.message);
     return err("Could not update payment status. Try again.");
   }
+  if (parsed.data.paymentStatus === "paid") {
+    await queueAndDeliver(supabase, order.id, "payment_confirmed_buyer");
+  }
   refreshOrderPaths(order.id);
   return ok(
     parsed.data.paymentStatus === "paid"
@@ -235,6 +241,9 @@ export async function advanceOrderStatus(
   if (error) {
     console.error("advanceOrderStatus failed:", error.code, error.message);
     return err("Could not update the order. Try again.");
+  }
+  if (parsed.data.to === "delivered") {
+    await queueAndDeliver(supabase, order.id, "order_delivered_buyer");
   }
   refreshOrderPaths(order.id);
   return ok(parsed.data.to === "delivered" ? "Marked as delivered." : "Order is processing.");
@@ -288,6 +297,7 @@ export async function recordShipment(
     console.error("recordShipment failed:", error.code, error.message);
     return err("Could not record the shipment. Try again.");
   }
+  await queueAndDeliver(supabase, order.id, "order_shipped_buyer");
   refreshOrderPaths(order.id);
   return ok("Shipment recorded. The buyer can see the tracking details.");
 }

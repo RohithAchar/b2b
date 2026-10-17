@@ -25,6 +25,7 @@ import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { formatRupees } from "@/lib/format";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { OrderNotifications } from "@/components/orders/order-notifications";
 import type { DeliverySnapshot } from "@/lib/orders/delivery";
 import { OrderActionsPanel } from "./order-actions-panel";
 
@@ -455,6 +456,9 @@ export default async function SupplierOrderDetailPage({
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Notifications ---------------------------------------------------------- */}
+      <OrderNotifications orderId={orderRow.id} />
 
       {/* History ----------------------------------------------------------------- */}
       <Card className="rounded-lg p-4">

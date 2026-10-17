@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { queueAndDeliver } from "@/lib/notifications/order-notifications";
 
 // Buyer response to a supplier quotation. The RPC verifies the caller owns
 // the order, that this is the latest pending version, and that it hasn't
@@ -77,6 +78,18 @@ export async function respondToQuotation(
   // The RPC changed order status, so refresh the buyer's order views.
   revalidatePath("/orders");
   revalidatePath(`/orders/${formData.get("orderId") ?? ""}`);
+
+  // Best-effort supplier alert; the response itself is already committed.
+  const orderId = formData.get("orderId");
+  if (typeof orderId === "string" && /^[0-9a-f-]{36}$/i.test(orderId)) {
+    await queueAndDeliver(
+      supabase,
+      orderId,
+      payload.status === "accepted"
+        ? "quotation_accepted_supplier"
+        : "quotation_rejected_supplier",
+    );
+  }
 
   if (payload.status === "accepted") {
     return {

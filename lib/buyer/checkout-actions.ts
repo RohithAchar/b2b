@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { toDeliverySnapshot, type DeliverySnapshot } from "@/lib/orders/delivery";
+import { queueAndDeliver } from "@/lib/notifications/order-notifications";
 
 // Checkout: converts the buyer's cart into one order per supplier by calling
 // the `create_orders_from_cart` RPC. Nothing about price, supplier or total
@@ -146,6 +147,17 @@ export async function placeOrder(
   // The RPC already cleared the ordered cart lines; refresh their views.
   revalidatePath("/cart");
   revalidatePath("/checkout");
+
+  // Notification-only side channel: one alert per newly created order for
+  // the supplier. Best-effort — the orders above are already committed and
+  // survive any notification failure. A duplicate (idempotent) replay does
+  // not re-alert anyone.
+  if (!payload.duplicate) {
+    for (const orderId of orderIds) {
+      await queueAndDeliver(supabase, orderId, "new_order_supplier");
+    }
+  }
+
   return okState(
     orderIds,
     payload.skipped > 0
