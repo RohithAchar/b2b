@@ -38,7 +38,10 @@ import {
   type AddressActionState,
 } from "@/lib/buyer/address-actions";
 import { getStoredUserPhone } from "@/lib/user-phone";
-import { detectAddressFromDevice } from "@/lib/buyer/geolocation";
+import {
+  detectAddressFromDevice,
+  locationFailureMessage,
+} from "@/lib/buyer/geolocation";
 import { formatDeliveryLine, type BuyerAddress } from "@/lib/orders/delivery";
 
 const initialState: AddressActionState = { ok: false, message: "" };
@@ -212,14 +215,13 @@ function AddressForm({
   async function fillFromLocation() {
     setLocating(true);
     setLocateError(null);
-    const detected = await detectAddressFromDevice();
+    const result = await detectAddressFromDevice();
     setLocating(false);
-    if (!detected) {
-      setLocateError(
-        "Couldn't read your location. Type the address instead, or allow location access and retry.",
-      );
+    if (!result.ok) {
+      setLocateError(locationFailureMessage(result.reason));
       return;
     }
+    const detected = result.address;
     // Best-effort convenience prefill only, mirroring the phone prefill above:
     // the values are validated and saved server-side like any other input.
     if (detected.line1 && line1Ref.current) line1Ref.current.value = detected.line1;
