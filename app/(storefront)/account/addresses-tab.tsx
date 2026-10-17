@@ -17,6 +17,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -170,7 +171,7 @@ export function AddressesTab({
       </p>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit address" : "Add address"}</DialogTitle>
             <DialogDescription>
@@ -247,8 +248,8 @@ function AddressForm({
   }, [state]);
 
   return (
-    <form action={action}>
-      <FieldGroup>
+    <form action={action} className="flex min-h-0 flex-col gap-6">
+      <FieldGroup className="no-scrollbar -mx-6 min-h-0 w-auto flex-1 overflow-y-auto overscroll-contain px-6">
         {!state.ok && state.message ? (
           <Alert variant="destructive">
             <AlertDescription>{state.message}</AlertDescription>
@@ -380,11 +381,14 @@ function AddressForm({
           />
           <FieldLabel htmlFor="isDefault">Use as my default delivery address</FieldLabel>
         </Field>
+      </FieldGroup>
 
+      <DialogFooter>
         <Button type="submit" disabled={pending}>
+          {pending ? <Spinner data-icon="inline-start" /> : null}
           {pending ? "Saving…" : initial ? "Save changes" : "Save address"}
         </Button>
-      </FieldGroup>
+      </DialogFooter>
     </form>
   );
 }
