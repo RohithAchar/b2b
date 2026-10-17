@@ -255,6 +255,25 @@ function AddressForm({
 
         {initial ? <input type="hidden" name="addressId" value={initial.id} /> : null}
 
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={locating || pending}
+            onClick={() => void fillFromLocation()}
+          >
+            {locating ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <HugeiconsIcon icon={MapPinIcon} strokeWidth={2} data-icon="inline-start" />
+            )}
+            {locating ? "Finding your location…" : "Fill from my location"}
+          </Button>
+          {locateError ? (
+            <p className="text-xs text-muted-foreground">{locateError}</p>
+          ) : null}
+        </div>
+
         <Field>
           <FieldLabel htmlFor="fullName">Full name</FieldLabel>
           <Input
@@ -290,25 +309,6 @@ function AddressForm({
             required
           />
         </Field>
-
-        <div className="flex flex-col gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={locating || pending}
-            onClick={() => void fillFromLocation()}
-          >
-            {locating ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <HugeiconsIcon icon={MapPinIcon} strokeWidth={2} data-icon="inline-start" />
-            )}
-            {locating ? "Finding your location…" : "Fill from my location"}
-          </Button>
-          {locateError ? (
-            <p className="text-xs text-muted-foreground">{locateError}</p>
-          ) : null}
-        </div>
 
         <Field>
           <FieldLabel htmlFor="line2">Address line 2 (optional)</FieldLabel>
