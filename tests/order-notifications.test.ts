@@ -6,6 +6,7 @@ import {
 } from "@/lib/notifications/order-notifications";
 import {
   normalizePhone,
+  openwaChatId,
   whatsappConfigured,
 } from "@/lib/notifications/whatsapp";
 
@@ -87,15 +88,24 @@ describe("whatsapp provider", () => {
   });
 
   it("reports as unconfigured without credentials (mock provider path)", () => {
-    vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "");
-    vi.stubEnv("WHATSAPP_PHONE_NUMBER_ID", "");
+    vi.stubEnv("OPENWA_API_URL", "");
+    vi.stubEnv("OPENWA_API_KEY", "");
+    vi.stubEnv("OPENWA_SESSION_ID", "");
     expect(whatsappConfigured()).toBe(false);
   });
 
-  it("reports as configured when both credentials exist", () => {
-    vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "token");
-    vi.stubEnv("WHATSAPP_PHONE_NUMBER_ID", "12345");
+  it("reports as configured when all OpenWA credentials exist", () => {
+    vi.stubEnv("OPENWA_API_URL", "http://localhost:2785/api");
+    vi.stubEnv("OPENWA_API_KEY", "key");
+    vi.stubEnv("OPENWA_SESSION_ID", "session");
     expect(whatsappConfigured()).toBe(true);
+  });
+
+  it("stays unconfigured when any OpenWA credential is missing", () => {
+    vi.stubEnv("OPENWA_API_URL", "http://localhost:2785/api");
+    vi.stubEnv("OPENWA_API_KEY", "key");
+    vi.stubEnv("OPENWA_SESSION_ID", "");
+    expect(whatsappConfigured()).toBe(false);
   });
 
   it("normalizes Indian mobile numbers and rejects anything else", () => {
@@ -104,5 +114,13 @@ describe("whatsapp provider", () => {
     expect(normalizePhone("09876543210")).toBe("9876543210");
     expect(normalizePhone("12345")).toBeNull();
     expect(normalizePhone("551234567890")).toBeNull();
+  });
+
+  it("builds the OpenWA chat id for Indian mobiles and rejects anything else", () => {
+    expect(openwaChatId("9876543210")).toBe("919876543210@c.us");
+    expect(openwaChatId("+91 98765 43210")).toBe("919876543210@c.us");
+    expect(openwaChatId("09876543210")).toBe("919876543210@c.us");
+    expect(openwaChatId("12345")).toBeNull();
+    expect(openwaChatId("551234567890")).toBeNull();
   });
 });

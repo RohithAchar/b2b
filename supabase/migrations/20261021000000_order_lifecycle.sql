@@ -139,8 +139,7 @@ create sequence if not exists public.order_reference_seq start 100001;
 
 update public.orders
 set reference = 'B2B-' || lpad(nextval('public.order_reference_seq')::text, 6, '0')
-where reference is null
-order by created_at;
+where reference is null;
 
 alter table public.orders alter column reference set not null;
 alter table public.orders drop constraint if exists orders_reference_unique;
@@ -187,9 +186,10 @@ alter table public.order_items
 update public.order_items oi
 set title = coalesce(p.title, ''),
     unit = coalesce(p.unit, ''),
-    variant_label = v.label
+    variant_label = (
+      select v.label from public.product_variants v where v.id = oi.variant_id
+    )
 from public.products p
-left join public.product_variants v on v.id = oi.variant_id
 where p.id = oi.product_id
   and (oi.title is null or oi.unit is null);
 

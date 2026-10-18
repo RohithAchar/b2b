@@ -92,8 +92,17 @@ export async function saveAddress(
     }
   }
 
+  // Map the camelCase snapshot onto the table's snake_case columns
+  // (full_name, ...): PostgREST rejects unknown column names outright.
   const payload = {
-    ...parsed.value,
+    full_name: parsed.value.fullName,
+    phone: parsed.value.phone,
+    line1: parsed.value.line1,
+    line2: parsed.value.line2,
+    city: parsed.value.city,
+    state: parsed.value.state,
+    pincode: parsed.value.pincode,
+    instructions: parsed.value.instructions,
     is_default: makeDefault,
   };
 

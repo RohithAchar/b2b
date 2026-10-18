@@ -11,6 +11,7 @@
 //      swallows its own errors; the business mutation has already committed.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { after } from "next/server";
 import { SITE_URL } from "@/lib/site";
 import { formatRupees } from "@/lib/format";
 import { sendWhatsAppMessage } from "./whatsapp";
@@ -89,9 +90,12 @@ export const NOTIFICATION_LABELS: Record<NotificationTemplate, string> = {
 };
 
 /**
- * Queue a notification for the counterparty of an order and attempt delivery
- * immediately. Never throws — a notification problem must not roll back or
- * fail the business action that triggered it.
+ * Queue one notification for an order and hand delivery to the background.
+ *
+ * The queue insert stays inline so the row is durable before the response
+ * (a crash mid-send leaves a recoverable `pending` row). The send itself is
+ * deferred with `after()`: OpenWA can block for many seconds on its cold path,
+ * and the buyer's checkout response must never wait on it.
  */
 export async function queueAndDeliver(
   supabase: SupabaseClient,
@@ -107,9 +111,10 @@ export async function queueAndDeliver(
       console.error("queue_order_notification failed:", error?.code, error?.message);
       return;
     }
-    await deliverNotification(supabase, data as string);
+    const outboxId = data as string;
+    after(() => deliverNotification(supabase, outboxId));
   } catch (error) {
-    console.error("notification pipeline failed:", error);
+    console.error("queueAndDeliver failed:", error);
   }
 }
 
@@ -171,7 +176,7 @@ export async function deliverNotification(
         error: null,
       });
     } else {
-      await finish({ status: "failed", error: result.error });
+      await finish({ status: "failed", provider: result.provider, error: result.error });
     }
   } catch (error) {
     console.error("deliverNotification failed:", error);
