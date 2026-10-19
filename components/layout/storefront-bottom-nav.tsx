@@ -25,7 +25,7 @@ type User = { email: string; user_type: string; isStaff?: boolean } | null
 
 function itemClass(active: boolean): string {
   return cn(
-    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] font-medium whitespace-nowrap transition-colors",
+    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] font-medium tracking-wide whitespace-nowrap transition-colors",
     active ? "text-primary" : "text-muted-foreground hover:text-foreground"
   )
 }
@@ -49,10 +49,11 @@ export function StorefrontBottomNav({ user }: { user: User }) {
   const categoriesActive =
     pathname.startsWith("/category") || (isProducts && !query)
   const searchActive = isProducts && Boolean(query)
-  const accountActive = pathname.startsWith("/auth") || pathname.startsWith("/account")
+  const accountActive =
+    pathname.startsWith("/auth") || pathname.startsWith("/account")
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 overflow-hidden border-t border-border bg-card pb-(--safe-area-bottom) lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 overflow-hidden border-t border-border material pb-(--safe-area-bottom) lg:hidden">
       <nav
         aria-label="Storefront"
         className="mx-auto flex h-(--bottom-nav-height) max-w-7xl items-stretch"

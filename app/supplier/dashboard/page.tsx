@@ -1,7 +1,7 @@
-import Link from "next/link";
-import Image from "next/image";
-import { redirect } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link"
+import Image from "next/image"
+import { redirect } from "next/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
   ArrowRight01Icon,
@@ -12,21 +12,17 @@ import {
   ShieldCheckIcon,
   ShoppingCart01Icon,
   Wallet01Icon,
-} from "@hugeicons/core-free-icons";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+} from "@hugeicons/core-free-icons"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyTitle,
-} from "@/components/ui/empty";
+} from "@/components/ui/card"
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -34,71 +30,77 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { createClient } from "@/lib/supabase/server";
-import { LOGIN_PATH } from "@/lib/auth/paths";
-import { getSupplierContext } from "@/lib/auth/guard";
-import { fetchCustomerPricing } from "@/lib/pricing-data";
-import { formatRupees } from "@/lib/format";
+} from "@/components/ui/table"
+import { createClient } from "@/lib/supabase/server"
+import { LOGIN_PATH } from "@/lib/auth/paths"
+import { getSupplierContext } from "@/lib/auth/guard"
+import { fetchCustomerPricing } from "@/lib/pricing-data"
+import { formatRupees } from "@/lib/format"
 import {
   DASHBOARD_RANGE_LABELS,
   getDashboardMetrics,
   parseDashboardRange,
-} from "@/lib/supplier/analytics";
-import { KpiStat } from "@/components/dashboard/kpi-stat";
-import { AttentionPanel, type AttentionItem } from "@/components/dashboard/attention-panel";
-import { ProfileCompletionCard, profileChecklist } from "@/components/dashboard/profile-completion";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter";
-import { SalesChart } from "@/components/dashboard/sales-chart";
-import { ConversionChart } from "@/components/dashboard/conversion-chart";
-import { StoreLinkCard } from "@/components/dashboard/store-link-card";
+} from "@/lib/supplier/analytics"
+import { KpiStat } from "@/components/dashboard/kpi-stat"
+import {
+  AttentionPanel,
+  type AttentionItem,
+} from "@/components/dashboard/attention-panel"
+import {
+  ProfileCompletionCard,
+  profileChecklist,
+} from "@/components/dashboard/profile-completion"
+import { StatusBadge } from "@/components/dashboard/status-badge"
+import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter"
+import { SalesChart } from "@/components/dashboard/sales-chart"
+import { ConversionChart } from "@/components/dashboard/conversion-chart"
+import { StoreLinkCard } from "@/components/dashboard/store-link-card"
 
 function logoUrl(path: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${path}`;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${path}`
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "—"
   return new Date(value).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
+  })
 }
 
 const CARD_LINK_CLASS =
-  "block min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&>div]:h-full [&>div]:transition-shadow [&>div]:hover:shadow-md";
+  "press block min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&>div]:h-full [&>div]:transition-shadow [&>div]:hover:shadow-md"
 
 export default async function SupplierOverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string }>
 }) {
-  const { range: rawRange } = await searchParams;
-  const range = parseDashboardRange(rawRange);
+  const { range: rawRange } = await searchParams
+  const range = parseDashboardRange(rawRange)
 
-  const supabase = await createClient();
+  const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect(LOGIN_PATH);
+    redirect(LOGIN_PATH)
   }
 
-  const ctx = await getSupplierContext(supabase, user.id);
+  const ctx = await getSupplierContext(supabase, user.id)
   if (!ctx) {
-    redirect("/supplier/onboarding");
+    redirect("/supplier/onboarding")
   }
 
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
-      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, logo_path, submitted_at, margin_pct",
+      "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, logo_path, submitted_at, margin_pct"
     )
     .eq("id", ctx.companyId)
-    .maybeSingle();
+    .maybeSingle()
 
   // See app/supplier/dashboard/business/page.tsx: a failed read must not be
   // mistaken for a missing company.
@@ -106,103 +108,119 @@ export default async function SupplierOverviewPage({
     console.error(
       "Supplier overview company query failed:",
       companyError.code,
-      companyError.message,
-    );
-    throw companyError;
+      companyError.message
+    )
+    throw companyError
   }
 
   if (!company) {
-    redirect("/supplier/onboarding");
+    redirect("/supplier/onboarding")
   }
 
-  const verified = company.kyb_status === "verified";
+  const verified = company.kyb_status === "verified"
 
   // Analytics resolve alongside the product stats so the range filter costs
   // no extra latency. A failure here degrades to an inline error — the
   // product sections below still render.
-  const metricsSettled = getDashboardMetrics(supabase, company.id as string, range).then(
+  const metricsSettled = getDashboardMetrics(
+    supabase,
+    company.id as string,
+    range
+  ).then(
     (metrics) => ({ metrics, error: null as string | null }),
     (error: unknown) => ({
       metrics: null,
-      error: error instanceof Error ? error.message : "Could not load analytics.",
-    }),
-  );
+      error:
+        error instanceof Error ? error.message : "Could not load analytics.",
+    })
+  )
 
-  // eslint-disable-next-line react-hooks/purity -- server component: per-request timestamp
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(
+    // eslint-disable-next-line react-hooks/purity -- server component: per-request timestamp
+    Date.now() - 30 * 24 * 60 * 60 * 1000
+  ).toISOString()
 
-  const [{ count: totalCount }, { count: liveCount }, { count: pendingCount }, { count: rejectedCount }, { count: monthCount }, { count: paymentClaimCount }] =
-    await Promise.all([
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id),
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id)
-        .eq("status", "approved"),
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id)
-        .eq("status", "pending"),
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id)
-        .eq("status", "rejected"),
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id)
-        .gte("created_at", thirtyDaysAgo),
-      supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id)
-        .eq("payment_status", "claimed"),
-    ]);
+  const [
+    { count: totalCount },
+    { count: liveCount },
+    { count: pendingCount },
+    { count: rejectedCount },
+    { count: monthCount },
+    { count: paymentClaimCount },
+  ] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id)
+      .eq("status", "approved"),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id)
+      .eq("status", "pending"),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id)
+      .eq("status", "rejected"),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id)
+      .gte("created_at", thirtyDaysAgo),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", company.id)
+      .eq("payment_status", "claimed"),
+  ])
 
-  const { metrics, error: metricsError } = await metricsSettled;
+  const { metrics, error: metricsError } = await metricsSettled
 
   const { data: recent } = await supabase
     .from("products")
     .select("id, title, unit, moq, stock_qty, status, created_at")
     .eq("supplier_id", company.id)
     .order("created_at", { ascending: false })
-    .limit(6);
+    .limit(6)
 
   const recentPricing = await fetchCustomerPricing(
     supabase,
     (recent ?? []).map((p) => ({
       id: p.id as string,
       margin_pct: company.margin_pct,
-    })),
-  );
+    }))
+  )
 
-  const checklist = profileChecklist(company);
-  const missingCount = checklist.items.filter((i) => !i.done).length;
+  const checklist = profileChecklist(company)
+  const missingCount = checklist.items.filter((i) => !i.done).length
 
-  const attention: AttentionItem[] = [];
+  const attention: AttentionItem[] = []
   if (company.kyb_status === "draft") {
     attention.push({
       id: "kyb-draft",
       title: "Finish your application",
-      description: "Complete business details, IDs and documents to unlock selling.",
+      description:
+        "Complete business details, IDs and documents to unlock selling.",
       severity: "error",
       href: "/supplier/onboarding",
       actionLabel: "Continue",
-    });
+    })
   } else if (company.kyb_status === "rejected") {
     attention.push({
       id: "kyb-rejected",
       title: "Business application needs changes",
-      description: company.rejection_note ?? "Review the note and resubmit your application.",
+      description:
+        company.rejection_note ??
+        "Review the note and resubmit your application.",
       severity: "error",
       href: "/supplier/onboarding",
       actionLabel: "Fix and resubmit",
-    });
+    })
   } else if (company.kyb_status === "pending") {
     attention.push({
       id: "kyb-pending",
@@ -211,7 +229,7 @@ export default async function SupplierOverviewPage({
       severity: "warning",
       href: "/supplier/dashboard/verification",
       actionLabel: "Track",
-    });
+    })
   }
 
   if ((paymentClaimCount ?? 0) > 0) {
@@ -223,7 +241,7 @@ export default async function SupplierOverviewPage({
       severity: "warning",
       href: "/supplier/dashboard/orders?payment=claimed",
       actionLabel: "Verify",
-    });
+    })
   }
 
   if (verified && (rejectedCount ?? 0) > 0) {
@@ -234,7 +252,7 @@ export default async function SupplierOverviewPage({
       severity: "error",
       href: "/supplier/dashboard/products?tab=rejected",
       actionLabel: "Review",
-    });
+    })
   }
   if (missingCount > 0) {
     attention.push({
@@ -244,7 +262,7 @@ export default async function SupplierOverviewPage({
       severity: "info",
       href: "/supplier/dashboard/business",
       actionLabel: "Complete",
-    });
+    })
   }
 
   const kybTitle: Record<string, string> = {
@@ -252,10 +270,10 @@ export default async function SupplierOverviewPage({
     pending: "Under review",
     verified: "You are verified",
     rejected: "Needs changes",
-  };
+  }
 
-  const hasSales = (metrics?.salesSeries ?? []).some((p) => p.sales > 0);
-  const hasSessions = (metrics?.sessions ?? 0) > 0;
+  const hasSales = (metrics?.salesSeries ?? []).some((p) => p.sales > 0)
+  const hasSessions = (metrics?.sessions ?? 0) > 0
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -281,7 +299,9 @@ export default async function SupplierOverviewPage({
               {company.business_name}
             </h1>
             <p className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-              <span className="truncate">{kybTitle[company.kyb_status] ?? company.kyb_status}</span>
+              <span className="truncate">
+                {kybTitle[company.kyb_status] ?? company.kyb_status}
+              </span>
               <StatusBadge status="kyb" value={company.kyb_status} />
             </p>
           </div>
@@ -295,7 +315,10 @@ export default async function SupplierOverviewPage({
             View marketplace
           </Button>
           {verified ? (
-            <Button render={<Link href="/supplier/dashboard/products/new" />} nativeButton={false}>
+            <Button
+              render={<Link href="/supplier/dashboard/products/new" />}
+              nativeButton={false}
+            >
               <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
               Add product
             </Button>
@@ -311,9 +334,12 @@ export default async function SupplierOverviewPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold tracking-tight">Sales analytics</h2>
+          <h2 className="text-base font-bold tracking-tight">
+            Sales analytics
+          </h2>
           <p className="text-sm text-muted-foreground">
-            {DASHBOARD_RANGE_LABELS[range]} · live from your orders and store visits
+            {DASHBOARD_RANGE_LABELS[range]} · live from your orders and store
+            visits
           </p>
         </div>
         <DashboardRangeFilter range={range} />
@@ -323,7 +349,8 @@ export default async function SupplierOverviewPage({
         <Alert variant="destructive">
           <AlertDescription>
             Couldn&apos;t load sales analytics
-            {metricsError ? `: ${metricsError}` : "."} Product stats below are unaffected.
+            {metricsError ? `: ${metricsError}` : "."} Product stats below are
+            unaffected.
           </AlertDescription>
         </Alert>
       ) : (
@@ -345,7 +372,10 @@ export default async function SupplierOverviewPage({
                 icon={ChartAverageIcon}
               />
             </Link>
-            <Link href="/supplier/dashboard/orders?status=new" className={CARD_LINK_CLASS}>
+            <Link
+              href="/supplier/dashboard/orders?status=new"
+              className={CARD_LINK_CLASS}
+            >
               <KpiStat
                 label="New orders"
                 value={metrics.newOrders.count}
@@ -353,7 +383,10 @@ export default async function SupplierOverviewPage({
                 icon={ShoppingCart01Icon}
               />
             </Link>
-            <Link href="/supplier/dashboard/orders?status=new%2Cconfirmed" className={CARD_LINK_CLASS}>
+            <Link
+              href="/supplier/dashboard/orders?status=new%2Cconfirmed"
+              className={CARD_LINK_CLASS}
+            >
               <KpiStat
                 label="To ship"
                 value={metrics.shipQueue.count}
@@ -363,12 +396,17 @@ export default async function SupplierOverviewPage({
             </Link>
           </div>
 
-          <div id="analytics-charts" className="grid scroll-mt-4 grid-cols-1 gap-4 lg:grid-cols-2">
+          <div
+            id="analytics-charts"
+            className="grid scroll-mt-4 grid-cols-1 gap-4 lg:grid-cols-2"
+          >
             <Card>
               <CardHeader>
                 <CardTitle>Sales</CardTitle>
                 <CardDescription>
-                  Revenue per {metrics.salesSeries.length > 31 ? "month" : "day"} · {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
+                  Revenue per{" "}
+                  {metrics.salesSeries.length > 31 ? "month" : "day"} ·{" "}
+                  {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -388,7 +426,8 @@ export default async function SupplierOverviewPage({
               <CardHeader>
                 <CardTitle>Conversion</CardTitle>
                 <CardDescription>
-                  Ordering sessions ÷ all store sessions · {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
+                  Ordering sessions ÷ all store sessions ·{" "}
+                  {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -428,7 +467,9 @@ export default async function SupplierOverviewPage({
         <KpiStat
           label="Live listings"
           value={liveCount ?? 0}
-          caption={verified ? "Visible to buyers" : "Unlocks after verification"}
+          caption={
+            verified ? "Visible to buyers" : "Unlocks after verification"
+          }
           icon={ShieldCheckIcon}
         />
         <KpiStat
@@ -451,15 +492,20 @@ export default async function SupplierOverviewPage({
           className="lg:col-span-4"
         />
         <div className="flex flex-col gap-4 lg:col-span-3">
-          <ProfileCompletionCard score={checklist.score} items={checklist.items} />
+          <ProfileCompletionCard
+            score={checklist.score}
+            items={checklist.items}
+          />
         </div>
       </div>
 
       <Card className="!gap-0 !pb-0">
-        <CardHeader className="flex w-full flex-row items-center justify-between border-b border-border gap-2">
+        <CardHeader className="flex w-full flex-row items-center justify-between gap-2 border-b border-border">
           <div className="grid gap-0.5">
             <CardTitle>Recent products</CardTitle>
-            <CardDescription>Your latest listings and their status.</CardDescription>
+            <CardDescription>
+              Your latest listings and their status.
+            </CardDescription>
           </div>
           {verified ? (
             <Button
@@ -470,7 +516,11 @@ export default async function SupplierOverviewPage({
               className="[&_svg]:size-3.5"
             >
               View all
-              <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-3.5" />
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                strokeWidth={2}
+                className="size-3.5"
+              />
             </Button>
           ) : null}
         </CardHeader>
@@ -502,7 +552,9 @@ export default async function SupplierOverviewPage({
                   <TableHead className="hidden md:table-cell">MOQ</TableHead>
                   <TableHead className="hidden md:table-cell">Stock</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Created</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Created
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -519,8 +571,12 @@ export default async function SupplierOverviewPage({
                     <TableCell className="hidden tabular-nums sm:table-cell">
                       ₹{recentPricing.get(p.id)?.customer_price ?? 0} / {p.unit}
                     </TableCell>
-                    <TableCell className="hidden tabular-nums md:table-cell">{p.moq}</TableCell>
-                    <TableCell className="hidden tabular-nums md:table-cell">{p.stock_qty}</TableCell>
+                    <TableCell className="hidden tabular-nums md:table-cell">
+                      {p.moq}
+                    </TableCell>
+                    <TableCell className="hidden tabular-nums md:table-cell">
+                      {p.stock_qty}
+                    </TableCell>
                     <TableCell>
                       <StatusBadge status="product" value={p.status} />
                     </TableCell>
@@ -535,5 +591,5 @@ export default async function SupplierOverviewPage({
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

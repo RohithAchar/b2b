@@ -1,16 +1,18 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Tick01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "cn";
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Tick01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "cn"
+import { motion } from "motion/react"
+import { springSnappy } from "@/lib/motion"
 import {
   orderAtOrBeyond,
   parseOrderStatus,
   parsePaymentStatus,
-} from "@/lib/orders/lifecycle";
-import { formatRupees } from "@/lib/format";
-import { QuoteResponseButtons } from "./quote-response-buttons";
+} from "@/lib/orders/lifecycle"
+import { formatRupees } from "@/lib/format"
+import { QuoteResponseButtons } from "./quote-response-buttons"
 
 /**
  * The buyer's order flow in one ordered column: order placed → respond to the
@@ -30,25 +32,26 @@ export function BuyerOrderFlow({
   hasQuotation,
   pendingQuote,
 }: {
-  orderId: string;
-  status: string;
-  paymentStatus: string;
-  paymentAmount: number;
-  canPay: boolean;
-  hasQuotation: boolean;
+  orderId: string
+  status: string
+  paymentStatus: string
+  paymentAmount: number
+  canPay: boolean
+  hasQuotation: boolean
   /** The quotation awaiting a response, if one is out there. */
-  pendingQuote: { id: string; totalLabel: string; expired: boolean } | null;
+  pendingQuote: { id: string; totalLabel: string; expired: boolean } | null
 }) {
-  const orderStatus = parseOrderStatus(status);
-  const payment = parsePaymentStatus(paymentStatus) ?? "not_requested";
+  const orderStatus = parseOrderStatus(status)
+  const payment = parsePaymentStatus(paymentStatus) ?? "not_requested"
   if (!orderStatus || orderStatus === "cancelled") {
-    return null;
+    return null
   }
 
-  const quoteDone = orderStatus !== "quoted";
-  const paymentDone = payment === "paid" || orderAtOrBeyond(orderStatus, "delivered");
-  const shipmentDone = orderAtOrBeyond(orderStatus, "shipped");
-  const deliveredDone = orderAtOrBeyond(orderStatus, "delivered");
+  const quoteDone = orderStatus !== "quoted"
+  const paymentDone =
+    payment === "paid" || orderAtOrBeyond(orderStatus, "delivered")
+  const shipmentDone = orderAtOrBeyond(orderStatus, "shipped")
+  const deliveredDone = orderAtOrBeyond(orderStatus, "delivered")
 
   const steps: StepDef[] = [
     {
@@ -101,7 +104,7 @@ export function BuyerOrderFlow({
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/orders/${orderId}/pay`}
-              className="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="inline-flex h-8 press items-center justify-center rounded-md bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             >
               Pay {formatRupees(paymentAmount)}
             </Link>
@@ -133,9 +136,9 @@ export function BuyerOrderFlow({
       done: deliveredDone,
       body: null,
     },
-  ];
+  ]
 
-  const currentIndex = steps.findIndex((step) => !step.done);
+  const currentIndex = steps.findIndex((step) => !step.done)
 
   return (
     <section className="overflow-hidden rounded-lg border border-border">
@@ -152,69 +155,79 @@ export function BuyerOrderFlow({
 
       <ol className="divide-y divide-border">
         {steps.map((step, index) => {
-          const isCurrent = index === currentIndex;
+          const isCurrent = index === currentIndex
           return (
             <li
               key={step.key}
               aria-current={isCurrent ? "step" : undefined}
               className={cn(
                 "flex gap-3 px-4 py-3",
-                isCurrent && "bg-primary/[0.04]",
+                isCurrent && "bg-primary/[0.04]"
               )}
             >
               <span className="pt-0.5">
-                <StepMarker done={step.done} current={isCurrent} index={index} />
+                <StepMarker
+                  done={step.done}
+                  current={isCurrent}
+                  index={index}
+                />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p
                     className={cn(
                       "text-sm font-medium",
-                      step.done ? "text-muted-foreground" : "text-foreground",
+                      step.done ? "text-muted-foreground" : "text-foreground"
                     )}
                   >
                     {step.title}
                   </p>
                   {isCurrent ? (
-                    <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                    <motion.span
+                      layoutId="buyer-order-now"
+                      transition={springSnappy}
+                      className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground"
+                    >
                       Now
-                    </span>
+                    </motion.span>
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{step.description}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {step.description}
+                </p>
                 {step.body ? <div className="mt-2.5">{step.body}</div> : null}
               </div>
             </li>
-          );
+          )
         })}
       </ol>
     </section>
-  );
+  )
 }
 
 type StepDef = {
-  key: string;
-  title: string;
-  description: string;
-  done: boolean;
-  body: React.ReactNode;
-};
+  key: string
+  title: string
+  description: string
+  done: boolean
+  body: React.ReactNode
+}
 
 function StepMarker({
   done,
   current,
   index,
 }: {
-  done: boolean;
-  current: boolean;
-  index: number;
+  done: boolean
+  current: boolean
+  index: number
 }) {
   if (done) {
     return (
       <span className="flex size-5 items-center justify-center rounded-full bg-success text-white [&_svg]:size-3.5">
         <HugeiconsIcon icon={Tick01Icon} strokeWidth={3} />
       </span>
-    );
+    )
   }
   return (
     <span
@@ -222,10 +235,10 @@ function StepMarker({
         "flex size-5 items-center justify-center rounded-full border-2 text-[11px] font-bold tabular-nums",
         current
           ? "border-primary bg-primary/10 text-primary"
-          : "border-border bg-card text-muted-foreground",
+          : "border-border bg-card text-muted-foreground"
       )}
     >
       {index + 1}
     </span>
-  );
+  )
 }

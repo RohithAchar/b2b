@@ -1,35 +1,48 @@
-import Image from "next/image";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon, Location01Icon } from "@hugeicons/core-free-icons";
-import { publicTransformedImageUrl } from "@/lib/storage";
+import Image from "next/image"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowRight01Icon, Location01Icon } from "@hugeicons/core-free-icons"
+import { publicTransformedImageUrl } from "@/lib/storage"
 import {
   getCachedFeaturedSuppliers,
   getCachedHomeCategories,
   getCachedProducts,
   getCachedSourceRegions,
-} from "@/lib/storefront-cache";
-import { Card } from "@/components/ui/card";
-import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
-import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
-import { SupplierCard } from "@/components/storefront/supplier-card";
-import { SectionHeader } from "@/components/storefront/section-header";
+} from "@/lib/storefront-cache"
+import { Card } from "@/components/ui/card"
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
+import {
+  ProductCard,
+  type ProductCardData,
+} from "@/components/storefront/product-card"
+import { SupplierCard } from "@/components/storefront/supplier-card"
+import { SectionHeader } from "@/components/storefront/section-header"
 
 function CategoryTile({
   cat,
 }: {
-  cat: { id: string; name: string; slug: string; image_path: string | null; product_count: number };
+  cat: {
+    id: string
+    name: string
+    slug: string
+    image_path: string | null
+    product_count: number
+  }
 }) {
   return (
     <Link
       href={`/category/${cat.slug}`}
-      className="group block w-[40vw] min-w-[132px] flex-none snap-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:w-auto md:min-w-0"
+      className="group block w-[40vw] min-w-[132px] flex-none press snap-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:w-auto md:min-w-0"
     >
-      <Card className="gap-1 !py-0 overflow-hidden border-border transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-md">
+      <Card className="gap-1 overflow-hidden border-border !py-0 transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-md">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           {cat.image_path ? (
             <Image
-              src={publicTransformedImageUrl("category_images", cat.image_path, { width: 400 })}
+              src={publicTransformedImageUrl(
+                "category_images",
+                cat.image_path,
+                { width: 400 }
+              )}
               alt={cat.name}
               fill
               sizes="(min-width: 1024px) 12.5vw, (min-width: 768px) 25vw, 40vw"
@@ -49,17 +62,17 @@ function CategoryTile({
         </div>
       </Card>
     </Link>
-  );
+  )
 }
 
 function RegionCard({
   region,
 }: {
-  region: { state: string; cities: string[] };
+  region: { state: string; cities: string[] }
 }) {
   return (
-    <Link href="/products" className="group block">
-      <Card className="h-full p-4 border-border transition-shadow hover:shadow-md">
+    <Link href="/products" className="group block press">
+      <Card className="h-full border-border p-4 transition-shadow hover:shadow-md">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold tracking-tight">{region.state}</h3>
           <HugeiconsIcon
@@ -74,18 +87,22 @@ function RegionCard({
               key={city}
               className="inline-flex items-center gap-1 rounded-sm border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground/75"
             >
-              <HugeiconsIcon icon={Location01Icon} strokeWidth={2} className="size-3 text-primary" />
+              <HugeiconsIcon
+                icon={Location01Icon}
+                strokeWidth={2}
+                className="size-3 text-primary"
+              />
               {city}
             </span>
           ))}
         </div>
       </Card>
     </Link>
-  );
+  )
 }
 
 export async function PopularCategoriesSection() {
-  const categories = await getCachedHomeCategories();
+  const categories = await getCachedHomeCategories()
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-6">
@@ -100,22 +117,24 @@ export async function PopularCategoriesSection() {
         <div className="py-4">
           <Empty>
             <EmptyTitle>No categories yet</EmptyTitle>
-            <EmptyDescription>Categories appear here as they are created.</EmptyDescription>
+            <EmptyDescription>
+              Categories appear here as they are created.
+            </EmptyDescription>
           </Empty>
         </div>
       ) : (
-        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 no-scrollbar snap-x snap-mandatory scroll-pl-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:scroll-pl-0 lg:grid-cols-8">
+        <div className="-mx-4 no-scrollbar flex snap-x snap-mandatory scroll-pl-4 gap-3 overflow-x-auto px-4 md:mx-0 md:grid md:scroll-pl-0 md:grid-cols-4 md:overflow-visible md:px-0 lg:grid-cols-8">
           {categories.map((cat) => (
             <CategoryTile key={cat.id} cat={cat} />
           ))}
         </div>
       )}
     </section>
-  );
+  )
 }
 
 export async function AllProductsSection() {
-  const { products } = await getCachedProducts({ page: 1, perPage: 24 });
+  const { products } = await getCachedProducts({ page: 1, perPage: 24 })
 
   return (
     <section className="bg-muted">
@@ -124,25 +143,30 @@ export async function AllProductsSection() {
           <div className="py-4">
             <Empty>
               <EmptyTitle>No products yet</EmptyTitle>
-              <EmptyDescription>Products appear here as suppliers publish them.</EmptyDescription>
+              <EmptyDescription>
+                Products appear here as suppliers publish them.
+              </EmptyDescription>
             </Empty>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product as ProductCardData} />
+              <ProductCard
+                key={product.id}
+                product={product as ProductCardData}
+              />
             ))}
           </div>
         )}
       </div>
     </section>
-  );
+  )
 }
 
 export async function SourceRegionsSection() {
-  const regions = await getCachedSourceRegions();
+  const regions = await getCachedSourceRegions()
 
-  if (regions.length === 0) return null;
+  if (regions.length === 0) return null
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-6">
@@ -159,13 +183,13 @@ export async function SourceRegionsSection() {
         ))}
       </div>
     </section>
-  );
+  )
 }
 
 export async function VerifiedSuppliersSection() {
-  const featuredSuppliers = await getCachedFeaturedSuppliers();
+  const featuredSuppliers = await getCachedFeaturedSuppliers()
 
-  if (featuredSuppliers.length === 0) return null;
+  if (featuredSuppliers.length === 0) return null
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 pb-8">
@@ -182,5 +206,5 @@ export async function VerifiedSuppliersSection() {
         ))}
       </div>
     </section>
-  );
+  )
 }

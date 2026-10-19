@@ -33,8 +33,9 @@ function MiniSearchBar() {
     <div
       aria-hidden={!visible}
       inert={!visible}
+      data-scrolled="true"
       className={cn(
-        "fixed inset-x-0 top-12 z-40 border-b border-border bg-card transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
+        "scroll-edge fixed inset-x-0 top-12 z-40 material transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
         visible ? "visible translate-y-0" : "invisible -translate-y-full"
       )}
     >

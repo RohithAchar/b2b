@@ -1,49 +1,51 @@
-import Image from "next/image";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
-import { publicTransformedImageUrl } from "@/lib/storage";
-import type { CustomerPrices } from "@/lib/pricing";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { CardAddButton } from "@/components/storefront/card-add-button";
+import Image from "next/image"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons"
+import { publicTransformedImageUrl } from "@/lib/storage"
+import type { CustomerPrices } from "@/lib/pricing"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { CardAddButton } from "@/components/storefront/card-add-button"
 
 export type ProductCardData = {
-  id: string;
-  title: string;
-  unit: string;
-  moq: number;
-  negotiable?: boolean;
-  images?: { path: string; sort: number }[] | null;
-  pricing: CustomerPrices | null;
+  id: string
+  title: string
+  unit: string
+  moq: number
+  negotiable?: boolean
+  images?: { path: string; sort: number }[] | null
+  pricing: CustomerPrices | null
   supplier?: {
-    business_name?: string;
-    city?: string;
-    state?: string;
-    logo_path?: string | null;
-  } | null;
-};
+    business_name?: string
+    city?: string
+    state?: string
+    logo_path?: string | null
+  } | null
+}
 
 function formatPrice(price: number): string {
-  return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 function coverUrl(product: ProductCardData): string {
-  const images = product.images;
-  if (!images || images.length === 0) return "/placeholder.png";
-  const sorted = [...images].sort((a, b) => a.sort - b.sort);
-  return publicTransformedImageUrl("product_images", sorted[0].path, { width: 640 });
+  const images = product.images
+  if (!images || images.length === 0) return "/placeholder.png"
+  const sorted = [...images].sort((a, b) => a.sort - b.sort)
+  return publicTransformedImageUrl("product_images", sorted[0].path, {
+    width: 640,
+  })
 }
 
 export function ProductCard({ product }: { product: ProductCardData }) {
-  const isPlaceholder = !product.images || product.images.length === 0;
-  const supplier = product.supplier?.business_name;
+  const isPlaceholder = !product.images || product.images.length === 0
+  const supplier = product.supplier?.business_name
   const location = [product.supplier?.city, product.supplier?.state]
     .filter(Boolean)
-    .join(", ");
+    .join(", ")
 
   return (
-    <Card className="group !gap-0 !py-0 overflow-hidden border-0 transition-shadow hover:shadow-md">
-      <Link href={`/products/${product.id}`} className="block">
+    <Card className="group !gap-0 overflow-hidden border-0 !py-0 transition-shadow hover:shadow-md">
+      <Link href={`/products/${product.id}`} className="block press">
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {isPlaceholder ? (
             <div className="flex h-full w-full items-center justify-center bg-muted text-sm text-muted-foreground">
@@ -92,14 +94,22 @@ export function ProductCard({ product }: { product: ProductCardData }) {
                 {supplier}
               </p>
               <span className="inline-flex shrink-0 items-center text-success">
-                <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} className="size-3.5" />
+                <HugeiconsIcon
+                  icon={ShieldCheckIcon}
+                  strokeWidth={2}
+                  className="size-3.5"
+                />
                 <span className="sr-only">Verified supplier</span>
               </span>
             </div>
           ) : null}
           {location ? (
             <p className="mt-0.5 flex items-center gap-0.5 truncate text-[11px] text-muted-foreground">
-              <HugeiconsIcon icon={Location01Icon} strokeWidth={2} className="size-3 shrink-0" />
+              <HugeiconsIcon
+                icon={Location01Icon}
+                strokeWidth={2}
+                className="size-3 shrink-0"
+              />
               {location}
             </p>
           ) : null}
@@ -109,5 +119,5 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         </div>
       </CardFooter>
     </Card>
-  );
+  )
 }

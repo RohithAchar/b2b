@@ -1,37 +1,33 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { createClient } from "@/lib/supabase/server";
-import { LOGIN_PATH } from "@/lib/auth/paths";
-import { getSupplierContext } from "@/lib/auth/guard";
-import { formatRupees } from "@/lib/format";
+} from "@/components/ui/card"
+import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
+import { createClient } from "@/lib/supabase/server"
+import { LOGIN_PATH } from "@/lib/auth/paths"
+import { getSupplierContext } from "@/lib/auth/guard"
+import { formatRupees } from "@/lib/format"
 import {
   DASHBOARD_RANGE_LABELS,
   parseDashboardRange,
-} from "@/lib/supplier/analytics";
-import { getSalesAnalytics } from "@/lib/supplier/sales-analytics";
-import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter";
-import { MetricCard } from "@/components/dashboard/metric-card";
-import { OrdersChart } from "@/components/dashboard/orders-chart";
-import { SalesChart } from "@/components/dashboard/sales-chart";
-import { ConversionChart } from "@/components/dashboard/conversion-chart";
-import { ShareBars } from "@/components/dashboard/share-bars";
+} from "@/lib/supplier/analytics"
+import { getSalesAnalytics } from "@/lib/supplier/sales-analytics"
+import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter"
+import { MetricCard } from "@/components/dashboard/metric-card"
+import { OrdersChart } from "@/components/dashboard/orders-chart"
+import { SalesChart } from "@/components/dashboard/sales-chart"
+import { ConversionChart } from "@/components/dashboard/conversion-chart"
+import { ShareBars } from "@/components/dashboard/share-bars"
 
-const SALES_BASE = "/supplier/dashboard/analytics/sales";
+const SALES_BASE = "/supplier/dashboard/analytics/sales"
 
 function ReportLink({ href }: { href: string }) {
   return (
@@ -40,38 +36,43 @@ function ReportLink({ href }: { href: string }) {
       className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
     >
       View detailed report
-      <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2.5} className="size-3.5" />
+      <HugeiconsIcon
+        icon={ArrowRight01Icon}
+        strokeWidth={2.5}
+        className="size-3.5"
+      />
     </Link>
-  );
+  )
 }
 
 export default async function SalesAnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string }>
 }) {
-  const { range: rawRange } = await searchParams;
-  const range = parseDashboardRange(rawRange);
+  const { range: rawRange } = await searchParams
+  const range = parseDashboardRange(rawRange)
 
-  const supabase = await createClient();
+  const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
   if (!user) {
-    redirect(LOGIN_PATH);
+    redirect(LOGIN_PATH)
   }
 
-  const ctx = await getSupplierContext(supabase, user.id);
+  const ctx = await getSupplierContext(supabase, user.id)
   if (!ctx) {
-    redirect("/supplier/onboarding");
+    redirect("/supplier/onboarding")
   }
 
-  let analytics = null;
-  let analyticsError: string | null = null;
+  let analytics = null
+  let analyticsError: string | null = null
   try {
-    analytics = await getSalesAnalytics(supabase, ctx.companyId, range);
+    analytics = await getSalesAnalytics(supabase, ctx.companyId, range)
   } catch (error) {
-    analyticsError = error instanceof Error ? error.message : "Could not load sales analytics.";
+    analyticsError =
+      error instanceof Error ? error.message : "Could not load sales analytics."
   }
 
   return (
@@ -89,7 +90,8 @@ export default async function SalesAnalyticsPage({
       {analyticsError || !analytics ? (
         <Alert variant="destructive">
           <AlertDescription>
-            Couldn&apos;t load sales analytics{analyticsError ? `: ${analyticsError}` : "."}
+            Couldn&apos;t load sales analytics
+            {analyticsError ? `: ${analyticsError}` : "."}
           </AlertDescription>
         </Alert>
       ) : (
@@ -172,8 +174,12 @@ export default async function SalesAnalyticsPage({
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="uppercase">Store conversion rate</CardTitle>
-                <CardDescription>{analytics.conversionPct}% of sessions ordered</CardDescription>
+                <CardTitle className="tracking-wide uppercase">
+                  Store conversion rate
+                </CardTitle>
+                <CardDescription>
+                  {analytics.conversionPct}% of sessions ordered
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <p className="text-2xl font-semibold tracking-tight tabular-nums">
@@ -197,7 +203,9 @@ export default async function SalesAnalyticsPage({
             <Card>
               <CardHeader>
                 <CardTitle>Sales by top region</CardTitle>
-                <CardDescription>Top five buyer regions by revenue.</CardDescription>
+                <CardDescription>
+                  Top five buyer regions by revenue.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {analytics.topRegions.length === 0 ? (
@@ -215,7 +223,9 @@ export default async function SalesAnalyticsPage({
             <Card>
               <CardHeader>
                 <CardTitle>Sales by traffic source</CardTitle>
-                <CardDescription>Where ordering sessions came from.</CardDescription>
+                <CardDescription>
+                  Where ordering sessions came from.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {analytics.topSources.length === 0 ? (
@@ -233,7 +243,9 @@ export default async function SalesAnalyticsPage({
             <Card>
               <CardHeader>
                 <CardTitle>Sales by category</CardTitle>
-                <CardDescription>Top five categories by revenue.</CardDescription>
+                <CardDescription>
+                  Top five categories by revenue.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {analytics.topCategories.length === 0 ? (
@@ -252,5 +264,5 @@ export default async function SalesAnalyticsPage({
         </>
       )}
     </div>
-  );
+  )
 }
