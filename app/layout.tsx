@@ -1,11 +1,12 @@
 import { Geist_Mono, Inter } from "next/font/google"
 import type { Metadata, Viewport } from "next"
+import { MotionConfig } from "motion/react"
 
 import "./globals.css"
 import { Toaster } from "@/components/ui/toast"
 import { PhoneGate } from "@/components/auth/phone-gate"
-import { cn } from "@/lib/utils";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { cn } from "@/lib/utils"
+import { SITE_NAME, SITE_URL } from "@/lib/site"
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -23,16 +24,20 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-};
+}
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#FF6A00",
-};
+}
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+})
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -47,12 +52,21 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("light", "antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn(
+        "light",
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        inter.variable
+      )}
     >
       <body>
-        {children}
-        <PhoneGate />
-        <Toaster />
+        {/* Motion honours prefers-reduced-motion app-wide (apple-design §14). */}
+        <MotionConfig reducedMotion="user">
+          {children}
+          <PhoneGate />
+          <Toaster />
+        </MotionConfig>
       </body>
     </html>
   )

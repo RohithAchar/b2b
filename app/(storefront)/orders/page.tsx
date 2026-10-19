@@ -1,25 +1,25 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import type { Metadata } from "next";
-import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import type { Metadata } from "next"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowRight01Icon,
   Package01Icon,
   ShoppingBag01Icon,
-} from "@hugeicons/core-free-icons";
-import { cn } from "cn";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { createClient } from "@/lib/supabase/server";
-import { getSessionUser } from "@/lib/auth/session";
-import { getBuyerOrders } from "@/lib/buyer/order-history";
-import { formatRupees } from "@/lib/format";
+} from "@hugeicons/core-free-icons"
+import { StatusBadge } from "@/components/dashboard/status-badge"
+import { StatusFilterChip } from "@/components/orders/status-filter-chip"
+import { createClient } from "@/lib/supabase/server"
+import { getSessionUser } from "@/lib/auth/session"
+import { getBuyerOrders } from "@/lib/buyer/order-history"
+import { formatRupees } from "@/lib/format"
 
 export const metadata: Metadata = {
   title: "My Orders",
   description: "Track every order you have placed on this marketplace.",
-};
+}
 
-const BASE = "/orders";
+const BASE = "/orders"
 
 // Buyer-friendly groupings rather than the raw lifecycle vocabulary.
 const ORDER_TABS = [
@@ -28,19 +28,19 @@ const ORDER_TABS = [
   { key: "active", label: "In progress" },
   { key: "delivered", label: "Delivered" },
   { key: "cancelled", label: "Cancelled" },
-] as const;
+] as const
 
-type TabKey = (typeof ORDER_TABS)[number]["key"];
+type TabKey = (typeof ORDER_TABS)[number]["key"]
 
 const TAB_STATUSES: Record<Exclude<TabKey, "all">, string[]> = {
   pending: ["new", "quoted"],
   active: ["confirmed", "processing", "shipped"],
   delivered: ["delivered"],
   cancelled: ["cancelled"],
-};
+}
 
 function isTabKey(value: string): value is TabKey {
-  return ORDER_TABS.some((tab) => tab.key === value);
+  return ORDER_TABS.some((tab) => tab.key === value)
 }
 
 function formatDate(value: string): string {
@@ -48,35 +48,34 @@ function formatDate(value: string): string {
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
+  })
 }
 
 export default async function BuyerOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string }>
 }) {
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
   if (!user) {
-    redirect("/auth/login?next=/orders");
+    redirect("/auth/login?next=/orders")
   }
 
-  const { status } = await searchParams;
-  const activeTab: TabKey = status && isTabKey(status) ? status : "all";
+  const { status } = await searchParams
+  const activeTab: TabKey = status && isTabKey(status) ? status : "all"
 
-  const orders = await getBuyerOrders(supabase, user.id);
+  const orders = await getBuyerOrders(supabase, user.id)
   const shown =
     activeTab === "all"
       ? orders
-      : orders.filter((order) =>
-          TAB_STATUSES[activeTab].includes(order.status),
-        );
+      : orders.filter((order) => TAB_STATUSES[activeTab].includes(order.status))
 
   const countFor = (key: TabKey) =>
     key === "all"
       ? orders.length
-      : orders.filter((order) => TAB_STATUSES[key].includes(order.status)).length;
+      : orders.filter((order) => TAB_STATUSES[key].includes(order.status))
+          .length
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5">
@@ -88,34 +87,16 @@ export default async function BuyerOrdersPage({
       </div>
 
       <nav aria-label="Order status" className="flex flex-wrap gap-2">
-        {ORDER_TABS.map((tab) => {
-          const active = activeTab === tab.key;
-          return (
-            <Link
-              key={tab.key}
-              href={tab.key === "all" ? BASE : `${BASE}?status=${tab.key}`}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground hover:bg-muted",
-              )}
-            >
-              {tab.label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-[11px] tabular-nums",
-                  active
-                    ? "bg-primary-foreground/20"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {countFor(tab.key)}
-              </span>
-            </Link>
-          );
-        })}
+        {ORDER_TABS.map((tab) => (
+          <StatusFilterChip
+            key={tab.key}
+            href={tab.key === "all" ? BASE : `${BASE}?status=${tab.key}`}
+            label={tab.label}
+            count={countFor(tab.key)}
+            active={activeTab === tab.key}
+            layoutId="buyer-orders-filter"
+          />
+        ))}
       </nav>
 
       {shown.length === 0 ? (
@@ -144,7 +125,7 @@ export default async function BuyerOrdersPage({
             <li key={order.id}>
               <Link
                 href={`${BASE}/${order.id}`}
-                className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-shadow hover:border-primary/40 hover:shadow-md sm:flex-row sm:items-center sm:gap-4"
+                className="flex press flex-col gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary/40 hover:shadow-md sm:flex-row sm:items-center sm:gap-4"
               >
                 <span className="flex min-w-0 flex-1 items-center gap-3">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary [&_svg]:size-5">
@@ -184,5 +165,5 @@ export default async function BuyerOrdersPage({
         </ul>
       )}
     </div>
-  );
+  )
 }

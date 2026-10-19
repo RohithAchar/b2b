@@ -1,93 +1,93 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import type { Metadata } from "next";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
-import QRCode from "qrcode";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import Link from "next/link"
+import { notFound, redirect } from "next/navigation"
+import type { Metadata } from "next"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
+import QRCode from "qrcode"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
-import { getSessionUser } from "@/lib/auth/session";
-import { formatRupees } from "@/lib/format";
+} from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/server"
+import { getSessionUser } from "@/lib/auth/session"
+import { formatRupees } from "@/lib/format"
 import {
   PAYMENT_STATUS_LABELS,
   canBuyerClaimPayment,
   parseOrderStatus,
   parsePaymentStatus,
-} from "@/lib/orders/lifecycle";
+} from "@/lib/orders/lifecycle"
 import {
   TEST_UPI_CONFIGURED,
   TEST_UPI_ID,
   buildUpiUri,
   isPayableAmount,
   testPaymentNote,
-} from "@/lib/orders/test-payment";
-import { CopyUpiButton } from "./copy-upi-button";
-import { PaymentClaimForm } from "./payment-claim-form";
+} from "@/lib/orders/test-payment"
+import { CopyUpiButton } from "./copy-upi-button"
+import { PaymentClaimForm } from "./payment-claim-form"
 
-export const metadata: Metadata = { title: "Pay supplier (test mode)" };
+export const metadata: Metadata = { title: "Pay supplier (test mode)" }
 
 const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function formatDateTime(value: string | null): string {
-  if (!value) return "";
+  if (!value) return ""
   return new Date(value).toLocaleString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
+  })
 }
 
 type OrderRow = {
-  id: string;
-  reference: string;
-  status: string;
-  payment_status: string;
-  subtotal: number;
-  discount: number;
-  payment_claim_reference: string | null;
-  payment_claimed_at: string | null;
-};
+  id: string
+  reference: string
+  status: string
+  payment_status: string
+  subtotal: number
+  discount: number
+  payment_claim_reference: string | null
+  payment_claimed_at: string | null
+}
 
 export default async function PaySupplierPage({
   params,
 }: {
-  params: Promise<{ orderId: string }>;
+  params: Promise<{ orderId: string }>
 }) {
-  const { orderId } = await params;
+  const { orderId } = await params
   if (!UUID_RE.test(orderId)) {
-    notFound();
+    notFound()
   }
 
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
   if (!user) {
-    redirect(`/auth/login?next=/orders/${orderId}/pay`);
+    redirect(`/auth/login?next=/orders/${orderId}/pay`)
   }
 
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, reference, status, payment_status, subtotal, discount, payment_claim_reference, payment_claimed_at",
+      "id, reference, status, payment_status, subtotal, discount, payment_claim_reference, payment_claimed_at"
     )
     .eq("id", orderId)
     .eq("buyer_id", user.id)
-    .maybeSingle();
+    .maybeSingle()
   if (!order) {
-    notFound();
+    notFound()
   }
-  const orderRow = order as unknown as OrderRow;
+  const orderRow = order as unknown as OrderRow
 
   const [{ data: acceptedQuote }, { data: contact }] = await Promise.all([
     supabase
@@ -103,33 +103,36 @@ export default async function PaySupplierPage({
       .select("supplier_name")
       .eq("order_id", orderId)
       .maybeSingle(),
-  ]);
+  ])
 
-  const quote = acceptedQuote as { total: number; version: number } | null;
-  const amount = Number(quote?.total ?? Number(orderRow.subtotal) - Number(orderRow.discount));
-  const status = parseOrderStatus(orderRow.status) ?? "new";
-  const payment = parsePaymentStatus(orderRow.payment_status) ?? "not_requested";
+  const quote = acceptedQuote as { total: number; version: number } | null
+  const amount = Number(
+    quote?.total ?? Number(orderRow.subtotal) - Number(orderRow.discount)
+  )
+  const status = parseOrderStatus(orderRow.status) ?? "new"
+  const payment = parsePaymentStatus(orderRow.payment_status) ?? "not_requested"
   const supplierName =
-    (contact as { supplier_name?: string } | null)?.supplier_name ?? "the supplier";
+    (contact as { supplier_name?: string } | null)?.supplier_name ??
+    "the supplier"
 
   const paymentActionable =
     payment === "pending" ||
     Boolean(quote) ||
     status === "confirmed" ||
     status === "processing" ||
-    status === "shipped";
+    status === "shipped"
   const payable =
     canBuyerClaimPayment(status, payment) &&
     paymentActionable &&
-    isPayableAmount(amount);
-  const configMissing = !TEST_UPI_CONFIGURED;
-  const canShowPayment = payable && !configMissing;
+    isPayableAmount(amount)
+  const configMissing = !TEST_UPI_CONFIGURED
+  const canShowPayment = payable && !configMissing
   const upiUri = canShowPayment
     ? buildUpiUri({ reference: orderRow.reference, amount })
-    : null;
+    : null
   const qrDataUrl = upiUri
     ? await QRCode.toDataURL(upiUri, { width: 240, margin: 1 })
-    : null;
+    : null
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-5">
@@ -156,8 +159,8 @@ export default async function PaySupplierPage({
           <Badge variant="warning">Test mode</Badge>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pay the supplier directly, then record the reference so they can verify it.
-          This platform never collects money.
+          Pay the supplier directly, then record the reference so they can
+          verify it. This platform never collects money.
         </p>
       </div>
 
@@ -165,9 +168,9 @@ export default async function PaySupplierPage({
         <AlertDescription>
           <p className="font-semibold">Test mode — no real money moves</p>
           <p className="mt-1">
-            This screen uses a configurable test UPI id. Paying it does not transfer
-            money to the supplier. The claim and the supplier&apos;s confirmation are
-            recorded so the workflow can be tested end to end.
+            This screen uses a configurable test UPI id. Paying it does not
+            transfer money to the supplier. The claim and the supplier&apos;s
+            confirmation are recorded so the workflow can be tested end to end.
           </p>
         </AlertDescription>
       </Alert>
@@ -177,8 +180,9 @@ export default async function PaySupplierPage({
           <AlertDescription>
             <p className="font-semibold">Payment details are not configured</p>
             <p className="mt-1">
-              No test UPI id is set for this environment, so payment is disabled.
-              Set <span className="font-mono">NEXT_PUBLIC_TEST_UPI_ID</span> to
+              No test UPI id is set for this environment, so payment is
+              disabled. Set{" "}
+              <span className="font-mono">NEXT_PUBLIC_TEST_UPI_ID</span> to
               enable the test payment screen.
             </p>
           </AlertDescription>
@@ -195,7 +199,9 @@ export default async function PaySupplierPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 p-4">
-          <p className="text-2xl font-bold tabular-nums">{formatRupees(amount)}</p>
+          <p className="text-2xl font-bold tracking-tight tabular-nums">
+            {formatRupees(amount)}
+          </p>
 
           {canShowPayment && upiUri && qrDataUrl ? (
             <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
@@ -212,10 +218,12 @@ export default async function PaySupplierPage({
               </div>
               <div className="flex min-w-0 flex-col gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Test UPI id
                   </p>
-                  <p className="mt-1 break-all font-mono text-sm">{TEST_UPI_ID}</p>
+                  <p className="mt-1 font-mono text-sm break-all">
+                    {TEST_UPI_ID}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Payment note: {testPaymentNote(orderRow.reference)}
                   </p>
@@ -248,7 +256,9 @@ export default async function PaySupplierPage({
             <div className="border-t border-border pt-4 text-sm">
               {payment === "claimed" ? (
                 <>
-                  <p className="font-medium">Payment submitted — awaiting verification</p>
+                  <p className="font-medium">
+                    Payment submitted — awaiting verification
+                  </p>
                   <p className="mt-1 text-muted-foreground">
                     Reference{" "}
                     <span className="font-mono">
@@ -290,5 +300,5 @@ export default async function PaySupplierPage({
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

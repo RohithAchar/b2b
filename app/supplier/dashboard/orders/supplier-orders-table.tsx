@@ -1,14 +1,11 @@
-"use client";
+"use client"
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  ArrowRight01Icon,
-  Search01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useMemo, useState } from "react"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowRight01Icon, Search01Icon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -16,39 +13,39 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { formatRupees } from "@/lib/format";
+} from "@/components/ui/table"
+import { StatusBadge } from "@/components/dashboard/status-badge"
+import { formatRupees } from "@/lib/format"
 
 export type SupplierOrderListItem = {
-  id: string;
-  reference: string;
-  status: string;
-  paymentStatus: string;
-  subtotal: number;
-  itemCount: number;
-  buyerName: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+  id: string
+  reference: string
+  status: string
+  paymentStatus: string
+  subtotal: number
+  itemCount: number
+  buyerName: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
+  })
 }
 
 export function SupplierOrdersTable({
   orders,
   basePath,
 }: {
-  orders: SupplierOrderListItem[];
-  basePath: string;
+  orders: SupplierOrderListItem[]
+  basePath: string
 }) {
-  const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
+  const [query, setQuery] = useState("")
+  const q = query.trim().toLowerCase()
 
   const rows = useMemo(
     () =>
@@ -56,11 +53,11 @@ export function SupplierOrdersTable({
         ? orders.filter(
             (order) =>
               order.reference.toLowerCase().includes(q) ||
-              (order.buyerName ?? "").toLowerCase().includes(q),
+              (order.buyerName ?? "").toLowerCase().includes(q)
           )
         : orders,
-    [orders, q],
-  );
+    [orders, q]
+  )
 
   return (
     <div className="flex flex-col gap-3">
@@ -69,7 +66,7 @@ export function SupplierOrdersTable({
           <HugeiconsIcon
             icon={Search01Icon}
             strokeWidth={2}
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
           />
           <Input
             value={query}
@@ -98,8 +95,12 @@ export function SupplierOrdersTable({
                   <TableHead>Order</TableHead>
                   <TableHead>Buyer</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right tabular-nums">Items</TableHead>
-                  <TableHead className="text-right tabular-nums">Amount</TableHead>
+                  <TableHead className="text-right tabular-nums">
+                    Items
+                  </TableHead>
+                  <TableHead className="text-right tabular-nums">
+                    Amount
+                  </TableHead>
                   <TableHead>Order status</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -122,7 +123,7 @@ export function SupplierOrdersTable({
                     <TableCell className="max-w-40 truncate text-sm">
                       {order.buyerName ?? "—"}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
                       {formatDate(order.createdAt)}
                     </TableCell>
                     <TableCell className="text-right text-sm tabular-nums">
@@ -135,7 +136,10 @@ export function SupplierOrdersTable({
                       <StatusBadge status="order" value={order.status} />
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status="payment" value={order.paymentStatus} />
+                      <StatusBadge
+                        status="payment"
+                        value={order.paymentStatus}
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -164,7 +168,7 @@ export function SupplierOrdersTable({
               <li key={order.id}>
                 <Link
                   href={`${basePath}/${order.id}`}
-                  className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md"
+                  className="flex press flex-col gap-3 rounded-lg border border-border bg-card p-4 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -172,7 +176,8 @@ export function SupplierOrdersTable({
                         {order.reference}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {order.buyerName ?? "Buyer"} · {formatDate(order.createdAt)}
+                        {order.buyerName ?? "Buyer"} ·{" "}
+                        {formatDate(order.createdAt)}
                       </p>
                     </div>
                     <StatusBadge status="order" value={order.status} />
@@ -203,5 +208,5 @@ export function SupplierOrdersTable({
         </>
       )}
     </div>
-  );
+  )
 }

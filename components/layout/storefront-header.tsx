@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { NAV_LINKS } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
@@ -8,6 +11,9 @@ import { Button } from "@/components/ui/button"
 type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
 
+/** Scroll distance before the header's content-boundary fade appears. */
+const SCROLL_THRESHOLD = 10
+
 export function StorefrontHeader({
   user,
   categories = [],
@@ -17,9 +23,22 @@ export function StorefrontHeader({
   categories?: NavCategory[]
   cartCount?: number
 }) {
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
   return (
-    <header className="sticky top-0 z-50 bg-card">
-      {/* ---- Tier 1: logo + nav + actions ---- */}      <div>
+    <header
+      data-scrolled={scrolled}
+      className="scroll-edge sticky top-0 z-50 material"
+    >
+      {/* ---- Tier 1: logo + nav + actions ---- */}{" "}
+      <div>
         <div className="mx-auto flex h-12 max-w-7xl items-center gap-2 px-4">
           {/* Mobile menu */}
           <MobileNav user={user} categories={categories} />
@@ -70,7 +89,6 @@ export function StorefrontHeader({
           </div>
         </div>
       </div>
-
     </header>
   )
 }

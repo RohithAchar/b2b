@@ -1,23 +1,27 @@
-"use client";
+"use client"
 
-import { useActionState, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useActionState, useState } from "react"
+import { Button } from "@/components/ui/button"
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
+import { Spinner } from "@/components/ui/spinner"
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
-import { Spinner } from "@/components/ui/spinner";
-import { createCoupon, type CouponActionState } from "@/lib/supplier/coupon-actions";
-import { COUPON_TYPES, COUPON_TYPE_LABELS, type CouponType } from "@/lib/supplier/coupons";
+  createCoupon,
+  type CouponActionState,
+} from "@/lib/supplier/coupon-actions"
+import {
+  COUPON_TYPES,
+  COUPON_TYPE_LABELS,
+  type CouponType,
+} from "@/lib/supplier/coupons"
 
-const initialState: CouponActionState = { ok: false, message: "" };
+const initialState: CouponActionState = { ok: false, message: "" }
 
 function NumberField({
   id,
@@ -27,12 +31,12 @@ function NumberField({
   placeholder,
   required,
 }: {
-  id: string;
-  name: string;
-  label: string;
-  description: string;
-  placeholder: string;
-  required?: boolean;
+  id: string
+  name: string
+  label: string
+  description: string
+  placeholder: string
+  required?: boolean
 }) {
   return (
     <Field>
@@ -48,13 +52,17 @@ function NumberField({
       />
       <FieldDescription>{description}</FieldDescription>
     </Field>
-  );
+  )
 }
 
 /** Coupon builder: shared rules always visible, type rules unfold by selection. */
-export function CouponForm({ products }: { products: { id: string; title: string }[] }) {
-  const [state, action, pending] = useActionState(createCoupon, initialState);
-  const [type, setType] = useState<CouponType>("percent");
+export function CouponForm({
+  products,
+}: {
+  products: { id: string; title: string }[]
+}) {
+  const [state, action, pending] = useActionState(createCoupon, initialState)
+  const [type, setType] = useState<CouponType>("percent")
 
   return (
     <form action={action}>
@@ -70,7 +78,7 @@ export function CouponForm({ products }: { products: { id: string; title: string
               maxLength={24}
               autoComplete="off"
               placeholder="FESTIVE10"
-              className="uppercase"
+              className="tracking-wide uppercase"
             />
             <FieldDescription>Letters, numbers, - and _ only.</FieldDescription>
           </Field>
@@ -150,8 +158,15 @@ export function CouponForm({ products }: { products: { id: string; title: string
                 Add a product first — a freebie needs one of your listings.
               </FieldDescription>
             ) : (
-              <NativeSelect id="coupon-free-product" name="free_product_id" className="w-full" required>
-                <NativeSelectOption value="">Choose a product…</NativeSelectOption>
+              <NativeSelect
+                id="coupon-free-product"
+                name="free_product_id"
+                className="w-full"
+                required
+              >
+                <NativeSelectOption value="">
+                  Choose a product…
+                </NativeSelectOption>
                 {products.map((product) => (
                   <NativeSelectOption key={product.id} value={product.id}>
                     {product.title}
@@ -211,5 +226,5 @@ export function CouponForm({ products }: { products: { id: string; title: string
         </Button>
       </FieldGroup>
     </form>
-  );
+  )
 }

@@ -1,16 +1,18 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useState, useTransition } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link"
+import { useState, useTransition } from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   CheckIcon,
   Tick01Icon,
   TruckDeliveryIcon,
-} from "@hugeicons/core-free-icons";
-import { cn } from "cn";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+} from "@hugeicons/core-free-icons"
+import { cn } from "cn"
+import { motion } from "motion/react"
+import { springSnappy } from "@/lib/motion"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -18,11 +20,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
+} from "@/components/ui/dialog"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { ConfirmDialog } from "@/components/dashboard/confirm-dialog"
 import {
   acceptOrder,
   advanceOrderStatus,
@@ -30,16 +32,16 @@ import {
   rejectOrder,
   setOrderPaymentStatus,
   type OrderActionResult,
-} from "@/lib/supplier/order-actions";
+} from "@/lib/supplier/order-actions"
 import {
   availableSupplierActions,
   orderAtOrBeyond,
   parseOrderStatus,
   parsePaymentStatus,
   type SupplierOrderAction,
-} from "@/lib/orders/lifecycle";
+} from "@/lib/orders/lifecycle"
 
-const initialResult: OrderActionResult = { ok: false, message: "" };
+const initialResult: OrderActionResult = { ok: false, message: "" }
 
 /**
  * One linear flow for the supplier: review the order, settle payment, process,
@@ -56,54 +58,57 @@ export function OrderActionsPanel({
   status,
   paymentStatus,
 }: {
-  orderId: string;
-  status: string;
-  paymentStatus: string;
+  orderId: string
+  status: string
+  paymentStatus: string
 }) {
-  const orderStatus = parseOrderStatus(status);
-  const payment = parsePaymentStatus(paymentStatus) ?? "not_requested";
+  const orderStatus = parseOrderStatus(status)
+  const payment = parsePaymentStatus(paymentStatus) ?? "not_requested"
   const actions: readonly SupplierOrderAction[] = orderStatus
     ? availableSupplierActions(orderStatus)
-    : [];
+    : []
 
-  const [notice, setNotice] = useState<OrderActionResult | null>(null);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [shipOpen, setShipOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [notice, setNotice] = useState<OrderActionResult | null>(null)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [shipOpen, setShipOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
 
   function run(action: () => Promise<OrderActionResult>) {
-    setNotice(null);
+    setNotice(null)
     startTransition(async () => {
-      const result = await action();
-      setNotice(result);
-    });
+      const result = await action()
+      setNotice(result)
+    })
   }
 
   /** Run a (prev, formData) action inside the transition, closing on success. */
   function runForm(
-    action: (prev: OrderActionResult, formData: FormData) => Promise<OrderActionResult>,
+    action: (
+      prev: OrderActionResult,
+      formData: FormData
+    ) => Promise<OrderActionResult>,
     formData: FormData,
-    onOk?: () => void,
+    onOk?: () => void
   ) {
-    setNotice(null);
+    setNotice(null)
     startTransition(async () => {
-      const result = await action(initialResult, formData);
-      setNotice(result);
-      if (result.ok) onOk?.();
-    });
+      const result = await action(initialResult, formData)
+      setNotice(result)
+      if (result.ok) onOk?.()
+    })
   }
 
   if (!orderStatus || orderStatus === "cancelled") {
-    return null;
+    return null
   }
 
-  const reviewDone = orderStatus !== "new" && orderStatus !== "quoted";
-  const processDone = orderAtOrBeyond(orderStatus, "processing");
-  const shipDone = orderAtOrBeyond(orderStatus, "shipped");
-  const deliverDone = orderStatus === "delivered";
+  const reviewDone = orderStatus !== "new" && orderStatus !== "quoted"
+  const processDone = orderAtOrBeyond(orderStatus, "processing")
+  const shipDone = orderAtOrBeyond(orderStatus, "shipped")
+  const deliverDone = orderStatus === "delivered"
   // Once the order is delivered nothing further can change on the payment
   // track, so the step counts as closed even if money was never confirmed.
-  const paymentDone = payment === "paid" || deliverDone;
+  const paymentDone = payment === "paid" || deliverDone
 
   const steps: StepDef[] = [
     {
@@ -183,7 +188,10 @@ export function OrderActionsPanel({
               disabled={pending}
               onClick={() =>
                 run(() =>
-                  setOrderPaymentStatus(initialResult, paymentToForm(orderId, "pending")),
+                  setOrderPaymentStatus(
+                    initialResult,
+                    paymentToForm(orderId, "pending")
+                  )
                 )
               }
             >
@@ -208,11 +216,17 @@ export function OrderActionsPanel({
               confirmLabel="Yes, I received payment"
               variant="default"
               onConfirm={() =>
-                run(() => setOrderPaymentStatus(initialResult, paymentToForm(orderId, "paid")))
+                run(() =>
+                  setOrderPaymentStatus(
+                    initialResult,
+                    paymentToForm(orderId, "paid")
+                  )
+                )
               }
             />
           ) : null}
-          {actions.includes("mark_payment_not_received") && payment === "claimed" ? (
+          {actions.includes("mark_payment_not_received") &&
+          payment === "claimed" ? (
             <ConfirmDialog
               trigger={
                 <Button variant="outline" size="sm" disabled={pending}>
@@ -224,7 +238,12 @@ export function OrderActionsPanel({
               confirmLabel="Yes, not received"
               variant="destructive"
               onConfirm={() =>
-                run(() => setOrderPaymentStatus(initialResult, paymentToForm(orderId, "pending")))
+                run(() =>
+                  setOrderPaymentStatus(
+                    initialResult,
+                    paymentToForm(orderId, "pending")
+                  )
+                )
               }
             />
           ) : null}
@@ -246,7 +265,10 @@ export function OrderActionsPanel({
               disabled={pending}
               onClick={() =>
                 run(() =>
-                  advanceOrderStatus(initialResult, orderIdToForm(orderId, "processing")),
+                  advanceOrderStatus(
+                    initialResult,
+                    orderIdToForm(orderId, "processing")
+                  )
                 )
               }
             >
@@ -266,7 +288,11 @@ export function OrderActionsPanel({
       body: shipDone ? null : (
         <>
           {actions.includes("record_shipment") ? (
-            <Button size="sm" disabled={pending} onClick={() => setShipOpen(true)}>
+            <Button
+              size="sm"
+              disabled={pending}
+              onClick={() => setShipOpen(true)}
+            >
               <HugeiconsIcon
                 icon={TruckDeliveryIcon}
                 strokeWidth={2}
@@ -304,23 +330,35 @@ export function OrderActionsPanel({
               confirmLabel="Mark delivered"
               variant="default"
               onConfirm={() =>
-                run(() => advanceOrderStatus(initialResult, orderIdToForm(orderId, "delivered")))
+                run(() =>
+                  advanceOrderStatus(
+                    initialResult,
+                    orderIdToForm(orderId, "delivered")
+                  )
+                )
               }
             />
           ) : null}
         </>
       ),
     },
-  ];
+  ]
 
-  const currentIndex = steps.findIndex((step) => !step.done);
+  const currentIndex = steps.findIndex((step) => !step.done)
 
   return (
     <div className="flex flex-col gap-3">
       {notice && notice.message ? (
-        <Alert variant={notice.ok ? "default" : "destructive"}>
-          <AlertDescription>{notice.message}</AlertDescription>
-        </Alert>
+        <motion.div
+          key={notice.message}
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springSnappy}
+        >
+          <Alert variant={notice.ok ? "default" : "destructive"}>
+            <AlertDescription>{notice.message}</AlertDescription>
+          </Alert>
+        </motion.div>
       ) : null}
 
       <section className="overflow-hidden rounded-lg border border-border">
@@ -337,18 +375,22 @@ export function OrderActionsPanel({
 
         <ol className="divide-y divide-border">
           {steps.map((step, index) => {
-            const isCurrent = index === currentIndex;
+            const isCurrent = index === currentIndex
             return (
               <li
                 key={step.key}
                 aria-current={isCurrent ? "step" : undefined}
                 className={cn(
                   "flex gap-3 px-4 py-3",
-                  isCurrent && "bg-primary/[0.04]",
+                  isCurrent && "bg-primary/[0.04]"
                 )}
               >
                 <span className="pt-0.5">
-                  <StepMarker done={step.done} current={isCurrent} index={index} />
+                  <StepMarker
+                    done={step.done}
+                    current={isCurrent}
+                    index={index}
+                  />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -359,18 +401,24 @@ export function OrderActionsPanel({
                           ? "text-muted-foreground"
                           : isCurrent
                             ? "text-foreground"
-                            : "text-muted-foreground",
+                            : "text-muted-foreground"
                       )}
                     >
                       {step.title}
                     </p>
                     {isCurrent ? (
-                      <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                      <motion.span
+                        layoutId="supplier-order-now"
+                        transition={springSnappy}
+                        className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground"
+                      >
                         Now
-                      </span>
+                      </motion.span>
                     ) : null}
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{step.description}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {step.description}
+                  </p>
                   {step.body ? (
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       {step.body}
@@ -378,7 +426,7 @@ export function OrderActionsPanel({
                   ) : null}
                 </div>
               </li>
-            );
+            )
           })}
         </ol>
       </section>
@@ -415,7 +463,11 @@ export function OrderActionsPanel({
                 />
               </Field>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setRejectOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRejectOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" variant="destructive" disabled={pending}>
@@ -433,7 +485,8 @@ export function OrderActionsPanel({
           <DialogHeader>
             <DialogTitle>Record shipment</DialogTitle>
             <DialogDescription>
-              The buyer sees these details on their order. All fields are optional.
+              The buyer sees these details on their order. All fields are
+              optional.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -449,12 +502,24 @@ export function OrderActionsPanel({
               ) : null}
               <input type="hidden" name="orderId" value={orderId} />
               <Field>
-                <FieldLabel htmlFor="carrier">Carrier / delivery provider</FieldLabel>
-                <Input id="carrier" name="carrier" placeholder="e.g. Delhivery, own fleet" />
+                <FieldLabel htmlFor="carrier">
+                  Carrier / delivery provider
+                </FieldLabel>
+                <Input
+                  id="carrier"
+                  name="carrier"
+                  placeholder="e.g. Delhivery, own fleet"
+                />
               </Field>
               <Field>
-                <FieldLabel htmlFor="trackingRef">Tracking reference</FieldLabel>
-                <Input id="trackingRef" name="trackingRef" placeholder="AWB / tracking number" />
+                <FieldLabel htmlFor="trackingRef">
+                  Tracking reference
+                </FieldLabel>
+                <Input
+                  id="trackingRef"
+                  name="trackingRef"
+                  placeholder="AWB / tracking number"
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="shipmentNotes">Delivery notes</FieldLabel>
@@ -466,7 +531,11 @@ export function OrderActionsPanel({
                 />
               </Field>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setShipOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShipOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={pending}>
@@ -478,32 +547,32 @@ export function OrderActionsPanel({
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }
 
 type StepDef = {
-  key: string;
-  title: string;
-  description: string;
-  done: boolean;
-  body: React.ReactNode;
-};
+  key: string
+  title: string
+  description: string
+  done: boolean
+  body: React.ReactNode
+}
 
 function StepMarker({
   done,
   current,
   index,
 }: {
-  done: boolean;
-  current: boolean;
-  index: number;
+  done: boolean
+  current: boolean
+  index: number
 }) {
   if (done) {
     return (
       <span className="flex size-5 items-center justify-center rounded-full bg-success text-white [&_svg]:size-3.5">
         <HugeiconsIcon icon={Tick01Icon} strokeWidth={3} />
       </span>
-    );
+    )
   }
   return (
     <span
@@ -511,26 +580,29 @@ function StepMarker({
         "flex size-5 items-center justify-center rounded-full border-2 text-[11px] font-bold tabular-nums",
         current
           ? "border-primary bg-primary/10 text-primary"
-          : "border-border bg-card text-muted-foreground",
+          : "border-border bg-card text-muted-foreground"
       )}
     >
       {index + 1}
     </span>
-  );
+  )
 }
 
 /** Build the FormData shape the (prev, formData) actions expect. */
 function orderIdToForm(orderId: string, value: string): FormData {
-  const formData = new FormData();
-  formData.set("orderId", orderId);
-  formData.set("to", value);
-  return formData;
+  const formData = new FormData()
+  formData.set("orderId", orderId)
+  formData.set("to", value)
+  return formData
 }
 
 /** Same helper for payment updates (uses `paymentStatus`, not `to`). */
-export function paymentToForm(orderId: string, paymentStatus: string): FormData {
-  const formData = new FormData();
-  formData.set("orderId", orderId);
-  formData.set("paymentStatus", paymentStatus);
-  return formData;
+export function paymentToForm(
+  orderId: string,
+  paymentStatus: string
+): FormData {
+  const formData = new FormData()
+  formData.set("orderId", orderId)
+  formData.set("paymentStatus", paymentStatus)
+  return formData
 }
