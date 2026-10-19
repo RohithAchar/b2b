@@ -26,6 +26,8 @@ const ALL_TEMPLATES: NotificationTemplate[] = [
   "order_shipped_buyer",
   "order_delivered_buyer",
   "payment_confirmed_buyer",
+  "payment_claimed_supplier",
+  "payment_not_received_buyer",
 ];
 
 describe("notificationText", () => {

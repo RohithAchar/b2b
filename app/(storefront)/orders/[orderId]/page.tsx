@@ -16,23 +16,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { StatusBadge } from "@/components/dashboard/status-badge";
+import { OrderItems } from "@/components/orders/order-items";
+import { OrderProgress } from "@/components/orders/order-progress";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { formatRupees } from "@/lib/format";
 import {
-  ORDER_STATUS_LABELS,
-  PAYMENT_STATUS_LABELS,
+  canBuyerClaimPayment,
   parseOrderStatus,
   parsePaymentStatus,
 } from "@/lib/orders/lifecycle";
+import { getOrderItemImages } from "@/lib/orders/item-images";
 import {
   type DeliverySnapshot,
 } from "@/lib/orders/delivery";
@@ -40,23 +35,13 @@ import {
   contactMessage,
   whatsappContactLink,
 } from "@/lib/orders/whatsapp-link";
-import { QuoteResponseButtons } from "./quote-response-buttons";
+import { BuyerOrderFlow } from "./buyer-order-flow";
 import { OrderNotifications } from "@/components/orders/order-notifications";
 
 export const metadata: Metadata = { title: "Order details" };
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const STATUS_BADGE: Record<string, "default" | "secondary" | "outline"> = {
-  new: "secondary",
-  quoted: "secondary",
-  confirmed: "default",
-  processing: "default",
-  shipped: "default",
-  delivered: "outline",
-  cancelled: "outline",
-};
 
 function formatDateTime(value: string | null): string {
   if (!value) return "";
@@ -112,10 +97,17 @@ function eventLabel(event: {
           return `Status: ${to}`;
       }
     }
-    case "payment_status_changed":
-      return String(event.data.to) === "paid"
-        ? "Supplier confirmed payment received"
-        : "Payment status updated by supplier";
+    case "payment_status_changed": {
+      const to = String(event.data.to);
+      if (to === "paid") return "Supplier confirmed payment received";
+      if (to === "claimed") {
+        return event.data.reference
+          ? `You submitted payment reference ${String(event.data.reference)}`
+          : "You submitted a payment reference";
+      }
+      if (to === "pending") return "Supplier marked payment as not received";
+      return "Payment status updated by supplier";
+    }
     case "order_cancelled":
       return event.data.reason
         ? `Order cancelled — ${String(event.data.reason)}`
@@ -136,6 +128,8 @@ type OrderRow = {
   reference: string;
   status: string;
   payment_status: string;
+  payment_claim_reference: string | null;
+  payment_claimed_at: string | null;
   subtotal: number;
   discount: number;
   item_count: number;
@@ -151,6 +145,7 @@ type OrderRow = {
 
 type ItemRow = {
   id: string;
+  product_id: string | null;
   title: string;
   variant_label: string | null;
   unit: string;
@@ -217,7 +212,7 @@ export default async function BuyerOrderPage({
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, reference, status, payment_status, subtotal, discount, item_count, delivery, buyer_note, rejection_reason, carrier, tracking_ref, shipment_notes, shipped_at, created_at",
+      "id, reference, status, payment_status, payment_claim_reference, payment_claimed_at, subtotal, discount, item_count, delivery, buyer_note, rejection_reason, carrier, tracking_ref, shipment_notes, shipped_at, created_at",
     )
     .eq("id", orderId)
     .eq("buyer_id", user.id)
@@ -233,7 +228,7 @@ export default async function BuyerOrderPage({
     await Promise.all([
       supabase
         .from("order_items")
-        .select("id, title, variant_label, unit, quantity, unit_price")
+        .select("id, product_id, title, variant_label, unit, quantity, unit_price")
         .eq("order_id", orderId)
         .order("created_at", { ascending: true }),
       supabase
@@ -258,6 +253,10 @@ export default async function BuyerOrderPage({
 
   const orderItems = (items ?? []) as unknown as ItemRow[];
   const quoteRows = (quotations ?? []) as unknown as QuotationRow[];
+  const itemImages = await getOrderItemImages(
+    supabase,
+    orderItems.map((item) => item.product_id),
+  );
 
   const quoteIds = quoteRows.map((quote) => quote.id);
   const { data: quotationItemRows } =
@@ -280,12 +279,37 @@ export default async function BuyerOrderPage({
 
   const latestSentId =
     quoteRows.filter((quote) => quote.status === "sent").at(-1)?.id ?? null;
+  const pendingQuoteRow = quoteRows.find((quote) => quote.id === latestSentId) ?? null;
+  const pendingQuote = pendingQuoteRow
+    ? {
+        id: pendingQuoteRow.id,
+        totalLabel: formatRupees(Number(pendingQuoteRow.total)),
+        expired: isExpired(pendingQuoteRow.expires_at),
+      }
+    : null;
   const acceptedQuote =
     quoteRows.filter((quote) => quote.status === "accepted").at(-1) ?? null;
+
+  const hasQuotation = quoteRows.length > 0;
 
   const hasShipment = Boolean(
     orderRow.carrier || orderRow.tracking_ref || orderRow.shipment_notes || orderRow.shipped_at,
   );
+
+  const paymentStatus = parsePaymentStatus(orderRow.payment_status) ?? "not_requested";
+  const paymentAmount = Number(
+    acceptedQuote?.total ?? Number(orderRow.subtotal) - Number(orderRow.discount),
+  );
+  const paymentActionable =
+    paymentStatus === "pending" ||
+    acceptedQuote !== null ||
+    status === "confirmed" ||
+    status === "processing" ||
+    status === "shipped";
+  const canPay =
+    canBuyerClaimPayment(status, paymentStatus) &&
+    paymentActionable &&
+    paymentAmount > 0;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-5">
@@ -306,15 +330,8 @@ export default async function BuyerOrderPage({
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={STATUS_BADGE[status] ?? "outline"}>
-            {ORDER_STATUS_LABELS[status]}
-          </Badge>
-          <Badge variant="outline">
-            Payment:{" "}
-            {PAYMENT_STATUS_LABELS[
-              parsePaymentStatus(orderRow.payment_status) ?? "not_requested"
-            ]}
-          </Badge>
+          <StatusBadge status="order" value={orderRow.status} />
+          <StatusBadge status="payment" value={orderRow.payment_status} />
         </div>
       </div>
 
@@ -326,6 +343,27 @@ export default async function BuyerOrderPage({
           </p>
         </Card>
       ) : null}
+
+      {/* Tracker ----------------------------------------------------------------- */}
+      <Card className="rounded-lg p-4">
+        <OrderProgress
+          status={status}
+          paymentStatus={paymentStatus}
+          hasQuotation={hasQuotation}
+          cancelledReason={orderRow.rejection_reason}
+        />
+      </Card>
+
+      {/* What to do next --------------------------------------------------------- */}
+      <BuyerOrderFlow
+        orderId={orderRow.id}
+        status={orderRow.status}
+        paymentStatus={orderRow.payment_status}
+        paymentAmount={paymentAmount}
+        canPay={canPay}
+        hasQuotation={hasQuotation}
+        pendingQuote={pendingQuote}
+      />
 
       {/* Supplier contact ------------------------------------------------------- */}
       <Card className="rounded-lg p-4">
@@ -373,39 +411,19 @@ export default async function BuyerOrderPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="!px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="hidden sm:table-cell">Unit</TableHead>
-                <TableHead className="text-right tabular-nums">Qty</TableHead>
-                <TableHead className="text-right tabular-nums">Unit price</TableHead>
-                <TableHead className="text-right tabular-nums">Line total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orderItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <p className="text-sm font-medium">{item.title}</p>
-                    {item.variant_label ? (
-                      <p className="text-xs text-muted-foreground">{item.variant_label}</p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground sm:table-cell">
-                    {item.unit}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatRupees(Number(item.unit_price))}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatRupees(Number(item.unit_price) * item.quantity)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <OrderItems
+            items={orderItems.map((item) => ({
+              id: item.id,
+              title: item.title,
+              variantLabel: item.variant_label,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: Number(item.unit_price),
+              imageUrl: item.product_id
+                ? itemImages.get(item.product_id) ?? null
+                : null,
+            }))}
+          />
         </CardContent>
       </Card>
 
@@ -488,6 +506,49 @@ export default async function BuyerOrderPage({
         </Card>
       </div>
 
+      {/* Payment ----------------------------------------------------------------- */}
+      <Card className="rounded-lg p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">Payment</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {paymentStatus === "paid"
+                ? "The supplier has confirmed receiving your payment."
+                : paymentStatus === "claimed"
+                  ? "You have submitted a payment reference. The supplier still needs to confirm receipt."
+                  : "Pay the supplier directly, then record the reference so they can verify it. This platform never collects money."}
+            </p>
+          </div>
+          <StatusBadge status="payment" value={paymentStatus} />
+        </div>
+
+        {paymentStatus === "claimed" ? (
+          <div className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+            <p className="font-medium">
+              Reference{" "}
+              <span className="font-mono">
+                {orderRow.payment_claim_reference ?? "—"}
+              </span>
+            </p>
+            {orderRow.payment_claimed_at ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Submitted {formatDateTime(orderRow.payment_claimed_at)}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {paymentStatus === "pending" ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            The supplier is awaiting payment of{" "}
+            <span className="font-medium tabular-nums">
+              {formatRupees(paymentAmount)}
+            </span>
+            .
+          </p>
+        ) : null}
+      </Card>
+
       {/* Shipment --------------------------------------------------------------- */}
       {hasShipment ? (
         <Card className="rounded-lg p-4">
@@ -513,8 +574,8 @@ export default async function BuyerOrderPage({
         <CardHeader className="border-b border-border">
           <CardTitle>Quotations</CardTitle>
           <CardDescription>
-            The supplier may revise prices here when the real deal differs from
-            the cart. Accept a version to agree the final amounts.
+            Every revision the supplier has sent, newest first. Accept or
+            reject a pending one from the steps above.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 !px-0">
@@ -599,20 +660,6 @@ export default async function BuyerOrderPage({
                       Valid until {formatDate(quote.expires_at)}
                       {expired ? " — expired; ask for a revised quote" : ""}
                     </p>
-                  ) : null}
-                  {status !== "cancelled" && status !== "delivered" ? (
-                    expired ? (
-                      <p className="text-sm text-muted-foreground">
-                        This quotation has expired and can no longer be
-                        accepted.
-                      </p>
-                    ) : (
-                      <QuoteResponseButtons
-                        orderId={orderRow.id}
-                        quotationId={quote.id}
-                        totalLabel={formatRupees(Number(quote.total))}
-                      />
-                    )
                   ) : null}
                 </div>
               );

@@ -131,7 +131,7 @@ export default async function SupplierOverviewPage({
   // eslint-disable-next-line react-hooks/purity -- server component: per-request timestamp
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ count: totalCount }, { count: liveCount }, { count: pendingCount }, { count: rejectedCount }, { count: monthCount }] =
+  const [{ count: totalCount }, { count: liveCount }, { count: pendingCount }, { count: rejectedCount }, { count: monthCount }, { count: paymentClaimCount }] =
     await Promise.all([
       supabase
         .from("products")
@@ -157,6 +157,11 @@ export default async function SupplierOverviewPage({
         .select("id", { count: "exact", head: true })
         .eq("supplier_id", company.id)
         .gte("created_at", thirtyDaysAgo),
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .eq("payment_status", "claimed"),
     ]);
 
   const { metrics, error: metricsError } = await metricsSettled;
@@ -206,6 +211,18 @@ export default async function SupplierOverviewPage({
       severity: "warning",
       href: "/supplier/dashboard/verification",
       actionLabel: "Track",
+    });
+  }
+
+  if ((paymentClaimCount ?? 0) > 0) {
+    attention.push({
+      id: "payment-claims",
+      title: `${paymentClaimCount} payment claim${paymentClaimCount === 1 ? "" : "s"} to verify`,
+      description:
+        "Buyers say they have paid. Check the reference in your bank/UPI, then confirm or mark it not received.",
+      severity: "warning",
+      href: "/supplier/dashboard/orders?payment=claimed",
+      actionLabel: "Verify",
     });
   }
 

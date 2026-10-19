@@ -26,12 +26,12 @@ export const VISIBILITY_STATUS: Record<string, StatusDef> = {
 
 export const ORDER_STATUS: Record<string, StatusDef> = {
   new: { label: "Awaiting review", variant: "warning" },
-  quoted: { label: "Quoted", variant: "secondary" },
+  quoted: { label: "Quotation sent", variant: "info" },
   confirmed: { label: "Confirmed", variant: "secondary" },
-  processing: { label: "Processing", variant: "default" },
-  shipped: { label: "Shipped", variant: "default" },
+  processing: { label: "Processing", variant: "violet" },
+  shipped: { label: "Shipped", variant: "info" },
   delivered: { label: "Delivered", variant: "success" },
-  cancelled: { label: "Cancelled", variant: "outline" },
+  cancelled: { label: "Cancelled", variant: "destructive" },
 };
 
 // Payment is tracked separately from order progress; only the supplier
@@ -39,7 +39,8 @@ export const ORDER_STATUS: Record<string, StatusDef> = {
 export const PAYMENT_STATUS: Record<string, StatusDef> = {
   not_requested: { label: "Not requested", variant: "outline" },
   pending: { label: "Awaiting payment", variant: "warning" },
-  paid: { label: "Paid", variant: "success" },
+  claimed: { label: "Payment submitted", variant: "default" },
+  paid: { label: "Payment confirmed", variant: "success" },
 };
 
 const MAPS = {

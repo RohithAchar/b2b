@@ -4,8 +4,10 @@ import {
   ORDER_STATUSES,
   availableBuyerActions,
   availableSupplierActions,
+  canBuyerClaimPayment,
   canTransitionOrderStatus,
   canTransitionPaymentStatus,
+  orderAtOrBeyond,
   parseOrderStatus,
   parsePaymentStatus,
   type OrderStatus,
@@ -60,8 +62,18 @@ describe("payment status machine", () => {
     expect(canTransitionPaymentStatus("not_requested", "paid")).toBe(true);
   });
 
-  it("never moves backwards", () => {
+  it("lets the buyer claim payment and the supplier resolve it", () => {
+    expect(canTransitionPaymentStatus("not_requested", "claimed")).toBe(true);
+    expect(canTransitionPaymentStatus("pending", "claimed")).toBe(true);
+    expect(canTransitionPaymentStatus("claimed", "paid")).toBe(true);
+    // Not received: the claim is sent back so the buyer can resubmit.
+    expect(canTransitionPaymentStatus("claimed", "pending")).toBe(true);
+    expect(canTransitionPaymentStatus("claimed", "not_requested")).toBe(false);
+  });
+
+  it("never moves a settled or untouched payment backwards", () => {
     expect(canTransitionPaymentStatus("paid", "pending")).toBe(false);
+    expect(canTransitionPaymentStatus("paid", "claimed")).toBe(false);
     expect(canTransitionPaymentStatus("paid", "not_requested")).toBe(false);
     expect(canTransitionPaymentStatus("pending", "not_requested")).toBe(false);
   });
@@ -78,6 +90,7 @@ describe("available supplier actions", () => {
   it("offers payment confirmation on any live order", () => {
     for (const status of ["new", "quoted", "confirmed", "processing", "shipped"] as OrderStatus[]) {
       expect(availableSupplierActions(status)).toContain("mark_paid");
+      expect(availableSupplierActions(status)).toContain("mark_payment_not_received");
     }
     expect(availableSupplierActions("delivered")).not.toContain("mark_paid");
     expect(availableSupplierActions("cancelled")).not.toContain("mark_paid");
@@ -103,6 +116,39 @@ describe("available buyer actions", () => {
     expect(availableBuyerActions("confirmed")).toEqual([]);
     expect(availableBuyerActions("cancelled")).toEqual([]);
   });
+
+  it("lets the buyer claim payment only while money is outstanding", () => {
+    expect(canBuyerClaimPayment("confirmed", "pending")).toBe(true);
+    expect(canBuyerClaimPayment("confirmed", "not_requested")).toBe(true);
+    expect(canBuyerClaimPayment("quoted", "pending")).toBe(true);
+    expect(canBuyerClaimPayment("shipped", "pending")).toBe(true);
+    // Not before a quote/confirmation, and already submitted/paid is closed.
+    expect(canBuyerClaimPayment("new", "pending")).toBe(false);
+    expect(canBuyerClaimPayment("confirmed", "claimed")).toBe(false);
+    expect(canBuyerClaimPayment("confirmed", "paid")).toBe(false);
+    expect(canBuyerClaimPayment("cancelled", "pending")).toBe(false);
+    expect(canBuyerClaimPayment("delivered", "pending")).toBe(false);
+  });
+});
+
+describe("order progress ordering", () => {
+  it("treats each step as done once reached or passed", () => {
+    expect(orderAtOrBeyond("processing", "processing")).toBe(true);
+    expect(orderAtOrBeyond("shipped", "processing")).toBe(true);
+    expect(orderAtOrBeyond("delivered", "shipped")).toBe(true);
+    expect(orderAtOrBeyond("new", "new")).toBe(true);
+  });
+
+  it("keeps later steps open while the order is behind them", () => {
+    expect(orderAtOrBeyond("confirmed", "processing")).toBe(false);
+    expect(orderAtOrBeyond("quoted", "shipped")).toBe(false);
+    expect(orderAtOrBeyond("processing", "shipped")).toBe(false);
+  });
+
+  it("is past nothing once cancelled", () => {
+    expect(orderAtOrBeyond("cancelled", "new")).toBe(false);
+    expect(orderAtOrBeyond("cancelled", "delivered")).toBe(false);
+  });
 });
 
 describe("status parsing", () => {
@@ -111,6 +157,7 @@ describe("status parsing", () => {
     expect(parseOrderStatus("SHIPPED")).toBeNull();
     expect(parseOrderStatus(undefined)).toBeNull();
     expect(parsePaymentStatus("paid")).toBe("paid");
+    expect(parsePaymentStatus("claimed")).toBe("claimed");
     expect(parsePaymentStatus("refunded")).toBeNull();
   });
 });
