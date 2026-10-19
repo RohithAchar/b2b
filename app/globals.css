@@ -39,6 +39,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-violet: var(--violet);
   --color-brand-dark: var(--brand-dark);
   --color-brand-amber: var(--brand-amber);
   --color-brand-navy: var(--brand-navy);
@@ -111,6 +112,8 @@
   --success: oklch(0.5022 0.1597 140.0395);
   --warning: oklch(0.5806 0.1293 65.9314);
   --info: oklch(0.5044 0.2095 260.968);
+  /* Secondary status category (in-progress stages). */
+  --violet: #7c3aed;
   --brand-dark: #e85f00;
   --brand-amber: #ff9a00;
   --brand-navy: #0a1d3c;

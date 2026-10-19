@@ -1,32 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { Button } from "@/components/ui/button";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+  ArrowRight01Icon,
+  Package01Icon,
+  ShoppingBag01Icon,
+} from "@hugeicons/core-free-icons";
+import { cn } from "cn";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { getBuyerOrders } from "@/lib/buyer/order-history";
-import { ORDER_STATUS_LABELS } from "@/lib/orders/lifecycle";
 import { formatRupees } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -38,7 +23,7 @@ const BASE = "/orders";
 
 // Buyer-friendly groupings rather than the raw lifecycle vocabulary.
 const ORDER_TABS = [
-  { key: "all", label: "All" },
+  { key: "all", label: "All Orders" },
   { key: "pending", label: "With supplier" },
   { key: "active", label: "In progress" },
   { key: "delivered", label: "Delivered" },
@@ -57,16 +42,6 @@ const TAB_STATUSES: Record<Exclude<TabKey, "all">, string[]> = {
 function isTabKey(value: string): value is TabKey {
   return ORDER_TABS.some((tab) => tab.key === value);
 }
-
-const STATUS_BADGE: Record<string, "default" | "secondary" | "outline"> = {
-  new: "secondary",
-  quoted: "secondary",
-  confirmed: "default",
-  processing: "default",
-  shipped: "default",
-  delivered: "outline",
-  cancelled: "outline",
-};
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("en-IN", {
@@ -98,103 +73,116 @@ export default async function BuyerOrdersPage({
           TAB_STATUSES[activeTab].includes(order.status),
         );
 
+  const countFor = (key: TabKey) =>
+    key === "all"
+      ? orders.length
+      : orders.filter((order) => TAB_STATUSES[key].includes(order.status)).length;
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5">
       <div>
-        <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-          My Orders
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">My Orders</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every order you have placed on this marketplace, newest first.
+          Track every order you have placed, newest first.
         </p>
       </div>
 
-      <nav aria-label="Order status" className="flex flex-wrap gap-1.5">
-        {ORDER_TABS.map((tab) => (
-          <Button
-            key={tab.key}
-            render={
-              <Link href={tab.key === "all" ? BASE : `${BASE}?status=${tab.key}`} />
-            }
-            nativeButton={false}
-            variant={activeTab === tab.key ? "default" : "outline"}
-            size="sm"
-          >
-            {tab.label}
-          </Button>
-        ))}
+      <nav aria-label="Order status" className="flex flex-wrap gap-2">
+        {ORDER_TABS.map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <Link
+              key={tab.key}
+              href={tab.key === "all" ? BASE : `${BASE}?status=${tab.key}`}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              {tab.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-[11px] tabular-nums",
+                  active
+                    ? "bg-primary-foreground/20"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {countFor(tab.key)}
+              </span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <Card className="!gap-0 !pb-0">
-        <CardHeader className="border-b border-border">
-          <CardTitle>Your orders</CardTitle>
-          <CardDescription>
-            Select an order to see items, quotations, payment and delivery
-            status, and to contact the supplier.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="!px-0">
-          {shown.length === 0 ? (
-            <Empty className="!border-0">
-              <EmptyTitle>No orders here</EmptyTitle>
-              <EmptyDescription>
-                {activeTab === "all"
-                  ? "Orders you place will appear here."
-                  : "No orders in this group right now."}
-              </EmptyDescription>
-            </Empty>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead className="hidden sm:table-cell">Supplier</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
-                  <TableHead className="text-right tabular-nums">Items</TableHead>
-                  <TableHead className="text-right tabular-nums">Total</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shown.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <Link
-                        href={`${BASE}/${order.id}`}
-                        className="font-mono text-xs font-medium underline-offset-2 hover:underline"
-                      >
-                        {order.reference}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="hidden max-w-48 truncate text-muted-foreground sm:table-cell">
-                      {order.supplierName ?? "—"}
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+      {shown.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-16 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:size-6">
+            <HugeiconsIcon icon={ShoppingBag01Icon} strokeWidth={1.6} />
+          </span>
+          <div>
+            <p className="text-base font-semibold">No orders here yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeTab === "all"
+                ? "Orders you place will appear here."
+                : "No orders in this group right now."}
+            </p>
+          </div>
+          <Link
+            href="/products"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Browse products
+          </Link>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {shown.map((order) => (
+            <li key={order.id}>
+              <Link
+                href={`${BASE}/${order.id}`}
+                className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-shadow hover:border-primary/40 hover:shadow-md sm:flex-row sm:items-center sm:gap-4"
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary [&_svg]:size-5">
+                    <HugeiconsIcon icon={Package01Icon} strokeWidth={1.8} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-mono text-sm font-semibold">
+                      {order.reference}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {order.supplierName ?? "Supplier"} ·{" "}
                       {formatDate(order.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {order.itemCount}
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
+                    </span>
+                  </span>
+                </span>
+
+                <span className="flex items-center justify-between gap-3 sm:justify-end sm:gap-6">
+                  <span className="text-right text-xs text-muted-foreground">
+                    {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
+                    <span className="block text-sm font-bold text-foreground tabular-nums">
                       {formatRupees(order.total)}
-                      {order.hasAcceptedQuote ? (
-                        <span className="ml-1 text-xs font-normal text-muted-foreground">
-                          quoted
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_BADGE[order.status] ?? "outline"}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    </span>
+                  </span>
+                  <StatusBadge status="order" value={order.status} />
+                  <span className="hidden items-center gap-1 text-xs font-medium text-primary sm:inline-flex">
+                    View details
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                      className="size-3.5"
+                    />
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

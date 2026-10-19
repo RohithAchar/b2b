@@ -25,8 +25,15 @@ import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { formatRupees } from "@/lib/format";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { OrderItems } from "@/components/orders/order-items";
+import { OrderProgress } from "@/components/orders/order-progress";
 import { OrderNotifications } from "@/components/orders/order-notifications";
 import type { DeliverySnapshot } from "@/lib/orders/delivery";
+import { getOrderItemImages } from "@/lib/orders/item-images";
+import type {
+  OrderStatus,
+  PaymentStatus,
+} from "@/lib/orders/lifecycle";
 import { OrderActionsPanel } from "./order-actions-panel";
 
 export const metadata: Metadata = { title: "Order details" };
@@ -83,11 +90,14 @@ type OrderRow = {
   cancelled_at: string | null;
   payment_confirmed_by: string | null;
   payment_confirmed_at: string | null;
+  payment_claim_reference: string | null;
+  payment_claimed_at: string | null;
   created_at: string;
 };
 
 type ItemRow = {
   id: string;
+  product_id: string | null;
   title: string;
   variant_label: string | null;
   unit: string;
@@ -144,7 +154,7 @@ export default async function SupplierOrderDetailPage({
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, reference, status, payment_status, subtotal, discount, item_count, delivery, buyer_note, supplier_note, rejection_reason, rejected_at, carrier, tracking_ref, shipment_notes, shipped_at, delivered_at, cancelled_at, payment_confirmed_by, payment_confirmed_at, created_at",
+      "id, reference, status, payment_status, subtotal, discount, item_count, delivery, buyer_note, supplier_note, rejection_reason, rejected_at, carrier, tracking_ref, shipment_notes, shipped_at, delivered_at, cancelled_at, payment_confirmed_by, payment_confirmed_at, payment_claim_reference, payment_claimed_at, created_at",
     )
     .eq("id", orderId)
     .eq("supplier_id", ctx.companyId)
@@ -157,7 +167,7 @@ export default async function SupplierOrderDetailPage({
   const [{ data: items }, { data: events }, { data: quotations }] = await Promise.all([
     supabase
       .from("order_items")
-      .select("id, title, variant_label, unit, quantity, unit_price")
+      .select("id, product_id, title, variant_label, unit, quantity, unit_price")
       .eq("order_id", orderId)
       .order("created_at", { ascending: true }),
     supabase
@@ -188,6 +198,13 @@ export default async function SupplierOrderDetailPage({
   const orderRow = order as unknown as OrderRow;
   const delivery = orderRow.delivery;
   const quoteRows = (quotations ?? []) as unknown as QuotationRow[];
+  const acceptedQuote =
+    quoteRows.filter((quote) => quote.status === "accepted").at(-1) ?? null;
+  const orderItems = (items ?? []) as unknown as ItemRow[];
+  const itemImages = await getOrderItemImages(
+    supabase,
+    orderItems.map((item) => item.product_id),
+  );
   const quoteItemRows = (quotationItems ?? []) as unknown as {
     id: string;
     quotation_id: string;
@@ -217,23 +234,22 @@ export default async function SupplierOrderDetailPage({
           </h1>
           <StatusBadge status="order" value={orderRow.status} />
           <StatusBadge status="payment" value={orderRow.payment_status} />
-          {orderRow.status === "new" || orderRow.status === "quoted" ? (
-            <Button
-              render={
-                <Link href={`/supplier/dashboard/orders/${orderRow.id}/quote`} />
-              }
-              nativeButton={false}
-              variant="outline"
-              size="sm"
-            >
-              Send quotation
-            </Button>
-          ) : null}
         </div>
         <p className="text-sm text-muted-foreground">
           Placed {formatDateTime(orderRow.created_at)}
         </p>
       </div>
+
+      <Card className="rounded-lg p-4">
+        <OrderProgress
+          status={orderRow.status as OrderStatus}
+          paymentStatus={orderRow.payment_status as PaymentStatus}
+          hasQuotation={
+            orderRow.status !== "new" || quoteRows.length > 0
+          }
+          cancelledReason={orderRow.rejection_reason}
+        />
+      </Card>
 
       <OrderActionsPanel
         orderId={orderRow.id}
@@ -296,6 +312,32 @@ export default async function SupplierOrderDetailPage({
                   </span>
                 </div>
               ) : null}
+              {acceptedQuote ? (
+                <div className="flex justify-between border-t border-border pt-2">
+                  <span className="font-medium">
+                    Agreed total (quotation v{acceptedQuote.version})
+                  </span>
+                  <span className="font-bold tabular-nums">
+                    {formatRupees(Number(acceptedQuote.total))}
+                  </span>
+                </div>
+              ) : null}
+              {orderRow.payment_status === "claimed" ? (
+                <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2.5">
+                  <p className="text-xs font-semibold text-warning">
+                    Buyer submitted a payment claim
+                  </p>
+                  <p className="mt-1 font-mono text-sm">
+                    {orderRow.payment_claim_reference ?? "No reference"}
+                  </p>
+                  {orderRow.payment_claimed_at ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Submitted {formatDateTime(orderRow.payment_claimed_at)}. Verify it in
+                      your bank/UPI, then confirm or report it as not received.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {orderRow.payment_confirmed_at ? (
                 <p className="text-xs text-success">
                   Payment confirmed by you on {formatDateTime(orderRow.payment_confirmed_at)}.
@@ -315,38 +357,86 @@ export default async function SupplierOrderDetailPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="!px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right tabular-nums">Qty</TableHead>
-                <TableHead className="text-right tabular-nums">Unit price</TableHead>
-                <TableHead className="text-right tabular-nums">Line total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {((items ?? []) as unknown as ItemRow[]).map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <span className="font-medium">{item.title}</span>
-                    {item.variant_label ? (
-                      <span className="text-muted-foreground"> — {item.variant_label}</span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {item.quantity} {item.unit}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatRupees(Number(item.unit_price))}
-                  </TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">
-                    {formatRupees(Number(item.unit_price) * item.quantity)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <OrderItems
+            items={orderItems.map((item) => ({
+              id: item.id,
+              title: item.title,
+              variantLabel: item.variant_label,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: Number(item.unit_price),
+              imageUrl: item.product_id
+                ? itemImages.get(item.product_id) ?? null
+                : null,
+            }))}
+          />
         </CardContent>
+      </Card>
+
+      {/* Summary ---------------------------------------------------------------- */}
+      <Card className="rounded-lg p-4">
+        <div className="flex flex-col gap-1.5 text-sm">
+          <p className="text-sm font-semibold">Summary</p>
+          {acceptedQuote ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Items subtotal</span>
+                <span className="tabular-nums">
+                  {formatRupees(Number(acceptedQuote.subtotal))}
+                </span>
+              </div>
+              {Number(acceptedQuote.delivery_charge) > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Delivery</span>
+                  <span className="tabular-nums">
+                    {formatRupees(Number(acceptedQuote.delivery_charge))}
+                  </span>
+                </div>
+              ) : null}
+              {Number(acceptedQuote.tax_amount) > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="tabular-nums">
+                    {formatRupees(Number(acceptedQuote.tax_amount))}
+                  </span>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between border-t border-border pt-2">
+                <span className="font-medium">
+                  Agreed total (quotation v{acceptedQuote.version})
+                </span>
+                <span className="font-bold tabular-nums">
+                  {formatRupees(Number(acceptedQuote.total))}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Items subtotal</span>
+                <span className="tabular-nums">
+                  {formatRupees(Number(orderRow.subtotal))}
+                </span>
+              </div>
+              {Number(orderRow.discount) > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Coupon discount</span>
+                  <span className="tabular-nums">
+                    −{formatRupees(Number(orderRow.discount))}
+                  </span>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between border-t border-border pt-2">
+                <span className="font-medium">Total</span>
+                <span className="font-bold tabular-nums">
+                  {formatRupees(
+                    Number(orderRow.subtotal) - Number(orderRow.discount),
+                  )}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
       </Card>
 
       {/* Notes + rejections ------------------------------------------------------ */}

@@ -1,50 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Alert01Icon,
+  PackageProcessIcon,
+  ShoppingCart01Icon,
+  Wallet01Icon,
+} from "@hugeicons/core-free-icons";
+import { cn } from "cn";
+import { PageHeader } from "@/components/layout/page-header";
+import { KpiStat } from "@/components/dashboard/kpi-stat";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
-import { formatRupees } from "@/lib/format";
-import { KpiStat } from "@/components/dashboard/kpi-stat";
-import { StatusBadge } from "@/components/dashboard/status-badge";
+import { SupplierOrdersTable, type SupplierOrderListItem } from "./supplier-orders-table";
 
-const ORDER_TABS = [
-  { key: "all", label: "All" },
-  { key: "new", label: "Awaiting review" },
-  { key: "quoted", label: "Quoted" },
-  { key: "confirmed", label: "Confirmed" },
-  { key: "processing", label: "Processing" },
-  { key: "shipped", label: "Shipped" },
-  { key: "delivered", label: "Delivered" },
-  { key: "cancelled", label: "Cancelled" },
-] as const;
+export const metadata: Metadata = { title: "Orders" };
 
-type TabKey = (typeof ORDER_TABS)[number]["key"];
-type OrderStatus = Exclude<TabKey, "all">;
+const BASE = "/supplier/dashboard/orders";
+const PAGE_SIZE = 50;
 
-const ORDER_STATUS_KEYS: OrderStatus[] = [
+const ORDER_STATUS_KEYS = [
   "new",
   "quoted",
   "confirmed",
@@ -52,18 +28,8 @@ const ORDER_STATUS_KEYS: OrderStatus[] = [
   "shipped",
   "delivered",
   "cancelled",
-];
-
-const BASE = "/supplier/dashboard/orders";
-const PAGE_SIZE = 50;
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+] as const;
+type OrderStatusKey = (typeof ORDER_STATUS_KEYS)[number];
 
 type OrderRow = {
   id: string;
@@ -77,20 +43,54 @@ type OrderRow = {
   delivery: { fullName?: string } | null;
 };
 
+function FilterChip({
+  href,
+  label,
+  count,
+  active,
+}: {
+  href: string;
+  label: string;
+  count: number;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-muted",
+      )}
+    >
+      {label}
+      <span
+        className={cn(
+          "rounded-full px-1.5 text-[11px] tabular-nums",
+          active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground",
+        )}
+      >
+        {count}
+      </span>
+    </Link>
+  );
+}
+
 export default async function SupplierOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; payment?: string }>;
 }) {
   const params = await searchParams;
-  // The dashboard deep-links single statuses ("new") and the ship queue
-  // ("new,confirmed"); anything else falls back to the full list.
-  const requested = (params.status ?? "all")
+  const paymentClaimOnly = params.payment === "claimed";
+  const requested = (params.status ?? "")
     .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is OrderStatus => (ORDER_STATUS_KEYS as string[]).includes(s));
-  const activeTab: TabKey =
-    requested.length === 1 && params.status === requested[0] ? requested[0] : "all";
+    .map((value) => value.trim())
+    .filter((value): value is OrderStatusKey =>
+      (ORDER_STATUS_KEYS as readonly string[]).includes(value),
+    );
 
   const supabase = await createClient();
   const {
@@ -106,6 +106,32 @@ export default async function SupplierOrdersPage({
   }
   const companyId = ctx.companyId;
 
+  const headCount = () =>
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", companyId);
+
+  const [
+    { count: totalCount },
+    { count: awaitingCount },
+    { count: quotedCount },
+    { count: claimCount },
+    { count: processingCount },
+    { count: shippedCount },
+    { count: deliveredCount },
+    { count: cancelledCount },
+  ] = await Promise.all([
+    headCount(),
+    headCount().eq("status", "new"),
+    headCount().eq("status", "quoted"),
+    headCount().eq("payment_status", "claimed"),
+    headCount().eq("status", "processing"),
+    headCount().eq("status", "shipped"),
+    headCount().eq("status", "delivered"),
+    headCount().eq("status", "cancelled"),
+  ]);
+
   let query = supabase
     .from("orders")
     .select(
@@ -119,131 +145,125 @@ export default async function SupplierOrdersPage({
   } else if (requested.length > 1) {
     query = query.in("status", requested);
   }
+  if (paymentClaimOnly) {
+    query = query.eq("payment_status", "claimed");
+  }
 
   const { data, error } = await query;
   if (error) {
     throw error;
   }
-  const orders = (data ?? []) as OrderRow[];
-  const filteredValue = orders.reduce((sum, o) => sum + o.subtotal, 0);
+
+  const orders: SupplierOrderListItem[] = ((data ?? []) as OrderRow[]).map(
+    (order) => ({
+      id: order.id,
+      reference: order.reference,
+      status: order.status,
+      paymentStatus: order.payment_status,
+      subtotal: Number(order.subtotal),
+      itemCount: order.item_count,
+      buyerName: order.delivery?.fullName ?? null,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+    }),
+  );
+
+  const activeKey = paymentClaimOnly
+    ? "payment-claimed"
+    : requested.length === 1
+      ? requested[0]
+      : "all";
+
+  const filters = [
+    { key: "all", label: "All orders", href: BASE, count: totalCount ?? 0 },
+    { key: "new", label: "Awaiting review", href: `${BASE}?status=new`, count: awaitingCount ?? 0 },
+    { key: "quoted", label: "Quoted", href: `${BASE}?status=quoted`, count: quotedCount ?? 0 },
+    {
+      key: "payment-claimed",
+      label: "Payment to confirm",
+      href: `${BASE}?payment=claimed`,
+      count: claimCount ?? 0,
+    },
+    {
+      key: "processing",
+      label: "Processing",
+      href: `${BASE}?status=processing`,
+      count: processingCount ?? 0,
+    },
+    { key: "shipped", label: "Shipped", href: `${BASE}?status=shipped`, count: shippedCount ?? 0 },
+    {
+      key: "delivered",
+      label: "Delivered",
+      href: `${BASE}?status=delivered`,
+      count: deliveredCount ?? 0,
+    },
+    {
+      key: "cancelled",
+      label: "Cancelled",
+      href: `${BASE}?status=cancelled`,
+      count: cancelledCount ?? 0,
+    },
+  ];
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Orders</h1>
-          <p className="text-sm text-muted-foreground">
-            Newest first · showing up to {PAGE_SIZE}
-          </p>
-        </div>
-        <Button
-          render={<Link href="/supplier/dashboard" />}
-          nativeButton={false}
-          variant="outline"
-          size="sm"
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-          Dashboard
-        </Button>
-      </div>
-
-      <nav aria-label="Order status" className="flex flex-wrap gap-1.5">
-        {ORDER_TABS.map((tab) => (
-          <Button
-            key={tab.key}
-            render={<Link href={tab.key === "all" ? BASE : `${BASE}?status=${tab.key}`} />}
-            nativeButton={false}
-            variant={activeTab === tab.key ? "default" : "outline"}
-            size="sm"
+    <div className="flex w-full flex-col gap-5">
+      <PageHeader
+        title="Orders"
+        description="Manage and fulfil your orders."
+        actions={
+          <Link
+            href="/supplier/dashboard"
+            className="text-sm font-medium text-primary hover:underline"
           >
-            {tab.label}
-          </Button>
-        ))}
-      </nav>
+            Back to dashboard
+          </Link>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiStat
-          label="Orders shown"
-          value={orders.length}
-          caption={activeTab === "all" ? "All statuses" : ORDER_TABS.find((t) => t.key === activeTab)?.label}
+          label="Total orders"
+          value={totalCount ?? 0}
+          icon={ShoppingCart01Icon}
+          accent="info"
         />
         <KpiStat
-          label="Combined value"
-          value={formatRupees(filteredValue)}
-          caption="Sum of listed orders"
+          label="Awaiting review"
+          value={awaitingCount ?? 0}
+          icon={Alert01Icon}
+          accent="warning"
+          href={`${BASE}?status=new`}
+        />
+        <KpiStat
+          label="Payments to confirm"
+          value={claimCount ?? 0}
+          icon={Wallet01Icon}
+          accent="primary"
+          href={`${BASE}?payment=claimed`}
+          caption={claimCount ? "Verify buyer claims" : undefined}
+        />
+        <KpiStat
+          label="Processing"
+          value={processingCount ?? 0}
+          icon={PackageProcessIcon}
+          accent="violet"
+          href={`${BASE}?status=processing`}
         />
       </div>
 
-      <Card className="!gap-0 !pb-0">
-        <CardHeader className="border-b border-border">
-          <CardTitle>Order list</CardTitle>
-          <CardDescription>
-            {requested.length > 0 && activeTab === "all"
-              ? `Filtered: ${requested.join(", ")}`
-              : "Every order for your store."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="!px-0">
-          {orders.length === 0 ? (
-            <Empty className="!border-0">
-              <EmptyTitle>No orders here</EmptyTitle>
-              <EmptyDescription>
-                {activeTab === "all"
-                  ? "Orders will appear once buyers start buying."
-                  : "No orders with this status. Try another filter."}
-              </EmptyDescription>
-            </Empty>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead className="hidden md:table-cell">Buyer</TableHead>
-                  <TableHead className="hidden sm:table-cell">Date</TableHead>
-                  <TableHead className="text-right tabular-nums">Items</TableHead>
-                  <TableHead className="text-right tabular-nums">Value</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Payment</TableHead>
-                  <TableHead className="hidden xl:table-cell">Updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <Link
-                        href={`${BASE}/${order.id}`}
-                        className="font-mono text-xs font-medium underline-offset-2 hover:underline"
-                      >
-                        {order.reference}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="hidden max-w-32 truncate text-muted-foreground md:table-cell">
-                      {order.delivery?.fullName ?? "—"}
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
-                      {formatDate(order.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{order.item_count}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatRupees(order.subtotal)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status="order" value={order.status} />
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <StatusBadge status="payment" value={order.payment_status} />
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
-                      {formatDate(order.updated_at)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap gap-2">
+        {filters.map((filter) => (
+          <FilterChip
+            key={filter.key}
+            href={filter.href}
+            label={filter.label}
+            count={filter.count}
+            active={activeKey === filter.key}
+          />
+        ))}
+      </div>
+
+      <SupplierOrdersTable orders={orders} basePath={BASE} />
     </div>
   );
 }

@@ -174,8 +174,14 @@ export async function setOrderPaymentStatus(
 
   const order = await loadOwnOrder(supabase, user.id, parsed.data.orderId);
   if (!order) return err("Order not found.");
+
+  const resolvingClaim = order.payment_status === "claimed";
   const action: SupplierOrderAction =
-    parsed.data.paymentStatus === "paid" ? "mark_paid" : "mark_payment_pending";
+    parsed.data.paymentStatus === "paid"
+      ? "mark_paid"
+      : resolvingClaim
+        ? "mark_payment_not_received"
+        : "mark_payment_pending";
   if (!canAct(order, action)) {
     return err("Payment status can't be changed for this order.");
   }
@@ -194,12 +200,16 @@ export async function setOrderPaymentStatus(
   }
   if (parsed.data.paymentStatus === "paid") {
     await queueAndDeliver(supabase, order.id, "payment_confirmed_buyer");
+  } else if (resolvingClaim) {
+    await queueAndDeliver(supabase, order.id, "payment_not_received_buyer");
   }
   refreshOrderPaths(order.id);
   return ok(
     parsed.data.paymentStatus === "paid"
-      ? "Marked as paid. Your confirmation is recorded."
-      : "Marked as awaiting payment.",
+      ? "Payment received. Your confirmation is recorded."
+      : resolvingClaim
+        ? "Marked as not received. The buyer can submit the reference again."
+        : "Marked as awaiting payment.",
   );
 }
 

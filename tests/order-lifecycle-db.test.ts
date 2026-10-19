@@ -596,6 +596,77 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
     });
   });
 
+  describe("quotations (DB)", () => {
+    let quoteOrderId: string;
+    let quoteItemId: string;
+
+    beforeAll(async () => {
+      quoteOrderId = await makeOrder(companyId, buyerUserId, { status: "new" });
+      const { data: item, error } = await service
+        .from("order_items")
+        .insert({
+          order_id: quoteOrderId,
+          product_id: productId,
+          variant_id: null,
+          quantity: 3,
+          unit_price: 100,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      quoteItemId = item!.id as string;
+    });
+
+    it("creates a quotation and moves the order to quoted", async () => {
+      const { data, error } = await supplierClient.rpc("create_quotation", {
+        p_order_id: quoteOrderId,
+        p_lines: [{ order_item_id: quoteItemId, quantity: 2, unit_price: 90.5 }],
+        p_delivery_charge: 40,
+        p_tax_amount: 10,
+        p_note: "Revised pricing",
+        p_expires_at: null,
+      });
+      expect(error).toBeNull();
+
+      const quote = data as {
+        quotation_id: string;
+        version: number;
+        subtotal: number;
+        total: number;
+      } | null;
+      expect(quote?.version).toBe(1);
+      expect(Number(quote?.subtotal)).toBeCloseTo(181);
+      expect(Number(quote?.total)).toBeCloseTo(231);
+
+      const { data: order } = await service
+        .from("orders")
+        .select("status")
+        .eq("id", quoteOrderId)
+        .single();
+      expect(order?.status).toBe("quoted");
+
+      const { data: items } = await service
+        .from("quotation_items")
+        .select("order_item_id, quantity, unit_price, line_total")
+        .eq("quotation_id", quote?.quotation_id as string);
+      expect(items ?? []).toHaveLength(1);
+      expect(Number(items?.[0]?.line_total)).toBeCloseTo(181);
+    });
+
+    it("rejects a line that does not belong to the order", async () => {
+      const otherOrderId = await makeOrder(companyId, buyerUserId, { status: "new" });
+      const { error } = await supplierClient.rpc("create_quotation", {
+        p_order_id: otherOrderId,
+        p_lines: [{ order_item_id: quoteItemId, quantity: 1, unit_price: 1 }],
+        p_delivery_charge: 0,
+        p_tax_amount: 0,
+        p_note: null,
+        p_expires_at: null,
+      });
+      expect(error?.message).toContain("must match the ordered items");
+    });
+  });
+
   describe("notification outbox (DB)", () => {
     it("queues a supplier-addressed alert with the resolved recipient", async () => {
       const { data: outboxId, error } = await buyerClient.rpc(

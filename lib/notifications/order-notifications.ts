@@ -25,7 +25,9 @@ export type NotificationTemplate =
   | "order_rejected_buyer"
   | "order_shipped_buyer"
   | "order_delivered_buyer"
-  | "payment_confirmed_buyer";
+  | "payment_confirmed_buyer"
+  | "payment_claimed_supplier"
+  | "payment_not_received_buyer";
 
 /** Only non-address facts — mirrors what queue_order_notification stores. */
 export type NotificationPayload = {
@@ -36,6 +38,7 @@ export type NotificationPayload = {
   reason?: string;
   carrier?: string | null;
   tracking_ref?: string | null;
+  payment_reference?: string | null;
 };
 
 const buyerUrl = (orderId: string) => `${SITE_URL}/orders/${orderId}`;
@@ -72,6 +75,10 @@ export function notificationText(
       return `Order ${ref} is marked delivered. Details: ${buyerUrl(orderId)}`;
     case "payment_confirmed_buyer":
       return `The supplier confirmed payment received for order ${ref}. Details: ${buyerUrl(orderId)}`;
+    case "payment_claimed_supplier":
+      return `The buyer says they paid ${formatRupees(payload.total ?? 0)} for order ${ref}${payload.payment_reference ? ` (ref ${payload.payment_reference})` : ""}. Verify and confirm: ${supplierUrl(orderId)}`;
+    case "payment_not_received_buyer":
+      return `The supplier could not find your payment for order ${ref}. Check the reference or submit it again: ${buyerUrl(orderId)}`;
     default:
       return null;
   }
@@ -87,6 +94,8 @@ export const NOTIFICATION_LABELS: Record<NotificationTemplate, string> = {
   order_shipped_buyer: "Order shipped",
   order_delivered_buyer: "Order delivered",
   payment_confirmed_buyer: "Payment confirmed",
+  payment_claimed_supplier: "Payment submitted",
+  payment_not_received_buyer: "Payment not received",
 };
 
 /**
