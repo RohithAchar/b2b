@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { NAV_LINKS } from "@/lib/nav"
+import { navLinksFor } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
@@ -24,6 +24,7 @@ export function StorefrontHeader({
   cartCount?: number
 }) {
   const [scrolled, setScrolled] = useState(false)
+  const navLinks = navLinksFor(user)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
@@ -55,7 +56,7 @@ export function StorefrontHeader({
 
           {/* Nav links (desktop) */}
           <nav className="hidden items-center gap-0.5 lg:flex">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}

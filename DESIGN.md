@@ -138,6 +138,11 @@ Three tiers on desktop: (1) logo + nav + auth actions, (2) full-width search,
 (3) horizontal category rail. On mobile only tier 1 remains (menu + logo); the
 search tier, category rail and header auth actions are hidden because the
 [bottom navigation](#mobile-bottom-navigation) covers those destinations.
+Nav links come from `navLinksFor(user)` (`lib/nav.ts`): the discovery links
+always, plus **Orders** (`/orders`) for every signed-in user — buyers otherwise
+reach their orders only through the account menu, and suppliers/admins shop
+too. Their own order queues stay in the account menu. Signed-out visitors keep
+the discovery-only list.
 The bar is a **translucent material** (`material` utility): content scrolls
 underneath it, and it carries `scroll-edge` with `data-scrolled` toggled by a
 passive scroll listener so the fade at the content boundary appears only when
