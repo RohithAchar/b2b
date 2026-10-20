@@ -1,34 +1,35 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Menu01Icon } from "@hugeicons/core-free-icons";
-import { NAV_LINKS, dashboardHref } from "@/lib/nav";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { useState } from "react"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Menu01Icon } from "@hugeicons/core-free-icons"
+import { navLinksFor, dashboardHref } from "@/lib/nav"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
   SheetContent,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet";
-import { signOut } from "@/lib/auth/actions";
+} from "@/components/ui/sheet"
+import { signOut } from "@/lib/auth/actions"
 
-type User = { email: string; user_type: string; isStaff?: boolean } | null;
-type NavCategory = { slug: string; name: string };
+type User = { email: string; user_type: string; isStaff?: boolean } | null
+type NavCategory = { slug: string; name: string }
 
 export function MobileNav({
   user,
   categories = [],
 }: {
-  user: User;
-  categories?: NavCategory[];
+  user: User
+  categories?: NavCategory[]
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
+  const navLinks = navLinksFor(user)
   // The header persists across client-side navigations, so every link
   // must close the Sheet explicitly.
-  const close = () => setOpen(false);
+  const close = () => setOpen(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
@@ -48,7 +49,7 @@ export function MobileNav({
           aria-label="Mobile"
           className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-3"
         >
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
@@ -61,7 +62,7 @@ export function MobileNav({
           {categories.length > 0 ? (
             <>
               <Separator className="my-3" />
-              <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 Categories
               </p>
               {categories.map((cat) => (
@@ -118,5 +119,5 @@ export function MobileNav({
         </nav>
       </SheetContent>
     </Sheet>
-  );
+  )
 }
