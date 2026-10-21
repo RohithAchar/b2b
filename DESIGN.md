@@ -271,6 +271,28 @@ Audience, Appearance, Plugins, Settings (expandable).
   (chevron rotates on the group's `data-open`). All header/footer/`SidebarRail` and
   `collapsible="icon"` behavior is unchanged.
 
+### Loading states (`components/*/skeletons.tsx`, `app/**/loading.tsx`)
+
+Every route segment owns a `loading.tsx` whose skeleton mirrors the real page —
+same container width, section order, grid columns, card heights and row counts —
+so navigation never reflows when content arrives.
+
+- Compose the shared primitives instead of hand-rolling:
+  `ProductGridSkeleton`, `OrderListSkeleton`, `OrderDetailSkeleton`,
+  `CartSkeleton`, `CheckoutSkeleton`, `AccountSkeleton`,
+  `SearchHeroSkeleton` (`components/storefront/skeletons.tsx`);
+  `PageHeaderSkeleton`, `KpiRowSkeleton`, `ChipRowSkeleton`,
+  `TableCardSkeleton`, `FormSectionSkeleton`, `ProductFormSkeleton`,
+  `CategoryFormSkeleton`, `BannerFormSkeleton`, `ItemRowsSkeleton`,
+  `DetailCardSkeleton` (`components/dashboard/skeletons.tsx`).
+- Use the real layout wrappers (bordered `div`, `Card`, the same grid classes)
+  with `Skeleton` blocks for content — never one grey rectangle for a whole page.
+- Mirror radii (`rounded-sm` badges, `rounded-md` controls, `rounded-lg` cards,
+  `rounded-full` chips) and heights (`h-9` controls, `h-10` table headers,
+  `h-14` rows, `h-[72px]` KPI cards).
+- Skeletons are decorative: `aria-hidden` on the tree, no fake counts, labels or
+  focusable controls. `animate-pulse` stops under `prefers-reduced-motion`.
+
 ---
 
 ## 6. Do / Don't
@@ -285,6 +307,7 @@ Audience, Appearance, Plugins, Settings (expandable).
 | Springs from `lib/motion.ts`, press feedback on pointer-down | Overshoot on menus/dialogs, feedback on release only      |
 | `material` + `scroll-edge` for floating chrome               | Opaque bars, hard 1px dividers under sticky UI            |
 | `MotionConfig reducedMotion="user"` + the CSS media queries  | Animating transform/opacity without a reduced-motion path |
+| A route `loading.tsx` that mirrors the real page layout      | One generic skeleton reused for unrelated routes          |
 
 ---
 

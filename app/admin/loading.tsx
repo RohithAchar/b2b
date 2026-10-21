@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AdminLoading() {
   return (
-    <div aria-hidden className="space-y-4">
+    <div aria-hidden className="flex flex-col gap-4">
       <Skeleton className="h-8 w-64" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
