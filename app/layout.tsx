@@ -4,7 +4,7 @@ import { MotionConfig } from "motion/react"
 
 import "./globals.css"
 import { Toaster } from "@/components/ui/toast"
-import { PhoneGate } from "@/components/auth/phone-gate"
+import { PhoneGate } from "@/components/auth/phone-gate-lazy"
 import { cn } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
 
@@ -42,6 +42,9 @@ const inter = Inter({
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  // Only used on order/payment and dashboard screens; don't preload it on
+  // the storefront's first paint.
+  preload: false,
 })
 
 export default function RootLayout({

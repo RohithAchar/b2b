@@ -16,10 +16,13 @@ import {
 } from "@/components/ui/select"
 import { FilterIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useState } from "react"
+import { useId, useState, useTransition } from "react"
 
-
-export function buildCategoryLink(query: string, slug: string, imageToken = "") {
+export function buildCategoryLink(
+  query: string,
+  slug: string,
+  imageToken = ""
+) {
   const sp = new URLSearchParams()
   sp.set("category", slug)
   if (query) sp.set("q", query)
@@ -52,6 +55,13 @@ export function ProductsFilterBar() {
   const imageToken = searchParams.get("img") ?? ""
 
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const minPriceId = useId()
+  const maxPriceId = useId()
+  const minMoqId = useId()
+  const maxMoqId = useId()
+
+  const navigate = (url: string) => startTransition(() => router.push(url))
 
   const activeFilterCount = [
     minPrice,
@@ -79,9 +89,11 @@ export function ProductsFilterBar() {
     if (finalMaxMoq) sp.set("maxMoq", finalMaxMoq)
     const finalInStock = overrides.inStock ?? (inStock ? "true" : undefined)
     if (finalInStock === "true") sp.set("inStock", "true")
-    const finalNegotiable = overrides.negotiable ?? (negotiable ? "true" : undefined)
+    const finalNegotiable =
+      overrides.negotiable ?? (negotiable ? "true" : undefined)
     if (finalNegotiable === "true") sp.set("negotiable", "true")
-    const finalSampleAvailable = overrides.sampleAvailable ?? (sampleAvailable ? "true" : undefined)
+    const finalSampleAvailable =
+      overrides.sampleAvailable ?? (sampleAvailable ? "true" : undefined)
     if (finalSampleAvailable === "true") sp.set("sampleAvailable", "true")
     // Image search is a candidate pool, so it rides along with every filter.
     if (imageToken) sp.set("img", imageToken)
@@ -97,7 +109,7 @@ export function ProductsFilterBar() {
   }
 
   return (
-    <div className="mb-4 flex flex-col gap-3">
+    <div className="mb-4 flex flex-col gap-3" aria-busy={isPending}>
       {/* Searching happens in the storefront header on desktop and the mobile
           bottom-nav sheet on small screens. This bar only narrows results. */}
 
@@ -138,7 +150,9 @@ export function ProductsFilterBar() {
             variant={categorySlug === cat.slug ? "default" : "outline"}
             nativeButton={false}
             className="rounded-sm"
-            render={<Link href={buildCategoryLink(query, cat.slug, imageToken)} />}
+            render={
+              <Link href={buildCategoryLink(query, cat.slug, imageToken)} />
+            }
           >
             {cat.name}
           </Button>
@@ -150,10 +164,10 @@ export function ProductsFilterBar() {
         <Select
           value={sort}
           onValueChange={(value) => {
-            router.push(buildUrl({ sort: value ?? undefined }))
+            navigate(buildUrl({ sort: value ?? undefined }))
           }}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger aria-label="Sort products" className="w-44">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -171,8 +185,13 @@ export function ProductsFilterBar() {
           variant={filtersOpen || activeFilterCount > 0 ? "default" : "outline"}
           onClick={() => setFiltersOpen(!filtersOpen)}
           aria-expanded={filtersOpen}
+          aria-controls="product-filters"
         >
-          <HugeiconsIcon icon={FilterIcon} strokeWidth={2} data-icon="inline-start" />
+          <HugeiconsIcon
+            icon={FilterIcon}
+            strokeWidth={2}
+            data-icon="inline-start"
+          />
           Filters
           {activeFilterCount > 0 && (
             <Badge variant="secondary" className="ml-1">
@@ -182,10 +201,7 @@ export function ProductsFilterBar() {
         </Button>
 
         {activeFilterCount > 0 && (
-          <Button
-            variant="ghost"
-            render={<Link href={clearAllUrl()} />}
-          >
+          <Button variant="ghost" render={<Link href={clearAllUrl()} />}>
             Clear all
           </Button>
         )}
@@ -193,96 +209,119 @@ export function ProductsFilterBar() {
 
       {/* Filter panel */}
       {filtersOpen && (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div
+          id="product-filters"
+          className="rounded-lg border border-border bg-card p-4"
+        >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor={minPriceId}
+                className="mb-1 block text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+              >
                 Min Price
               </label>
               <Input
+                id={minPriceId}
                 type="number"
                 min={0}
                 placeholder="Min price"
                 defaultValue={minPrice}
                 onBlur={(e) => {
                   if (e.target.value !== minPrice) {
-                    router.push(buildUrl({ minPrice: e.target.value || undefined }))
+                    navigate(
+                      buildUrl({ minPrice: e.target.value || undefined })
+                    )
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    router.push(buildUrl({ minPrice: val }))
+                    navigate(buildUrl({ minPrice: val }))
                   }
                 }}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor={maxPriceId}
+                className="mb-1 block text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+              >
                 Max Price
               </label>
               <Input
+                id={maxPriceId}
                 type="number"
                 min={0}
                 placeholder="Max price"
                 defaultValue={maxPrice}
                 onBlur={(e) => {
                   if (e.target.value !== maxPrice) {
-                    router.push(buildUrl({ maxPrice: e.target.value || undefined }))
+                    navigate(
+                      buildUrl({ maxPrice: e.target.value || undefined })
+                    )
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    router.push(buildUrl({ maxPrice: val }))
+                    navigate(buildUrl({ maxPrice: val }))
                   }
                 }}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor={minMoqId}
+                className="mb-1 block text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+              >
                 Min MOQ
               </label>
               <Input
+                id={minMoqId}
                 type="number"
                 min={1}
                 placeholder="Min MOQ"
                 defaultValue={minMoq}
                 onBlur={(e) => {
                   if (e.target.value !== minMoq) {
-                    router.push(buildUrl({ minMoq: e.target.value || undefined }))
+                    navigate(buildUrl({ minMoq: e.target.value || undefined }))
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    router.push(buildUrl({ minMoq: val }))
+                    navigate(buildUrl({ minMoq: val }))
                   }
                 }}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor={maxMoqId}
+                className="mb-1 block text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+              >
                 Max MOQ
               </label>
               <Input
+                id={maxMoqId}
                 type="number"
                 min={1}
                 placeholder="Max MOQ"
                 defaultValue={maxMoq}
                 onBlur={(e) => {
                   if (e.target.value !== maxMoq) {
-                    router.push(buildUrl({ maxMoq: e.target.value || undefined }))
+                    navigate(buildUrl({ maxMoq: e.target.value || undefined }))
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
                     const val = e.currentTarget.value || undefined
-                    router.push(buildUrl({ maxMoq: val }))
+                    navigate(buildUrl({ maxMoq: val }))
                   }
                 }}
               />
@@ -294,7 +333,9 @@ export function ProductsFilterBar() {
                 type="checkbox"
                 checked={inStock}
                 onChange={(e) => {
-                  router.push(buildUrl({ inStock: e.target.checked ? "true" : undefined }))
+                  navigate(
+                    buildUrl({ inStock: e.target.checked ? "true" : undefined })
+                  )
                 }}
                 className="size-5 rounded-sm border-border"
               />
@@ -305,7 +346,11 @@ export function ProductsFilterBar() {
                 type="checkbox"
                 checked={negotiable}
                 onChange={(e) => {
-                  router.push(buildUrl({ negotiable: e.target.checked ? "true" : undefined }))
+                  navigate(
+                    buildUrl({
+                      negotiable: e.target.checked ? "true" : undefined,
+                    })
+                  )
                 }}
                 className="size-5 rounded-sm border-border"
               />
@@ -316,7 +361,11 @@ export function ProductsFilterBar() {
                 type="checkbox"
                 checked={sampleAvailable}
                 onChange={(e) => {
-                  router.push(buildUrl({ sampleAvailable: e.target.checked ? "true" : undefined }))
+                  navigate(
+                    buildUrl({
+                      sampleAvailable: e.target.checked ? "true" : undefined,
+                    })
+                  )
                 }}
                 className="size-5 rounded-sm border-border"
               />

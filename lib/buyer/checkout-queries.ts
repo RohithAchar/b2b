@@ -60,20 +60,35 @@ export async function getCheckoutPreview(
 
   const rawGroups = groupCartLinesBySupplier(summary.lines);
 
-  const couponRows = await Promise.all(
-    rawGroups.map(async (group) => {
-      const code = savedCoupons[group.supplierId];
-      if (!code) return null;
-      const { data } = await supabase
-        .from("coupons")
-        .select(COUPON_RULE_COLUMNS)
-        .eq("supplier_id", group.supplierId)
-        .eq("code", code)
-        .eq("is_active", true)
-        .maybeSingle();
-      return (data as unknown as CouponRule | null) ?? null;
-    }),
-  );
+  // Re-validate every saved code in one round-trip instead of one query per
+  // supplier group.
+  const savedEntries = rawGroups.flatMap((group) => {
+    const code = savedCoupons[group.supplierId];
+    return code ? [{ supplierId: group.supplierId, code }] : [];
+  });
+  const couponByKey = new Map<string, CouponRule>();
+  if (savedEntries.length > 0) {
+    const { data: couponData } = await supabase
+      .from("coupons")
+      .select(`supplier_id, ${COUPON_RULE_COLUMNS}`)
+      .in(
+        "supplier_id",
+        [...new Set(savedEntries.map((entry) => entry.supplierId))],
+      )
+      .in("code", [...new Set(savedEntries.map((entry) => entry.code))])
+      .eq("is_active", true);
+    for (const row of (couponData ?? []) as unknown as (CouponRule & {
+      supplier_id: string;
+    })[]) {
+      couponByKey.set(`${row.supplier_id}:${row.code}`, row);
+    }
+  }
+
+  const couponRows = rawGroups.map((group) => {
+    const code = savedCoupons[group.supplierId];
+    if (!code) return null;
+    return couponByKey.get(`${group.supplierId}:${code}`) ?? null;
+  });
 
   const groups: CheckoutGroup[] = rawGroups.map((group, index) => {
     let coupon: CheckoutGroupCoupon | null = null;

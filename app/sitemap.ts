@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { SITE_URL } from "@/lib/site";
+
+const absolute = (path: string) => `${SITE_URL}${path}`;
 
 const PAGE_SIZE = 5000;
 
@@ -19,23 +22,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   return [
-    { url: "/", lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: "/products", lastModified: now, changeFrequency: "daily", priority: 0.9 },
-    { url: "/categories", lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: absolute("/"), lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: absolute("/products"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: absolute("/categories"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     ...((categories ?? []) as { slug: string }[]).map((category) => ({
-      url: `/category/${category.slug}`,
+      url: absolute(`/category/${category.slug}`),
       lastModified: now,
       changeFrequency: "daily" as const,
       priority: 0.8,
     })),
     ...((products ?? []) as { id: string }[]).map((product) => ({
-      url: `/products/${product.id}`,
+      url: absolute(`/products/${product.id}`),
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.6,
     })),
     ...((suppliers ?? []) as { id: string }[]).map((supplier) => ({
-      url: `/store/${supplier.id}`,
+      url: absolute(`/store/${supplier.id}`),
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.5,

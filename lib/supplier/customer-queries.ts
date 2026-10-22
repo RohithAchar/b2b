@@ -63,11 +63,12 @@ export async function getAudienceCustomers(
       `name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern},city.ilike.${pattern}`,
     );
   }
-  const { data, error } = await query;
+  const [{ data, error }, stats] = await Promise.all([
+    query,
+    buyerOrderStats(supabase, supplierId),
+  ]);
   if (error) throw new Error(`Audience customers query failed: ${error.message}`);
   const rows = (data ?? []) as CustomerRow[];
-
-  const stats = await buyerOrderStats(supabase, supplierId);
 
   const phoneFreq = new Map<string, number>();
   const emailFreq = new Map<string, number>();

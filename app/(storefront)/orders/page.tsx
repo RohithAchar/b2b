@@ -17,6 +17,7 @@ import { formatRupees } from "@/lib/format"
 export const metadata: Metadata = {
   title: "My Orders",
   description: "Track every order you have placed on this marketplace.",
+  robots: { index: false, follow: false },
 }
 
 const BASE = "/orders"

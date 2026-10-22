@@ -25,7 +25,7 @@ import {
 import { getProductAnalytics } from "@/lib/supplier/product-analytics";
 import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter";
 import { InfoTip } from "@/components/dashboard/metric-card";
-import { TrafficChart } from "@/components/dashboard/traffic-chart";
+import { TrafficChart } from "@/components/dashboard/lazy-charts";
 import { ShareBars } from "@/components/dashboard/share-bars";
 
 const PRODUCTS_BASE = "/supplier/dashboard/analytics/products";

@@ -253,21 +253,21 @@ export default async function BuyerOrderPage({
 
   const orderItems = (items ?? []) as unknown as ItemRow[];
   const quoteRows = (quotations ?? []) as unknown as QuotationRow[];
-  const itemImages = await getOrderItemImages(
-    supabase,
-    orderItems.map((item) => item.product_id),
-  );
-
   const quoteIds = quoteRows.map((quote) => quote.id);
-  const { data: quotationItemRows } =
+  const [{ data: quotationItemRows }, itemImages] = await Promise.all([
     quoteIds.length > 0
-      ? await supabase
+      ? supabase
           .from("quotation_items")
           .select(
             "quotation_id, title, variant_label, unit, quantity, unit_price, line_total",
           )
           .in("quotation_id", quoteIds)
-      : { data: [] };
+      : Promise.resolve({ data: [] as unknown[] }),
+    getOrderItemImages(
+      supabase,
+      orderItems.map((item) => item.product_id),
+    ),
+  ]);
   const quotationItems = (quotationItemRows ?? []) as unknown as QuotationItemRow[];
 
   const supplierName =

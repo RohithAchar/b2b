@@ -36,7 +36,15 @@ function coverUrl(product: ProductCardData): string {
   })
 }
 
-export function ProductCard({ product }: { product: ProductCardData }) {
+export function ProductCard({
+  product,
+  priority = false,
+  sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw",
+}: {
+  product: ProductCardData
+  priority?: boolean
+  sizes?: string
+}) {
   const isPlaceholder = !product.images || product.images.length === 0
   const supplier = product.supplier?.business_name
   const location = [product.supplier?.city, product.supplier?.state]
@@ -56,7 +64,8 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               src={coverUrl(product)}
               alt={product.title}
               fill
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+              priority={priority}
+              sizes={sizes}
               className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
           )}

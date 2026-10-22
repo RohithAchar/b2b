@@ -31,6 +31,12 @@ export const metadata: Metadata = {
   description:
     "Explore wholesale categories — textiles, electronics, chemicals, packaging, machinery and more from verified Indian suppliers.",
   alternates: { canonical: "/categories" },
+  openGraph: {
+    title: "Browse Categories",
+    description:
+      "Explore wholesale categories — textiles, electronics, chemicals, packaging, machinery and more from verified Indian suppliers.",
+    url: "/categories",
+  },
 }
 
 function CategoriesSkeleton() {

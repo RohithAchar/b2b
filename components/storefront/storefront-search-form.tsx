@@ -56,6 +56,7 @@ export function StorefrontSearchForm({
       >
         <Input
           name="q"
+          aria-label="Search products"
           value={value}
           autoFocus={autoFocus}
           placeholder="Search products, suppliers, brands or categories..."

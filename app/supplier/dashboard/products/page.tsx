@@ -187,20 +187,25 @@ export default async function SupplierProductsPage({
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
   const ids = (products ?? []).map((p) => p.id);
-  const pricing = await fetchCustomerPricing(
-    supabase,
-    ids.map((id) => ({ id, margin_pct: company.margin_pct })),
-  );
+  const [pricing, { data: images }] = await Promise.all([
+    fetchCustomerPricing(
+      supabase,
+      ids.map((id) => ({ id, margin_pct: company.margin_pct })),
+    ),
+    ids.length > 0
+      ? supabase
+          .from("product_images")
+          .select("product_id, path")
+          .in("product_id", ids)
+          .order("sort")
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
   const covers = new Map<string, string>();
-  if (ids.length > 0) {
-    const { data: images } = await supabase
-      .from("product_images")
-      .select("product_id, path")
-      .in("product_id", ids)
-      .order("sort");
-    for (const img of images ?? []) {
-      if (!covers.has(img.product_id)) covers.set(img.product_id, img.path);
-    }
+  for (const img of (images ?? []) as {
+    product_id: string;
+    path: string;
+  }[]) {
+    if (!covers.has(img.product_id)) covers.set(img.product_id, img.path);
   }
 
   const rows: ProductRow[] = (products ?? []).map((p) => ({

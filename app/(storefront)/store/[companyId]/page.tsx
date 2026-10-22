@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -11,6 +12,7 @@ import {
 } from "@/components/storefront/product-card";
 import { createClient } from "@/lib/supabase/server";
 import { fetchCustomerPriceMap } from "@/lib/storefront";
+import { publicTransformedImageUrl } from "@/lib/storage";
 
 type StorePageProps = {
   params: Promise<{ companyId: string }>;
@@ -24,22 +26,36 @@ type SupplierRow = {
   logo_path: string | null;
 };
 
-export async function generateMetadata({ params }: StorePageProps): Promise<Metadata> {
-  const { companyId } = await params;
+/**
+ * Metadata and the page both need the supplier row; `cache` keeps that to one
+ * query per request.
+ */
+const getStorefrontSupplier = cache(async (companyId: string) => {
   const supabase = await createClient();
-  const { data: supplier } = await supabase
+  const { data } = await supabase
     .from("storefront_suppliers")
-    .select("business_name, city, state")
+    .select("id, business_name, city, state, logo_path")
     .eq("id", companyId)
     .maybeSingle();
-  if (!supplier) return {};
-  const store = supplier as Pick<SupplierRow, "business_name" | "city" | "state">;
+  return (data as SupplierRow | null) ?? null;
+});
+
+export async function generateMetadata({ params }: StorePageProps): Promise<Metadata> {
+  const { companyId } = await params;
+  const store = await getStorefrontSupplier(companyId);
+  if (!store) return {};
   const location = [store.city, store.state].filter(Boolean).join(", ");
   const title = `${store.business_name} — Verified Supplier Store`;
   return {
     title,
     description: `Shop wholesale products from ${store.business_name}${location ? `, ${location}` : ""} — a verified supplier with live pricing and MOQs.`,
     alternates: { canonical: `/store/${companyId}` },
+    openGraph: {
+      title,
+      description: `Shop wholesale products from ${store.business_name}${location ? `, ${location}` : ""} — a verified supplier with live pricing and MOQs.`,
+      url: `/store/${companyId}`,
+      type: "website",
+    },
   };
 }
 
@@ -56,26 +72,23 @@ export default async function SupplierStorePage({ params }: StorePageProps) {
   const { companyId } = await params;
   const supabase = await createClient();
 
-  // Public, verified-only projection — no PAN/GSTIN/bank columns exposed.
-  const { data: supplier } = await supabase
-    .from("storefront_suppliers")
-    .select("id, business_name, city, state, logo_path")
-    .eq("id", companyId)
-    .maybeSingle();
+  // Public, verified-only projection — no PAN/GSTIN/bank columns exposed. The
+  // product query keys off `companyId` too, so both run together.
+  const [store, { data: products }] = await Promise.all([
+    getStorefrontSupplier(companyId),
+    supabase
+      .from("products")
+      .select("id, title, unit, moq, negotiable, images:product_images(path, sort)")
+      .eq("supplier_id", companyId)
+      .eq("status", "approved")
+      .eq("is_hidden", false)
+      .order("created_at", { ascending: false })
+      .limit(48),
+  ]);
 
-  if (!supplier) {
+  if (!store) {
     notFound();
   }
-  const store = supplier as SupplierRow;
-
-  const { data: products } = await supabase
-    .from("products")
-    .select("id, title, unit, moq, negotiable, images:product_images(path, sort)")
-    .eq("supplier_id", store.id)
-    .eq("status", "approved")
-    .eq("is_hidden", false)
-    .order("created_at", { ascending: false })
-    .limit(48);
 
   const rows = (products ?? []) as ProductRow[];
   const priceMap = await fetchCustomerPriceMap(
@@ -93,7 +106,9 @@ export default async function SupplierStorePage({ params }: StorePageProps) {
         {store.logo_path ? (
           <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
             <Image
-              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/company_logos/${store.logo_path}`}
+              src={publicTransformedImageUrl("company_logos", store.logo_path, {
+                width: 112,
+              })}
               alt=""
               fill
               sizes="56px"
@@ -133,7 +148,7 @@ export default async function SupplierStorePage({ params }: StorePageProps) {
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {rows.map((p) => {
+          {rows.map((p, index) => {
             const card: ProductCardData = {
               id: p.id,
               title: p.title,
@@ -149,7 +164,14 @@ export default async function SupplierStorePage({ params }: StorePageProps) {
                 logo_path: store.logo_path,
               },
             };
-            return <ProductCard key={p.id} product={card} />;
+            return (
+              <ProductCard
+                key={p.id}
+                product={card}
+                priority={index === 0}
+                sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
+              />
+            );
           })}
         </div>
       )}

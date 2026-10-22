@@ -36,23 +36,18 @@ export default async function AdminQueuePage({ searchParams }: AdminQueuePagePro
 
   const supabase = await createClient();
 
-  const { count: pendingCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "pending");
-  const { count: verifiedCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "verified");
-  const { count: rejectedCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "rejected");
-
+  const countResults = await Promise.all(
+    (["pending", "verified", "rejected"] as const).map((status) =>
+      supabase
+        .from("companies")
+        .select("id", { count: "exact", head: true })
+        .eq("kyb_status", status),
+    ),
+  );
   const counts: Record<TabKey, number> = {
-    pending: pendingCount ?? 0,
-    verified: verifiedCount ?? 0,
-    rejected: rejectedCount ?? 0,
+    pending: countResults[0]?.count ?? 0,
+    verified: countResults[1]?.count ?? 0,
+    rejected: countResults[2]?.count ?? 0,
   };
 
   let query = supabase

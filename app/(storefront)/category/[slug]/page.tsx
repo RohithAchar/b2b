@@ -47,6 +47,11 @@ export async function generateMetadata({
     title,
     description: `Source wholesale ${name} products with live pricing and MOQs from verified Indian suppliers.`,
     alternates: { canonical: `/category/${slug}` },
+    openGraph: {
+      title,
+      description: `Source wholesale ${name} products with live pricing and MOQs from verified Indian suppliers.`,
+      url: `/category/${slug}`,
+    },
   }
 }
 
@@ -89,10 +94,12 @@ async function CategoryProductListings({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {products.map((product) => (
+          {products.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product as ProductCardData}
+              priority={index === 0}
+              sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
             />
           ))}
         </div>

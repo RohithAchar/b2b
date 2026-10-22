@@ -27,9 +27,9 @@ export function AuthShell({
           <p className="text-xs font-bold uppercase tracking-widest text-primary">
             Wholesale Marketplace from India
           </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-balance">
+          <p className="mt-3 text-3xl font-bold tracking-tight text-balance">
             {heading}
-          </h1>
+          </p>
 
           <ol className="mt-8 flex max-w-md flex-col gap-3">
             {steps.map((step, i) => (
@@ -61,7 +61,10 @@ export function AuthShell({
           </span>
         </div>
       </div>
-      <div className="flex items-center justify-center p-6">{children}</div>
+      <div className="flex items-center justify-center p-6">
+        <h1 className="sr-only">{heading}</h1>
+        {children}
+      </div>
     </div>
   );
 }

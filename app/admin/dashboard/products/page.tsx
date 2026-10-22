@@ -58,13 +58,17 @@ export default async function AdminProductsPage({
   const supabase = await createClient();
 
   const counts: Record<TabKey, number> = { pending: 0, approved: 0, rejected: 0 };
-  for (const t of TABS) {
-    const { count } = await supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("status", t.key);
-    counts[t.key] = count ?? 0;
-  }
+  const countResults = await Promise.all(
+    TABS.map((t) =>
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("status", t.key),
+    ),
+  );
+  TABS.forEach((t, index) => {
+    counts[t.key] = countResults[index]?.count ?? 0;
+  });
 
   let query = supabase
     .from("products")
@@ -75,23 +79,28 @@ export default async function AdminProductsPage({
   const { data: products } = await query;
 
   const ids = (products ?? []).map((p) => p.id);
-  const pricing = await fetchCustomerPricing(
-    supabase,
-    (products ?? []).map((p) => ({
-      id: p.id as string,
-      margin_pct: supplierMarginPct(p.supplier),
-    })),
-  );
+  const [pricing, { data: images }] = await Promise.all([
+    fetchCustomerPricing(
+      supabase,
+      (products ?? []).map((p) => ({
+        id: p.id as string,
+        margin_pct: supplierMarginPct(p.supplier),
+      })),
+    ),
+    ids.length > 0
+      ? supabase
+          .from("product_images")
+          .select("product_id, path")
+          .in("product_id", ids)
+          .order("sort")
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
   const covers = new Map<string, string>();
-  if (ids.length > 0) {
-    const { data: images } = await supabase
-      .from("product_images")
-      .select("product_id, path")
-      .in("product_id", ids)
-      .order("sort");
-    for (const img of images ?? []) {
-      if (!covers.has(img.product_id)) covers.set(img.product_id, img.path);
-    }
+  for (const img of (images ?? []) as {
+    product_id: string;
+    path: string;
+  }[]) {
+    if (!covers.has(img.product_id)) covers.set(img.product_id, img.path);
   }
 
   function imageUrl(path: string): string {

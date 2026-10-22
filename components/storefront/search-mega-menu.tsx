@@ -154,6 +154,7 @@ export function SearchMegaMenu({
               <div className="relative min-w-0 flex-1">
                 <Input
                   name="q"
+                  aria-label="Search products"
                   value={value}
                   placeholder="Search products, suppliers..."
                   autoComplete="off"

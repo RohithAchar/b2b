@@ -22,6 +22,7 @@ export function SearchInput({
       <InputGroupInput
         type="search"
         name={name}
+        aria-label={placeholder}
         placeholder={placeholder}
         defaultValue={defaultValue}
         {...props}

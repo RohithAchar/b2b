@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,11 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierContext } from "@/lib/auth/guard";
+
+export const metadata: Metadata = {
+  title: "Supplier application status",
+  robots: { index: false, follow: false },
+};
 
 const STATUS_COPY: Record<string, { title: string; body: string }> = {
   pending: {

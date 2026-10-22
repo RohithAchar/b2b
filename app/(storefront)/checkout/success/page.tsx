@@ -13,6 +13,7 @@ import { ORDER_STATUS_LABELS, parseOrderStatus } from "@/lib/orders/lifecycle";
 export const metadata: Metadata = {
   title: "Order placed",
   description: "Your order was submitted to the suppliers.",
+  robots: { index: false, follow: false },
 };
 
 const UUID_RE =

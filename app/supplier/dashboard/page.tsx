@@ -52,8 +52,8 @@ import {
 } from "@/components/dashboard/profile-completion"
 import { StatusBadge } from "@/components/dashboard/status-badge"
 import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter"
-import { SalesChart } from "@/components/dashboard/sales-chart"
-import { ConversionChart } from "@/components/dashboard/conversion-chart"
+import { SalesChart } from "@/components/dashboard/lazy-charts"
+import { ConversionChart } from "@/components/dashboard/lazy-charts"
 import { StoreLinkCard } from "@/components/dashboard/store-link-card"
 
 function logoUrl(path: string): string {

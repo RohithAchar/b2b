@@ -23,7 +23,7 @@ import {
 import { getTrafficAnalytics } from "@/lib/supplier/traffic-analytics";
 import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { TrafficChart } from "@/components/dashboard/traffic-chart";
+import { TrafficChart } from "@/components/dashboard/lazy-charts";
 import { ShareBars } from "@/components/dashboard/share-bars";
 
 const TRAFFIC_BASE = "/supplier/dashboard/analytics/traffic";

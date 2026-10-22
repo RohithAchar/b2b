@@ -14,6 +14,7 @@ import { CartGroups } from "./cart-groups";
 export const metadata: Metadata = {
   title: "My Cart",
   description: "Review your cart. Checkout unlocks at a ₹2,500 subtotal.",
+  robots: { index: false, follow: false },
 };
 
 export default async function CartPage() {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,6 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AuthShell } from "../shell";
+
+export const metadata: Metadata = {
+  title: "Login problem",
+  robots: { index: false, follow: false },
+};
 
 const REASONS: Record<string, string> = {
   "google-not-configured":

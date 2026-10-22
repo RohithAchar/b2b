@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import {
   Card,
   CardContent,
@@ -9,6 +10,12 @@ import {
 import { getSafeNextPath } from "@/lib/auth/paths";
 import { AuthShell } from "../shell";
 import { VerifyOtpForm } from "./verify-form";
+
+export const metadata: Metadata = {
+  title: "Verify your email",
+  description: "Enter the six-digit code we emailed you to finish logging in.",
+  robots: { index: false, follow: false },
+};
 
 type VerifyPageProps = {
   searchParams: Promise<{ email?: string; next?: string }>;

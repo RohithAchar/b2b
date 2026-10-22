@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import {
@@ -58,10 +59,12 @@ function stableParamsKey(params: ProductListParams): string {
   return JSON.stringify(rest);
 }
 
-export const getCachedNavigationCategories = unstable_cache(
-  async () => getNavigationCategories(makePublicClient() as unknown as AnyClient),
-  ["nav-categories"],
-  { revalidate: 3600, tags: ["categories", "nav"] },
+export const getCachedNavigationCategories = cache(
+  unstable_cache(
+    async () => getNavigationCategories(makePublicClient() as unknown as AnyClient),
+    ["nav-categories"],
+    { revalidate: 3600, tags: ["categories", "nav"] },
+  ),
 );
 
 export const getCachedHomeCategories = unstable_cache(
@@ -70,10 +73,12 @@ export const getCachedHomeCategories = unstable_cache(
   { revalidate: 600, tags: ["categories", "home", "products"] },
 );
 
-export const getCachedMegaMenuCategories = unstable_cache(
-  async () => getMegaMenuCategories(makePublicClient() as unknown as AnyClient),
-  ["mega-menu-categories"],
-  { revalidate: 600, tags: ["categories", "home", "products"] },
+export const getCachedMegaMenuCategories = cache(
+  unstable_cache(
+    async () => getMegaMenuCategories(makePublicClient() as unknown as AnyClient),
+    ["mega-menu-categories"],
+    { revalidate: 600, tags: ["categories", "home", "products"] },
+  ),
 );
 
 export const getCachedHomeProducts = unstable_cache(
@@ -100,11 +105,13 @@ export const getCachedFeaturedSuppliers = unstable_cache(
   { revalidate: 600, tags: ["suppliers", "home"] },
 );
 
-export const getCachedProduct = unstable_cache(
-  async (productId: string) =>
-    getProduct(makePublicClient() as unknown as AnyClient, productId),
-  ["product"],
-  { revalidate: 180, tags: ["products"] },
+export const getCachedProduct = cache(
+  unstable_cache(
+    async (productId: string) =>
+      getProduct(makePublicClient() as unknown as AnyClient, productId),
+    ["product"],
+    { revalidate: 180, tags: ["products"] },
+  ),
 );
 
 export const getCachedRelatedProducts = unstable_cache(
@@ -114,18 +121,22 @@ export const getCachedRelatedProducts = unstable_cache(
   { revalidate: 120, tags: ["products"] },
 );
 
-export const getCachedCategoryBySlug = unstable_cache(
-  async (slug: string) =>
-    getCategoryBySlug(makePublicClient() as unknown as AnyClient, slug.toLowerCase()),
-  ["category"],
-  { revalidate: 600, tags: ["categories"] },
+export const getCachedCategoryBySlug = cache(
+  unstable_cache(
+    async (slug: string) =>
+      getCategoryBySlug(makePublicClient() as unknown as AnyClient, slug.toLowerCase()),
+    ["category"],
+    { revalidate: 600, tags: ["categories"] },
+  ),
 );
 
-export const getCachedCategoryProductCount = unstable_cache(
-  async (categoryId: string) =>
-    getCategoryProductCount(makePublicClient() as unknown as AnyClient, categoryId),
-  ["category-count"],
-  { revalidate: 300, tags: ["categories", "products"] },
+export const getCachedCategoryProductCount = cache(
+  unstable_cache(
+    async (categoryId: string) =>
+      getCategoryProductCount(makePublicClient() as unknown as AnyClient, categoryId),
+    ["category-count"],
+    { revalidate: 300, tags: ["categories", "products"] },
+  ),
 );
 
 async function getProductsUncached(params: ProductListParams) {

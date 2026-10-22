@@ -14,6 +14,7 @@ import { TabsContent } from "@/components/ui/tabs";
 export const metadata: Metadata = {
   title: "My Account",
   description: "Manage your saved products, recently viewed items and delivery addresses.",
+  robots: { index: false, follow: false },
 };
 
 export default async function AccountPage({

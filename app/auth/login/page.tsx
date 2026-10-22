@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 import {
   Card,
   CardContent,
@@ -11,6 +12,12 @@ import { signInWithGoogle } from "@/lib/auth/actions";
 import { getSafeNextPath } from "@/lib/auth/paths";
 import { AuthShell } from "../shell";
 import { RequestOtpForm } from "./login-form";
+
+export const metadata: Metadata = {
+  title: "Log in",
+  description: "Log in with an email code or Google to trade with verified suppliers.",
+  robots: { index: false, follow: false },
+};
 
 type LoginPageProps = {
   searchParams: Promise<{ next?: string }>;

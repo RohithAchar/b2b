@@ -22,9 +22,9 @@ import {
 import { getSalesAnalytics } from "@/lib/supplier/sales-analytics"
 import { DashboardRangeFilter } from "@/components/dashboard/dashboard-range-filter"
 import { MetricCard } from "@/components/dashboard/metric-card"
-import { OrdersChart } from "@/components/dashboard/orders-chart"
-import { SalesChart } from "@/components/dashboard/sales-chart"
-import { ConversionChart } from "@/components/dashboard/conversion-chart"
+import { OrdersChart } from "@/components/dashboard/lazy-charts"
+import { SalesChart } from "@/components/dashboard/lazy-charts"
+import { ConversionChart } from "@/components/dashboard/lazy-charts"
 import { ShareBars } from "@/components/dashboard/share-bars"
 
 const SALES_BASE = "/supplier/dashboard/analytics/sales"

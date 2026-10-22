@@ -45,6 +45,12 @@ export const metadata: Metadata = {
   description:
     "Browse wholesale products with live pricing and MOQs from verified Indian suppliers. Filter by category, price, MOQ and availability.",
   alternates: { canonical: "/products" },
+  openGraph: {
+    title: "Browse Wholesale Products",
+    description:
+      "Browse wholesale products with live pricing and MOQs from verified Indian suppliers. Filter by category, price, MOQ and availability.",
+    url: "/products",
+  },
 }
 
 function parseSort(value: string | undefined): ProductSort {
@@ -332,10 +338,12 @@ async function ProductListings({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {products.map((product) => (
+          {products.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product as ProductCardData}
+              priority={index === 0}
+              sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
             />
           ))}
         </div>

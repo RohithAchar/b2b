@@ -7,7 +7,7 @@ import {
   resolveProductMetaDescription,
   resolveProductMetaTitle,
 } from "@/lib/product-meta"
-import { SITE_NAME } from "@/lib/site"
+import { SITE_NAME, SITE_URL } from "@/lib/site"
 import { ProductDetail, RelatedProductsSection } from "./product-detail"
 import {
   ProductDetailSkeleton,
@@ -78,12 +78,29 @@ export default async function ProductPage({
 
   const pricing = product.pricing as { customer_price?: number } | null
   const stockQty = (product.stock_qty as number | null) ?? 0
+  const imagePaths = [
+    product.seo_image_path as string | null,
+    ...((product.images as { path: string }[] | null) ?? []).map(
+      (image) => image.path
+    ),
+  ].filter((path): path is string => Boolean(path))
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.title,
-    ...(product.description ? { description: (product.description as string).slice(0, 500) } : {}),
-    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
+    ...(imagePaths.length > 0
+      ? {
+          image: imagePaths
+            .slice(0, 5)
+            .map((path) => publicImageUrl("product_images", path)),
+        }
+      : {}),
+    ...(product.description
+      ? { description: (product.description as string).slice(0, 500) }
+      : {}),
+    ...(product.brand
+      ? { brand: { "@type": "Brand", name: product.brand } }
+      : {}),
     ...(pricing?.customer_price != null
       ? {
           offers: {
@@ -91,8 +108,10 @@ export default async function ProductPage({
             priceCurrency: "INR",
             price: pricing.customer_price,
             availability:
-              stockQty > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-            url: `/products/${id}`,
+              stockQty > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+            url: `${SITE_URL}/products/${id}`,
           },
         }
       : {}),

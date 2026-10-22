@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   description:
     "Source wholesale products across textiles, electronics, chemicals, packaging and more — directly from verified Indian suppliers with live pricing.",
   alternates: { canonical: "/" },
+  openGraph: {
+    title: "Wholesale Marketplace from India",
+    description:
+      "Source wholesale products across textiles, electronics, chemicals, packaging and more — directly from verified Indian suppliers with live pricing.",
+    url: "/",
+  },
 }
 
 export default function HomePage() {

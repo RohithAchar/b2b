@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
-import { publicImageUrl } from "@/lib/storage";
+import { publicTransformedImageUrl } from "@/lib/storage";
 
 export type GalleryImage = {
   id: string;
@@ -32,7 +32,9 @@ export function ProductGallery({
         <div className="relative mx-auto aspect-square w-full max-w-[500px] overflow-hidden rounded-lg border border-border bg-muted lg:mx-0">
           {images.length > 0 ? (
             <Image
-              src={publicImageUrl("product_images", images[active].path)}
+              src={publicTransformedImageUrl("product_images", images[active].path, {
+                width: 1000,
+              })}
               alt={images[active].alt ?? title}
               fill
               priority
@@ -66,7 +68,9 @@ export function ProductGallery({
                 }`}
               >
                 <Image
-                  src={publicImageUrl("product_images", img.path)}
+                  src={publicTransformedImageUrl("product_images", img.path, {
+                    width: 128,
+                  })}
                   alt=""
                   fill
                   sizes="64px"

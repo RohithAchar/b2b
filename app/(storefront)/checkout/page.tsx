@@ -14,6 +14,7 @@ import { CheckoutClient } from "./checkout-client";
 export const metadata: Metadata = {
   title: "Checkout",
   description: "Review your order and confirm your delivery address.",
+  robots: { index: false, follow: false },
 };
 
 export default async function CheckoutPage() {

@@ -178,7 +178,11 @@ export function ImageSearchButton({
               />
             )}
 
-            <div className="min-w-0 flex-1">
+            <div
+              className="min-w-0 flex-1"
+              role="status"
+              aria-live="polite"
+            >
               {status === "searching" && (
                 <p className="text-sm text-foreground">Finding similar products...</p>
               )}

@@ -273,7 +273,9 @@ function AddressForm({
             {locating ? "Finding your location…" : "Fill from my location"}
           </Button>
           {locateError ? (
-            <p className="text-xs text-muted-foreground">{locateError}</p>
+            <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
+              {locateError}
+            </p>
           ) : null}
         </div>
 
