@@ -47,7 +47,7 @@ export function StorefrontBottomNav({ user }: { user: User }) {
   const isProducts = pathname === "/products"
   const homeActive = pathname === "/"
   const categoriesActive =
-    pathname.startsWith("/category") || (isProducts && !query)
+    pathname === "/categories" || pathname.startsWith("/category")
   const searchActive = isProducts && Boolean(query)
   const accountActive =
     pathname.startsWith("/auth") || pathname.startsWith("/account")
@@ -67,7 +67,7 @@ export function StorefrontBottomNav({ user }: { user: User }) {
         </Link>
 
         <Link
-          href="/products"
+          href="/categories"
           aria-current={categoriesActive ? "page" : undefined}
           className={itemClass(categoriesActive)}
         >
