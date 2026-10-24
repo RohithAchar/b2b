@@ -139,6 +139,12 @@ export async function AllProductsSection() {
   return (
     <section className="bg-muted">
       <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
+        <SectionHeader
+          title="Popular products"
+          actionLabel="View all"
+          actionHref="/products"
+          className="border-b-0 pb-0"
+        />
         {products.length === 0 ? (
           <div className="py-4">
             <Empty>

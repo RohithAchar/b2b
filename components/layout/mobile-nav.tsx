@@ -33,7 +33,7 @@ export function MobileNav({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
-        render={<Button variant="ghost" size="icon-sm" className="lg:hidden" />}
+        render={<Button variant="ghost" size="icon-sm" className="size-10 lg:hidden" />}
       >
         <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />
         <span className="sr-only">Open menu</span>

@@ -6,6 +6,7 @@ import {
   ProductGridSkeleton,
   SearchHeroSkeleton,
 } from "@/components/storefront/skeletons"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
   title: "Wholesale Marketplace from India",
@@ -36,6 +37,10 @@ export default function HomePage() {
         fallback={
           <section className="border-y border-border bg-muted">
             <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
+              <div className="mb-3 flex items-end justify-between gap-2">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-16" />
+              </div>
               <ProductGridSkeleton
                 count={8}
                 className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4"

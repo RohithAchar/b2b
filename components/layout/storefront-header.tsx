@@ -36,20 +36,20 @@ export function StorefrontHeader({
   return (
     <header
       data-scrolled={scrolled}
-      className="scroll-edge sticky top-0 z-50 material"
+      className="scroll-edge sticky top-0 z-50 material pt-(--safe-area-top)"
     >
       {/* ---- Tier 1: logo + nav + actions ---- */}{" "}
       <div>
-        <div className="mx-auto flex h-12 max-w-7xl items-center gap-2 px-4">
+        <div className="mx-auto flex h-(--storefront-header-height) max-w-7xl items-center gap-2 px-4">
           {/* Mobile menu */}
           <MobileNav user={user} categories={categories} />
 
           {/* Logo */}
-          <Link href="/" className="flex shrink-0 items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+          <Link href="/" className="flex min-w-0 items-center gap-2">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
               B
             </span>
-            <span className="text-base font-bold tracking-tight">
+            <span className="truncate text-base font-bold tracking-tight">
               B2B Marketplace
             </span>
           </Link>
@@ -68,7 +68,7 @@ export function StorefrontHeader({
           </nav>
 
           {/* Cart (mobile; desktop has it in right actions) */}
-          <CartIconLink count={cartCount} className="ml-auto lg:hidden" />
+          <CartIconLink count={cartCount} className="ml-auto size-10 lg:hidden" />
 
           {/* Right actions (desktop; mobile uses the bottom navigation) */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">

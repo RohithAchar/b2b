@@ -130,10 +130,10 @@ export function SearchMegaMenu({
   const hasMore = categories.length > visible.length
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
+    <div className="mx-auto w-full max-w-7xl px-4 py-3 sm:py-6">
       {/* One big panel holding every feature (visual only) */}
-      <div className="flex flex-col rounded-lg border border-border bg-card">
-        <div className="flex min-w-0 flex-col px-4 py-4 sm:px-5 sm:py-5 lg:pb-0">
+      <div className="flex flex-col rounded-lg border border-border bg-card max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent">
+        <div className="flex min-w-0 flex-col px-4 py-4 max-sm:px-0 max-sm:py-0 sm:px-5 sm:py-5 lg:pb-0">
           {/* Large search bar */}
           <div
             className="relative min-w-0"
@@ -148,10 +148,17 @@ export function SearchMegaMenu({
               action="/products"
               method="get"
               onSubmit={() => setOpen(false)}
-              className="flex h-12 w-full min-w-0 items-stretch rounded-md border-2 border-primary bg-card"
+              className="flex h-12 w-full min-w-0 items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 lg:border-2 lg:border-primary lg:focus-within:ring-0"
             >
               <input type="hidden" name="page" value="1" />
               <div className="relative min-w-0 flex-1">
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={2}
+                    className="size-4"
+                  />
+                </span>
                 <Input
                   name="q"
                   aria-label="Search products"
@@ -169,16 +176,16 @@ export function SearchMegaMenu({
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setOpen(false)
                   }}
-                  className="h-full min-w-0 rounded-none border-0 bg-transparent pr-1 pl-3 text-sm shadow-none focus-visible:ring-0 sm:pl-4"
+                  className="h-full min-w-0 rounded-none border-0 bg-transparent pr-1 pl-9 text-sm shadow-none focus-visible:ring-0 sm:pl-10"
                 />
               </div>
-              <span className="flex shrink-0 items-center pr-1 max-lg:hidden sm:pr-2">
-                <ImageSearchButton />
+              <span className="flex shrink-0 items-stretch border-l border-border">
+                <ImageSearchButton className="h-full rounded-r-md border-0 bg-transparent px-3 shadow-none hover:bg-muted/60" />
               </span>
               <Button
                 type="submit"
                 aria-label="Search"
-                className="h-full shrink-0 rounded-r-sm px-3 text-sm font-bold sm:px-8"
+                className="h-full shrink-0 rounded-none px-3 text-sm font-bold max-sm:hidden sm:rounded-r-md sm:px-8"
               >
                 <HugeiconsIcon
                   icon={Search01Icon}
@@ -232,17 +239,47 @@ export function SearchMegaMenu({
             )}
           </div>
 
-          {/* Photo search: primary discovery mode on mobile */}
-          <div className="mt-3 lg:hidden">
-            <ImageSearchButton
-              label="Take a photo to search"
-              className="w-full"
-            />
-          </div>
+          {/* Popular categories: compact scannable chips on mobile */}
+          {categories.length > 0 && (
+            <div className="no-scrollbar -mx-4 mt-3 flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-0.5 sm:hidden">
+              {categories.slice(0, 8).map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/category/${cat.slug}`}
+                  className="flex h-10 shrink-0 snap-start items-center gap-2 rounded-md border border-border bg-card pr-3 pl-1 text-xs font-medium press"
+                >
+                  {cat.image_path ? (
+                    <span className="relative size-8 shrink-0 overflow-hidden rounded-sm bg-muted">
+                      <Image
+                        src={publicTransformedImageUrl(
+                          "category_images",
+                          cat.image_path,
+                          { width: 100 }
+                        )}
+                        alt=""
+                        aria-hidden
+                        fill
+                        sizes="32px"
+                        className="object-cover"
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-sm font-bold text-primary"
+                    >
+                      {cat.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="max-w-28 truncate">{cat.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
 
-          {/* Hot searches: native horizontal chip scroller on mobile */}
+          {/* Hot searches: desktop/tablet discovery row */}
           {trending.length > 0 && (
-            <div className="mt-3 flex items-center gap-2 px-1">
+            <div className="mt-3 hidden items-center gap-2 px-1 sm:flex">
               <span className="shrink-0 text-xs font-semibold text-muted-foreground">
                 Hot:
               </span>

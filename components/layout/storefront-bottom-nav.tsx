@@ -25,7 +25,7 @@ type User = { email: string; user_type: string; isStaff?: boolean } | null
 
 function itemClass(active: boolean): string {
   return cn(
-    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] font-medium tracking-wide whitespace-nowrap transition-colors",
+    "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] font-medium tracking-wide whitespace-nowrap press touch-manipulation",
     active ? "text-primary" : "text-muted-foreground hover:text-foreground"
   )
 }
@@ -39,10 +39,43 @@ function ItemContent({ icon, label }: { icon: IconSvgElement; label: string }) {
   )
 }
 
+/**
+ * Search tab + bottom sheet. The shell persists across navigation, so the
+ * parent remounts this component (keyed by route + query) and an open sheet
+ * cannot stay over the results page.
+ */
+function BottomSearchSheet({ active }: { active: boolean }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger
+        render={
+          <button
+            type="button"
+            aria-current={active ? "page" : undefined}
+            className={itemClass(active)}
+          />
+        }
+      >
+        <ItemContent icon={Search01Icon} label="Search" />
+      </SheetTrigger>
+      <SheetContent side="bottom" className="pb-(--safe-area-bottom)">
+        <SheetHeader>
+          <SheetTitle>Search products</SheetTitle>
+        </SheetHeader>
+        <div className="px-6 pb-6">
+          <StorefrontSearchForm autoFocus />
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 export function StorefrontBottomNav({ user }: { user: User }) {
   const pathname = usePathname()
-  const query = useSearchParams().get("q")
-  const [searchOpen, setSearchOpen] = useState(false)
+  const searchParams = useSearchParams()
+  const query = searchParams.get("q")
 
   const isProducts = pathname === "/products"
   const homeActive = pathname === "/"
@@ -74,27 +107,10 @@ export function StorefrontBottomNav({ user }: { user: User }) {
           <ItemContent icon={GridViewIcon} label="Categories" />
         </Link>
 
-        <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
-          <SheetTrigger
-            render={
-              <button
-                type="button"
-                aria-current={searchActive ? "page" : undefined}
-                className={itemClass(searchActive)}
-              />
-            }
-          >
-            <ItemContent icon={Search01Icon} label="Search" />
-          </SheetTrigger>
-          <SheetContent side="bottom">
-            <SheetHeader>
-              <SheetTitle>Search products</SheetTitle>
-            </SheetHeader>
-            <div className="px-6 pb-6">
-              <StorefrontSearchForm autoFocus />
-            </div>
-          </SheetContent>
-        </Sheet>
+        <BottomSearchSheet
+          key={`${pathname}?${searchParams.toString()}`}
+          active={searchActive}
+        />
 
         {user ? (
           <AccountMenu

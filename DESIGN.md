@@ -135,9 +135,11 @@ Dark mode: navy-tinted neutral darks (cool hue, no warm cast), same orange prima
 ### Storefront header (`components/layout/storefront-header.tsx`)
 
 Three tiers on desktop: (1) logo + nav + auth actions, (2) full-width search,
-(3) horizontal category rail. On mobile only tier 1 remains (menu + logo); the
-search tier, category rail and header auth actions are hidden because the
+(3) horizontal category rail. On mobile only tier 1 remains (menu + logo);
+the search tier, category rail and header auth actions are hidden because the
 [bottom navigation](#mobile-bottom-navigation) covers those destinations.
+The mobile app bar is `h-(--storefront-header-height)` with `pt-(--safe-area-top)`
+so the brand row clears notches; menu and cart controls use 40px hit areas.
 Nav links come from `navLinksFor(user)` (`lib/nav.ts`): the discovery links
 always, plus **Orders** (`/orders`) for every signed-in user — buyers otherwise
 reach their orders only through the account menu, and suppliers/admins shop
@@ -148,14 +150,33 @@ underneath it, and it carries `scroll-edge` with `data-scrolled` toggled by a
 passive scroll listener so the fade at the content boundary appears only when
 something is actually scrolling beneath.
 
+### Home search hero (`components/storefront/search-mega-menu.tsx`)
+
+On mobile the hero is a search _field_, not a card: the 48px bordered input
+carries the search glyph, the inline camera action (separated by a hairline) and
+no outer panel padding, so it costs ~110px including the category chip row.
+Popular categories render as a horizontally scrolling row of image + label chips
+(`scroll-pl-4` keeps the first chip clear of the edge); the "Hot" search row
+returns from `sm` up, where the desktop/tablet panel and category browse grid
+also live. Live suggestions and the camera popover must not be clipped by the
+field, so it relies on rounded children rather than `overflow-hidden`.
+
+### Homepage products (`components/storefront/home-sections.tsx`)
+
+`AllProductsSection` opens with the shared `SectionHeader` — "Popular products"
+plus a "View all" link to `/products` — then the dense two-column mobile grid.
+No popularity metric is implied by the heading; it labels the real `getProducts`
+result, not a fabricated ranking.
+
 ### Mini search bar (`components/storefront/storefront-mini-search.tsx`)
 
 Compact sticky search bar rendered by `components/layout/storefront-shell.tsx`
 on browsing pages only (`/`, `/products`, `/categories`, `/category/*`, `/products/*` — never
-account/cart). It reuses `StorefrontSearchForm` unchanged. Hidden while a
+account/cart). It reuses `StorefrontSearchForm` (same `/products?q` contract) with
+the search glyph and camera action inside one 40px field. Hidden while a
 page-level search is on screen: on `/` an `IntersectionObserver` watches the
 hero search (`data-mini-search-anchor`); pages without an anchor fall back to a
-small scroll threshold. `fixed inset-x-0 top-12 z-40` with `material`
+small scroll threshold. `fixed inset-x-0 top-(--mini-search-top) z-40` with `material`
 (translucent — content scrolls under) plus `scroll-edge`; it only exists while
 the page is scrolled, so its edge fade is always on (`data-scrolled="true"`).
 It sits below `z-50` sheets/dropdowns and is fixed so page
@@ -175,7 +196,7 @@ Four items, in order:
 | Item       | Action                                                                           | Active when                                |
 | ---------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
 | Home       | `/`                                                                              | `pathname === "/"`                         |
-| Categories | `/products` (existing category-discovery flow)                                   | `/category/*`, or `/products` without `?q` |
+| Categories | `/categories` (category discovery)                                                | `/categories`, `/category/*`               |
 | Search     | opens a bottom sheet reusing `StorefrontSearchForm` (submits to `/products?q=…`) | `/products` with `?q`                      |
 | Account    | signed in: existing `AccountMenu` (opens upward); signed out: `/auth/login`      | `/auth/*`                                  |
 
@@ -187,6 +208,9 @@ Four items, in order:
 - Semantic `<nav aria-label="Storefront">`; every item has a visible label and an
   accessible name.
 - The bar is `fixed inset-x-0 bottom-0 z-40`; sheets/dropdowns (`z-50`) cover it.
+  Search is the one sheet that must dismiss on navigation: the shell persists
+  across route changes, so the bottom nav remounts the sheet (keyed by route +
+  query) and it cannot stay over a results page.
   It is built as a `material` (translucent layer) with a light top edge — the
   hairline that "catches the light" on the material — and keeps its own
   `border-t`.
@@ -206,11 +230,15 @@ link columns under the brand block, bottom legal bar in `text-white/50`.
 
 ### Product card (`components/storefront/product-card.tsx`)
 
-Image (square, `object-cover`) → title → **price** (bold `lg`, unit muted) → MOQ →
-footer bar (`border-t bg-muted/30`): supplier name + verification shield + location
-| add-to-cart action. `!gap-0 !py-0` card composed with `CardContent`/`CardFooter`;
-Negotiable flag is a `Badge` (`default`); price uses `tabular-nums`; the shield
-icon carries an `sr-only` "Verified supplier" label (never color-alone).
+Image (square, `object-cover`) → title → **price** (bold `lg`, unit muted) → MOQ
+(`bg-muted` micro-badge) → footer bar (`border-t bg-muted/30`): supplier name +
+verification shield + location | icon-only add-to-cart action. `!gap-0 !py-0`
+card composed with `CardContent`/`CardFooter`; the add action is a 40px
+primary-outline icon button so it never dominates the card, and shows a spinner
+while the server action is pending. Negotiable flag is a `Badge` (`default`);
+price uses `tabular-nums`; the shield icon carries an `sr-only` "Verified
+supplier" label (never color-alone). Missing or failed product images render a
+deliberate `ImageNotFound` + "No image" fallback inside the stable square.
 
 ### Category tile (`components/storefront/home-sections.tsx` `CategoryTile`)
 

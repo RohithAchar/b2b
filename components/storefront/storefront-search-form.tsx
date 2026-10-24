@@ -43,43 +43,48 @@ export function StorefrontSearchForm({
       action="/products"
       method="get"
       onSubmit={() => setOpen(false)}
-      className="flex w-full items-center gap-2"
+      className="flex w-full items-stretch gap-2"
     >
       <input type="hidden" name="page" value="1" />
       <div
-        className="relative flex-1"
+        className="relative min-w-0 flex-1"
         onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
             setOpen(false)
           }
         }}
       >
-        <Input
-          name="q"
-          aria-label="Search products"
-          value={value}
-          autoFocus={autoFocus}
-          placeholder="Search products, suppliers, brands or categories..."
-          autoComplete="off"
-          aria-expanded={showDropdown}
-          aria-controls={listId}
-          onChange={(e) => {
-            setValue(e.target.value)
-            setOpen(true)
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setOpen(false)
-          }}
-          className="h-10 border-border bg-card pl-9 shadow-none"
-        />
-        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
-          <HugeiconsIcon
-            icon={Search01Icon}
-            strokeWidth={2}
-            className="size-4"
+        <div className="flex items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+          <span className="flex shrink-0 items-center pl-3 text-muted-foreground">
+            <HugeiconsIcon
+              icon={Search01Icon}
+              strokeWidth={2}
+              className="size-4"
+            />
+          </span>
+          <Input
+            name="q"
+            aria-label="Search products"
+            value={value}
+            autoFocus={autoFocus}
+            placeholder="Search products, suppliers, brands or categories..."
+            autoComplete="off"
+            aria-expanded={showDropdown}
+            aria-controls={listId}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setOpen(true)
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false)
+            }}
+            className="h-10 min-w-0 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
           />
-        </span>
+          <span className="flex shrink-0 items-stretch border-l border-border">
+            <ImageSearchButton className="h-full rounded-r-md border-0 bg-transparent px-3 shadow-none hover:bg-muted/60" />
+          </span>
+        </div>
         {showDropdown && (
           <SearchSuggestionsDropdown
             products={products}
@@ -88,9 +93,18 @@ export function StorefrontSearchForm({
           />
         )}
       </div>
-      <ImageSearchButton />
-      <Button type="submit" size="lg" className="shrink-0 px-6">
-        Search
+      <Button
+        type="submit"
+        size="lg"
+        aria-label="Search"
+        className="shrink-0 px-6 max-sm:px-3"
+      >
+        <HugeiconsIcon
+          icon={Search01Icon}
+          strokeWidth={2.5}
+          className="size-4 sm:hidden"
+        />
+        <span className="max-sm:sr-only">Search</span>
       </Button>
       {showBrowseAll && (
         <Button

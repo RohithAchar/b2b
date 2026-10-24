@@ -18,7 +18,7 @@ function MiniSearchBar() {
         ([entry]) => setVisible(!entry.isIntersecting),
         // Shrink the root by the sticky header height so the bar appears
         // exactly when the hero search slides under the header.
-        { rootMargin: "-48px 0px 0px 0px" }
+        { rootMargin: "-56px 0px 0px 0px" }
       )
       observer.observe(anchor)
       return () => observer.disconnect()
@@ -35,7 +35,7 @@ function MiniSearchBar() {
       inert={!visible}
       data-scrolled="true"
       className={cn(
-        "scroll-edge fixed inset-x-0 top-12 z-40 material transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
+        "scroll-edge fixed inset-x-0 top-(--mini-search-top) z-40 material transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
         visible ? "visible translate-y-0" : "invisible -translate-y-full"
       )}
     >

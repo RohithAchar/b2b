@@ -139,7 +139,10 @@
   --gray-700: #33383e;
   --gray-800: #23282d;
   --gray-900: #1b2026;
+  --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --storefront-header-height: 3.5rem;
+  --mini-search-top: calc(var(--storefront-header-height) + var(--safe-area-top));
   --bottom-nav-height: 3.5rem;
   --bottom-nav-offset: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
   --sidebar: oklch(0.9722 -0.0013 359.58);

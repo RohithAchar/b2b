@@ -12,14 +12,20 @@ export function ProductCardSkeleton() {
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
         <Skeleton className="absolute inset-0 rounded-none" />
       </div>
-      <div className="flex flex-col gap-2 px-3 py-2.5 max-sm:px-2 max-sm:py-2">
-        <Skeleton className="h-4 w-3/4" />
+      <div className="flex flex-col gap-1 px-2.5 py-2.5">
+        <div className="min-h-10 space-y-1">
+          <Skeleton className="h-3.5 w-3/4" />
+          <Skeleton className="h-3.5 w-1/2" />
+        </div>
         <Skeleton className="h-5 w-1/2" />
-        <Skeleton className="h-3 w-2/3" />
+        <Skeleton className="h-5 w-16 rounded-sm" />
       </div>
-      <div className="flex items-center justify-between gap-1 border-t border-border bg-muted/30 px-3 py-2 max-sm:px-2 max-sm:py-1.5">
-        <Skeleton className="h-3 w-1/3" />
-        <Skeleton className="h-7 w-16 rounded-md" />
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-2.5 py-2 !pt-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <Skeleton className="h-3 w-24 max-w-full" />
+          <Skeleton className="h-2.5 w-20 max-w-full" />
+        </div>
+        <Skeleton className="size-10 shrink-0 rounded-md" />
       </div>
     </Card>
   )
@@ -255,26 +261,33 @@ export function AddressCardSkeleton() {
 
 export function SearchHeroSkeleton() {
   return (
-    <div aria-hidden className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
-      <div className="flex flex-col rounded-lg border border-border bg-card">
-        <div className="flex flex-col gap-2 px-4 pt-4 sm:px-5 sm:pt-5">
+    <div aria-hidden className="mx-auto w-full max-w-7xl px-4 py-3 sm:py-6">
+      <div className="flex flex-col rounded-lg border border-border bg-card max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent">
+        <div className="flex flex-col gap-2 px-4 pt-4 max-sm:px-0 max-sm:pt-0 sm:px-5 sm:pt-5">
           <Skeleton className="h-12 w-full rounded-md" />
-          <Skeleton className="h-4 w-2/3 rounded-sm" />
+          {/* Mobile popular-category chip row */}
+          <div className="flex gap-2 overflow-hidden sm:hidden">
+            <Skeleton className="h-10 w-32 shrink-0 rounded-md" />
+            <Skeleton className="h-10 w-28 shrink-0 rounded-md" />
+            <Skeleton className="h-10 w-36 shrink-0 rounded-md" />
+          </div>
+          {/* Tablet/desktop hot-search row */}
+          <div className="hidden items-center gap-2 sm:flex">
+            <Skeleton className="h-4 w-10 rounded-sm" />
+            <Skeleton className="h-4 w-24 rounded-sm" />
+            <Skeleton className="h-4 w-20 rounded-sm" />
+            <Skeleton className="h-4 w-28 rounded-sm" />
+          </div>
         </div>
-        <div className="mt-4 grid border-t border-border sm:mt-5 lg:grid-cols-[260px_1fr]">
-          <div className="flex flex-col gap-2 p-4 max-lg:hidden">
+        <div className="mt-4 hidden border-t border-border lg:grid lg:grid-cols-[260px_1fr]">
+          <div className="flex flex-col gap-2 border-r border-border p-4">
             <Skeleton className="h-9 w-full rounded-sm" />
             <Skeleton className="h-9 w-full rounded-sm" />
             <Skeleton className="h-9 w-full rounded-sm" />
             <Skeleton className="h-9 w-full rounded-sm" />
             <Skeleton className="h-9 w-full rounded-sm" />
           </div>
-          <div className="flex gap-1.5 overflow-hidden px-4 py-2.5 lg:hidden">
-            <Skeleton className="h-7 w-20 shrink-0 rounded-md" />
-            <Skeleton className="h-7 w-24 shrink-0 rounded-md" />
-            <Skeleton className="h-7 w-20 shrink-0 rounded-md" />
-          </div>
-          <div className="grid grid-cols-1 gap-1.5 p-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-1.5 p-4">
             {Array.from({ length: 6 }, (_, i) => (
               <Skeleton key={i} className="h-14 w-full rounded-sm" />
             ))}

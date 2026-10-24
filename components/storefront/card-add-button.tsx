@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShoppingCart01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
 import { addToCart, type BuyerActionState } from "@/lib/buyer/cart-actions";
 
@@ -33,14 +34,19 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
       <input type="hidden" name="quantity" value={Math.max(1, moq)} />
       <Button
         type="submit"
-        size="lg"
-        variant="default"
+        size="icon-lg"
+        variant="outline"
         disabled={pending}
         aria-label="Add to cart"
-        className="w-full sm:w-auto"
+        aria-busy={pending}
+        title="Add to cart"
+        className="border-primary/40 text-primary hover:border-primary hover:bg-primary/5 hover:text-primary"
       >
-        <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} data-icon="inline-start" />
-        Add
+        {pending ? (
+          <Spinner className="size-4" />
+        ) : (
+          <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} />
+        )}
       </Button>
     </form>
   );
