@@ -73,7 +73,7 @@ export function ProductFormStickyActions({
       <div
         data-scrolled="true"
         data-edge="above"
-        className="scroll-edge sticky bottom-0 z-10 -mx-4 mt-4 material px-4 py-3"
+        className="scroll-edge sticky bottom-0 z-10 -mx-4 mt-4 bg-background px-4 py-3"
       >
         <div className="flex flex-col gap-2">
           {showSubmit ? (

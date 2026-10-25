@@ -35,7 +35,7 @@ function MiniSearchBar() {
       inert={!visible}
       data-scrolled="true"
       className={cn(
-        "scroll-edge fixed inset-x-0 top-(--mini-search-top) z-40 material transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
+        "scroll-edge fixed inset-x-0 top-(--mini-search-top) z-40 bg-card transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
         visible ? "visible translate-y-0" : "invisible -translate-y-full"
       )}
     >

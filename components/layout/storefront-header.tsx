@@ -36,7 +36,7 @@ export function StorefrontHeader({
   return (
     <header
       data-scrolled={scrolled}
-      className="scroll-edge sticky top-0 z-50 material pt-(--safe-area-top)"
+      className="scroll-edge sticky top-0 z-50 bg-card pt-(--safe-area-top)"
     >
       {/* ---- Tier 1: logo + nav + actions ---- */}{" "}
       <div>

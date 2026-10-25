@@ -145,10 +145,10 @@ always, plus **Orders** (`/orders`) for every signed-in user — buyers otherwis
 reach their orders only through the account menu, and suppliers/admins shop
 too. Their own order queues stay in the account menu. Signed-out visitors keep
 the discovery-only list.
-The bar is a **translucent material** (`material` utility): content scrolls
-underneath it, and it carries `scroll-edge` with `data-scrolled` toggled by a
-passive scroll listener so the fade at the content boundary appears only when
-something is actually scrolling beneath.
+The bar is an **opaque surface** (`bg-card`): content scrolls underneath it,
+and it carries `scroll-edge` with `data-scrolled` toggled by a passive scroll
+listener so the fade at the content boundary appears only when something is
+actually scrolling beneath.
 
 ### Home search hero (`components/storefront/search-mega-menu.tsx`)
 
@@ -191,20 +191,30 @@ page (`/`, `/products`, `/category/[slug]`, `/products/[id]`). It is `lg:hidden`
 — desktop navigation is untouched. It is **separate from supplier/admin
 workspace navigation** and must not be added to `/supplier/*` or `/admin/*`.
 
-Four items, in order:
+Five items, in order:
 
-| Item       | Action                                                                           | Active when                                |
-| ---------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
-| Home       | `/`                                                                              | `pathname === "/"`                         |
-| Categories | `/categories` (category discovery)                                                | `/categories`, `/category/*`               |
-| Search     | opens a bottom sheet reusing `StorefrontSearchForm` (submits to `/products?q=…`) | `/products` with `?q`                      |
-| Account    | signed in: existing `AccountMenu` (opens upward); signed out: `/auth/login`      | `/auth/*`                                  |
+| Item         | Action                                                                            | Active when                                |
+| ------------ | --------------------------------------------------------------------------------- | ------------------------------------------ |
+| Home         | `/`                                                                               | `pathname === "/"`                         |
+| Categories   | `/categories` (category discovery)                                                 | `/categories`, `/category/*`               |
+| All Products | `/products` (the complete catalog, never a search or category view)                | `/products` without a search query         |
+| Search       | opens a bottom sheet reusing `StorefrontSearchForm` (submits to `/products?q=…`)  | `/products` with `?q` or `?img`            |
+| Account      | signed in: existing `AccountMenu` (opens upward); signed out: `/auth/login`       | `/account/*`                               |
 
+- Active-state logic lives in `isStorefrontTabActive()` (`lib/nav.ts`) and is
+  shared with the mobile drawer. Search results win over All Products:
+  `/products?q=…` (and image search `?img=…`) highlights Search, while every
+  other `/products` view highlights All Products.
 - Icons come from the existing Hugeicons set (`Home01Icon`, `GridViewIcon`,
-  `Search01Icon`, `UserCircleIcon`). No new icon library.
-- Active state is a semantic-token color shift only (`text-primary` vs
-  `text-muted-foreground`) — no pills, fills or gradients. Links set
-  `aria-current="page"`.
+  `Package01Icon`, `Search01Icon`, `UserCircleIcon`). No new icon library.
+- Each item is `flex-1` with a visible 11px label below a 20px icon; the bar
+  stays 56px tall, so five tabs fit 360px without wrapping, clipping, or
+  horizontal scrolling. Interactive areas are the full 56px-tall tab.
+- Active state is never colour alone: a 20×2px top rule and a heavier icon
+  stroke accompany the deeper orange label (`text-brand-700`, AA on the
+  translucent bar); inactive items stay `text-muted-foreground`. No pills, fills or gradients. Links set
+  `aria-current="page"`; the signed-in Account trigger and Search sheet trigger
+  expose it too. Every tab has an inset `focus-visible` ring.
 - Semantic `<nav aria-label="Storefront">`; every item has a visible label and an
   accessible name.
 - The bar is `fixed inset-x-0 bottom-0 z-40`; sheets/dropdowns (`z-50`) cover it.
@@ -212,16 +222,46 @@ Four items, in order:
   across route changes, so the bottom nav remounts the sheet (keyed by route +
   query) and it cannot stay over a results page.
   It is built as a `material` (translucent layer) with a light top edge — the
-  hairline that "catches the light" on the material — and keeps its own
-  `border-t`.
+  hairline that "catches the light" on the material — drawn as an inset
+  pseudo-element so it does not add layout height.
 - Safe area: the bar adds `pb-(--safe-area-bottom)`; the interactive row is
   `h-(--bottom-nav-height)`. Both vars live in `app/globals.css`.
 
 **Fixed mobile navigation must never overlap scrollable content.** The storefront
-shell reserves `pb-(--bottom-nav-offset)` (= nav height + safe-area inset) at the
+shell reserves `pb-(--bottom-nav-offset)` (= nav height + safe-area inset +
+a 1px rounding buffer) at the
 bottom of the page and clears it with `lg:pb-0`. Do not add per-page bottom
 padding; the shell is the single source of spacing so long lists, empty states,
 pagination, forms, the footer and product-detail actions all remain reachable.
+The five-item bar keeps the same 56px height and safe-area padding. Its top
+hairline is drawn with a pseudo-element rather than a layout border, so the
+clearance token adds only a 1px rounding buffer and no footer edge can sit
+beneath the bar even at fractional device sizes.
+
+### Mobile drawer (`components/layout/mobile-nav.tsx`)
+
+The header menu opens the retained left `Sheet` drawer. Its structure is:
+
+- **Brand header** — orange logo mark, "B2B Marketplace", "Wholesale sourcing",
+  and the standard close control (the title reserves space for it).
+- **Marketplace** — Home, Categories, All Products. Active rows use the same
+  `isStorefrontTabActive()` contract as the bottom bar.
+- **Business** — signed-in only: Orders and Cart. Signed-out visitors get Sign in
+  and Become a Supplier in the footer instead.
+- **Popular Categories** — rendered from `getCachedNavigationCategories()`; long
+  lists scroll with the drawer body. Active category rows mark
+  `aria-current="page"`.
+- **Footer** — signed-in buyers get My account + Sign out; supplier/admin/staff
+  get their role-appropriate Dashboard + Sign out. Buyer accounts never see a
+  workspace dashboard link.
+
+Only implemented routes are rendered: there is no supplier directory, New
+Arrivals, or Wholesale Deals destination, so those recommended entries are
+omitted rather than linking to `/products` under a different label. The drawer
+width, overlay, dismissal, focus trapping, and the 40px header trigger are
+unchanged in behaviour. Active drawer rows use a left orange rule plus a tinted
+row, so state is not colour-only; every row has a focus-visible ring and
+pointer-down press feedback.
 
 ### Footer (`components/layout/storefront-footer.tsx`)
 

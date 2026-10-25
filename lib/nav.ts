@@ -24,3 +24,30 @@ export function dashboardHref(userType: string, isStaff = false): string {
   if (userType === "supplier" || isStaff) return "/supplier/dashboard"
   return "/"
 }
+
+export type StorefrontTab =
+  "home" | "categories" | "products" | "search" | "account"
+
+/**
+ * Shared active-state contract for the storefront's mobile navigation.
+ * Search results win over All Products: `/products?q=…` is a search route, not
+ * the plain catalog, while every other `/products` view remains All Products.
+ */
+export function isStorefrontTabActive(
+  tab: StorefrontTab,
+  pathname: string,
+  hasSearchQuery = false
+): boolean {
+  switch (tab) {
+    case "home":
+      return pathname === "/"
+    case "categories":
+      return pathname === "/categories" || pathname.startsWith("/category/")
+    case "products":
+      return pathname === "/products" && !hasSearchQuery
+    case "search":
+      return pathname === "/products" && hasSearchQuery
+    case "account":
+      return pathname.startsWith("/auth") || pathname.startsWith("/account")
+  }
+}
