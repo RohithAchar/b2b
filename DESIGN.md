@@ -373,7 +373,7 @@ so navigation never reflows when content arrives.
 | Use `!gap-0 !py-0` + own padding on media cards              | Rely on Card's default padding for media layouts          |
 | ₹ formatted with `en-IN`, `tabular-nums`                     | Inconsistent currency/number formatting                   |
 | Springs from `lib/motion.ts`, press feedback on pointer-down | Overshoot on menus/dialogs, feedback on release only      |
-| `material` + `scroll-edge` for floating chrome               | Opaque bars, hard 1px dividers under sticky UI            |
+| `bg-card` + `scroll-edge` for top/bottom bars                | Hard 1px dividers under sticky UI                        |
 | `MotionConfig reducedMotion="user"` + the CSS media queries  | Animating transform/opacity without a reduced-motion path |
 | A route `loading.tsx` that mirrors the real page layout      | One generic skeleton reused for unrelated routes          |
 
@@ -423,12 +423,13 @@ ease-(--motion-settle)`; the check/dot indicator pops in with
   settle ease. CSS plays before hydration (nothing waits for JS, nothing
   renders invisibly), and `animation-duration-*` keeps entrance timing off the
   element's transition clock. Springs stay for touch/layout.
-- **Materials:** floating chrome uses `material` (`material-strong` for
-  structural surfaces), never light-on-light stacking. Replace hard dividers
-  under floating UI with `scroll-edge` (toggled by `data-scrolled`; static
-  always-overlapping chrome sets `data-scrolled="true"`). Bottom-anchored
-  chrome adds `data-edge="above"` so the fade sits over content sliding
-  underneath (e.g. the product form's sticky action bar).
+- **Materials:** top and bottom navigation bars are opaque `bg-card` surfaces;
+  use `scroll-edge` instead of hard dividers under sticky UI (toggled by
+  `data-scrolled`; static always-overlapping chrome sets `data-scrolled="true"`).
+  Bottom-anchored chrome adds `data-edge="above"` so the fade sits over content
+  sliding underneath (e.g. the product form's sticky action bar). `material` /
+  `material-strong` remain available for structural surfaces, but the navigation
+  bars do not use them.
 - **Accessibility is three signals, all wired globally:** `prefers-reduced-motion`
   (CSS turns transitions into 200ms opacity/colour cross-fades and strips
   slide/zoom from tw-animate keyframes; Motion collapses transforms),
