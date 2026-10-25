@@ -176,8 +176,8 @@ account/cart). It reuses `StorefrontSearchForm` (same `/products?q` contract) wi
 the search glyph and camera action inside one 40px field. Hidden while a
 page-level search is on screen: on `/` an `IntersectionObserver` watches the
 hero search (`data-mini-search-anchor`); pages without an anchor fall back to a
-small scroll threshold. `fixed inset-x-0 top-(--mini-search-top) z-40` with `material`
-(translucent — content scrolls under) plus `scroll-edge`; it only exists while
+small scroll threshold. `fixed inset-x-0 top-(--mini-search-top) z-40` with `bg-card`
+(opaque — content scrolls under) plus `scroll-edge`; it only exists while
 the page is scrolled, so its edge fade is always on (`data-scrolled="true"`).
 It sits below `z-50` sheets/dropdowns and is fixed so page
 content never shifts. Slide transition is `motion-safe:` gated; hidden state is
@@ -212,7 +212,7 @@ Five items, in order:
   horizontal scrolling. Interactive areas are the full 56px-tall tab.
 - Active state is never colour alone: a 20×2px top rule and a heavier icon
   stroke accompany the deeper orange label (`text-brand-700`, AA on the
-  translucent bar); inactive items stay `text-muted-foreground`. No pills, fills or gradients. Links set
+  opaque bar); inactive items stay `text-muted-foreground`. No pills, fills or gradients. Links set
   `aria-current="page"`; the signed-in Account trigger and Search sheet trigger
   expose it too. Every tab has an inset `focus-visible` ring.
 - Semantic `<nav aria-label="Storefront">`; every item has a visible label and an
@@ -221,8 +221,8 @@ Five items, in order:
   Search is the one sheet that must dismiss on navigation: the shell persists
   across route changes, so the bottom nav remounts the sheet (keyed by route +
   query) and it cannot stay over a results page.
-  It is built as a `material` (translucent layer) with a light top edge — the
-  hairline that "catches the light" on the material — drawn as an inset
+  It is built as an opaque `bg-card` surface with a light top edge — the
+  hairline that separates it from content — drawn as an inset
   pseudo-element so it does not add layout height.
 - Safe area: the bar adds `pb-(--safe-area-bottom)`; the interactive row is
   `h-(--bottom-nav-height)`. Both vars live in `app/globals.css`.
