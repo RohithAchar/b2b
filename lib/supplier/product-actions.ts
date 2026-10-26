@@ -6,8 +6,10 @@ import {
   MAX_PRODUCT_IMAGES,
   MIN_PRODUCT_IMAGES,
   extractYoutubeId,
+  orderImagePaths,
   productSchema,
   productVariantSchema,
+  resolvePrimaryImagePath,
   validateProductImageFile,
 } from "@/lib/supplier/products";
 import { defaultSeoDescription, defaultSeoTitle } from "@/lib/supplier/rich-text";
@@ -362,7 +364,10 @@ export async function createProduct(
 
   const { error: imageRowsError } = await supabase.rpc("replace_product_images", {
     p_product_id: product.id,
-    p_paths: uploadedPaths,
+    p_paths: orderImagePaths(
+      uploadedPaths,
+      resolvePrimaryImagePath(String(formData.get("primary_image") ?? ""), [], uploadedPaths),
+    ),
   });
   if (imageRowsError) {
     console.error("createProduct image rows failed:", imageRowsError);
@@ -471,7 +476,8 @@ export async function updateProduct(
   const { data: existingImageRows } = await supabase
     .from("product_images")
     .select("path")
-    .eq("product_id", productId);
+    .eq("product_id", productId)
+    .order("sort", { ascending: true });
   const existingPaths = (existingImageRows ?? []).map((i) => i.path as string);
 const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths") ?? "")).filter(
   (p) => existingPaths.includes(p),
@@ -556,7 +562,14 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
 
   const { error: imageRowsError } = await supabase.rpc("replace_product_images", {
     p_product_id: productId,
-    p_paths: [...keptPaths, ...newPaths],
+    p_paths: orderImagePaths(
+      [...keptPaths, ...newPaths],
+      resolvePrimaryImagePath(
+        String(formData.get("primary_image") ?? ""),
+        keptPaths,
+        newPaths,
+      ),
+    ),
   });
   if (imageRowsError) {
     await removeStoredPaths(supabase, newPaths);

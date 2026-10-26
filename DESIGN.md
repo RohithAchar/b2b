@@ -320,6 +320,28 @@ gallery tall, and no image is hidden or reordered.
   `outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50`.
 - The main image stays `object-contain`; only the thumbnails use `object-cover`.
 
+### Supplier product media (`app/supplier/dashboard/products/product-media-section.tsx`)
+
+The product form shows one selected image in a 4:3 `object-contain` preview with
+a thumbnail strip below. The primary image is the first `product_images.sort`
+row: it carries a "Primary" badge on the preview and a star badge on its
+thumbnail. Actions are Edit, Remove, and Make primary; making a different image
+primary submits a hidden `primary_image` token and the server moves that path to
+index 0 before `replace_product_images` (no new column or migration).
+
+- Thumbnails are `size-16`; selected = `border-primary` **plus** a check badge,
+  never color alone.
+- The upload/drop zone stays below the gallery, and the existing image count
+  limits still apply.
+
+### Supplier description editor (`app/supplier/dashboard/products/rich-text-editor.tsx`)
+
+The toolbar is limited to Bold, Italic, Strikethrough, Undo, and Redo. Heading,
+list, quote, and link controls are intentionally absent because Tailwind
+Preflight and the current prose setup do not style them reliably. The Tiptap
+schema and server sanitizer still parse stored rich markup, so existing
+descriptions keep their headings, lists, quotes, and links when edited.
+
 ### Supplier dashboard sidebar (`app/supplier/dashboard/sidebar.tsx`)
 
 Supplier workspace navigation mirrors a modern seller dashboard hierarchy, ordered:

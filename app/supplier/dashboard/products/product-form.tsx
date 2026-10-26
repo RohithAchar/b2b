@@ -24,7 +24,10 @@ import {
   MAX_PRODUCT_IMAGES,
   MIN_PRODUCT_IMAGES,
   MAX_VARIANTS,
+  existingImageKey,
   extractYoutubeId,
+  stagedImageIndex,
+  stagedImageKey,
 } from "@/lib/supplier/products";
 import { fieldIdForMessage } from "@/lib/supplier/form-errors";
 import {
@@ -134,6 +137,10 @@ export function ProductForm({
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [removedImagePaths, setRemovedImagePaths] = useState<string[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [primaryImageKey, setPrimaryImageKey] = useState<string | null>(() => {
+    const cover = product?.images?.[0];
+    return cover ? existingImageKey(cover.path) : null;
+  });
   const [youtubeUrl, setYoutubeUrl] = useState(product?.youtube_url ?? "");
   const objectUrlsRef = useRef<string[]>([]);
 
@@ -185,6 +192,21 @@ export function ProductForm({
 
   const youtubeId = useMemo(() => extractYoutubeId(youtubeUrl), [youtubeUrl]);
   const existingImages = useMemo(() => product?.images ?? [], [product]);
+  const visibleExistingImages = useMemo(
+    () => existingImages.filter((image) => !removedImagePaths.includes(image.path)),
+    [existingImages, removedImagePaths],
+  );
+  const imageKeys = useMemo(
+    () => [
+      ...visibleExistingImages.map((image) => existingImageKey(image.path)),
+      ...newFiles.map((_, index) => stagedImageKey(index)),
+    ],
+    [visibleExistingImages, newFiles],
+  );
+  const effectivePrimaryImageKey = useMemo(() => {
+    if (primaryImageKey && imageKeys.includes(primaryImageKey)) return primaryImageKey;
+    return imageKeys[0] ?? null;
+  }, [primaryImageKey, imageKeys]);
   const totalImages = existingImages.length - removedImagePaths.length + newFiles.length;
   const canAddMore = totalImages < MAX_PRODUCT_IMAGES;
 
@@ -316,16 +338,37 @@ export function ProductForm({
 
   function addFiles(files: File[]) {
     if (files.length === 0) return;
+    const hadImages = imageKeys.length > 0;
     const seen = new Set(newFiles.map((f) => `${f.name}:${f.size}:${f.lastModified}`));
     const merged = [
       ...newFiles,
       ...files.filter((f) => !seen.has(`${f.name}:${f.size}:${f.lastModified}`)),
     ].slice(0, MAX_PRODUCT_IMAGES);
     commitStagedFiles(merged);
+    if (!hadImages && merged.length > 0) {
+      setPrimaryImageKey(stagedImageKey(0));
+    }
   }
 
   function removeStaged(index: number) {
-    commitStagedFiles(newFiles.filter((_, i) => i !== index));
+    const nextFiles = newFiles.filter((_, i) => i !== index);
+    const currentPrimary = effectivePrimaryImageKey;
+    if (currentPrimary === stagedImageKey(index)) {
+      const fallbackExisting = visibleExistingImages[0];
+      setPrimaryImageKey(
+        fallbackExisting
+          ? existingImageKey(fallbackExisting.path)
+          : nextFiles.length > 0
+            ? stagedImageKey(0)
+            : null,
+      );
+    } else {
+      const primaryIndex = stagedImageIndex(currentPrimary);
+      if (primaryIndex !== null && index < primaryIndex) {
+        setPrimaryImageKey(stagedImageKey(primaryIndex - 1));
+      }
+    }
+    commitStagedFiles(nextFiles);
   }
 
   function replaceStaged(index: number, file: File) {
@@ -333,12 +376,28 @@ export function ProductForm({
   }
 
   function removeExisting(path: string) {
+    const wasPrimary = effectivePrimaryImageKey === existingImageKey(path);
+    const remainingExisting = visibleExistingImages.filter((image) => image.path !== path);
     setRemovedImagePaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+    if (wasPrimary) {
+      setPrimaryImageKey(
+        remainingExisting[0]
+          ? existingImageKey(remainingExisting[0].path)
+          : newFiles.length > 0
+            ? stagedImageKey(0)
+            : null,
+      );
+    }
   }
 
   function replaceExisting(path: string, file: File) {
-    removeExisting(path);
-    commitStagedFiles([...newFiles, file].slice(0, MAX_PRODUCT_IMAGES));
+    const wasPrimary = effectivePrimaryImageKey === existingImageKey(path);
+    const nextFiles = [...newFiles, file].slice(0, MAX_PRODUCT_IMAGES);
+    setRemovedImagePaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+    commitStagedFiles(nextFiles);
+    if (wasPrimary) {
+      setPrimaryImageKey(stagedImageKey(nextFiles.length - 1));
+    }
   }
 
   function onSeoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -536,6 +595,7 @@ export function ProductForm({
         <input type="hidden" name="variants_json" value={variantsJson} />
         <input type="hidden" name="seo_image_clear" value={seoImageCleared ? "1" : ""} />
         <input type="hidden" name="removed_image_paths" value={JSON.stringify(removedImagePaths)} />
+        <input type="hidden" name="primary_image" value={effectivePrimaryImageKey ?? ""} />
 
         <ProductFormSectionTabs />
 
@@ -564,6 +624,8 @@ export function ProductForm({
               removedImagePaths={removedImagePaths}
               totalImages={totalImages}
               canAddMore={canAddMore}
+              primaryImageKey={effectivePrimaryImageKey}
+              onMakePrimary={setPrimaryImageKey}
               onRemoveStaged={removeStaged}
               onRemoveExisting={removeExisting}
               onReplaceStaged={replaceStaged}

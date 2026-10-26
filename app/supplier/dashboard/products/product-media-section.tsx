@@ -1,6 +1,6 @@
 import { useMemo, useState, type RefObject } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon, CloudUploadIcon, Delete02Icon, Edit02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, CheckmarkCircle01Icon, CloudUploadIcon, Delete02Icon, Edit02Icon, PlusSignIcon, StarIcon } from "@hugeicons/core-free-icons";
 import {
   Attachment,
   AttachmentActions,
@@ -11,6 +11,7 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from "@/components/ui/attachment";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -24,13 +25,33 @@ import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet 
 import { Input } from "@/components/ui/input";
 import { FormSection } from "@/components/dashboard/form-section";
 import dynamic from "next/dynamic";
-import { MAX_PRODUCT_IMAGES, MIN_PRODUCT_IMAGES, youtubeThumbUrl } from "@/lib/supplier/products";
+import { cn } from "cn";
+import { MAX_PRODUCT_IMAGES, MIN_PRODUCT_IMAGES, existingImageKey, stagedImageKey, youtubeThumbUrl } from "@/lib/supplier/products";
 import type { ExistingImage, FieldErrorHelpers } from "./product-form-types";
 
 const ImageCropModal = dynamic(
   () => import("@/components/dashboard/image-crop-modal").then((m) => m.ImageCropModal),
   { ssr: false },
 );
+
+type GalleryItem =
+  | {
+      key: string;
+      kind: "existing";
+      url: string;
+      name: string;
+      meta: string;
+      image: ExistingImage;
+    }
+  | {
+      key: string;
+      kind: "staged";
+      url: string;
+      name: string;
+      meta: string;
+      file: File;
+      index: number;
+    };
 
 export function ProductMediaSection({
   fileInputRef,
@@ -41,6 +62,8 @@ export function ProductMediaSection({
   removedImagePaths,
   totalImages,
   canAddMore,
+  primaryImageKey,
+  onMakePrimary,
   onRemoveStaged,
   onRemoveExisting,
   onReplaceStaged,
@@ -60,6 +83,8 @@ export function ProductMediaSection({
   removedImagePaths: string[];
   totalImages: number;
   canAddMore: boolean;
+  primaryImageKey: string | null;
+  onMakePrimary: (key: string) => void;
   onRemoveStaged: (index: number) => void;
   onRemoveExisting: (path: string) => void;
   onReplaceStaged: (index: number, file: File) => void;
@@ -75,6 +100,34 @@ export function ProductMediaSection({
     () => existingImages.filter((img) => !removedImagePaths.includes(img.path)),
     [existingImages, removedImagePaths],
   );
+  const gallery = useMemo<GalleryItem[]>(
+    () => [
+      ...visibleExisting.map((image, index) => ({
+        key: existingImageKey(image.path),
+        kind: "existing" as const,
+        url: productImageUrl(image.path),
+        name: `Saved image ${index + 1}`,
+        meta: "Stored in your gallery",
+        image,
+      })),
+      ...newFiles.map((file, index) => ({
+        key: stagedImageKey(index),
+        kind: "staged" as const,
+        url: previewUrls[index] ?? "",
+        name: file.name,
+        meta: `${Math.max(1, Math.round(file.size / 1024))} KB · ready to upload`,
+        file,
+        index,
+      })),
+    ],
+    [visibleExisting, newFiles, previewUrls, productImageUrl],
+  );
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const selected =
+    gallery.find((item) => item.key === selectedKey) ??
+    gallery.find((item) => item.key === primaryImageKey) ??
+    gallery[0] ??
+    null;
   const [cropTarget, setCropTarget] = useState<
     { kind: "existing"; path: string } | { kind: "staged"; index: number } | null
   >(null);
@@ -99,6 +152,16 @@ export function ProductMediaSection({
     setCropTarget(null);
   }
 
+  function openGalleryCrop(item: GalleryItem) {
+    if (item.kind === "existing") openExistingCrop(item.image);
+    else openStagedCrop(item.index);
+  }
+
+  function removeGalleryItem(item: GalleryItem) {
+    if (item.kind === "existing") onRemoveExisting(item.image.path);
+    else onRemoveStaged(item.index);
+  }
+
   function onDrop(e: React.DragEvent<HTMLElement>) {
     e.preventDefault();
     onFilesPicked(Array.from(e.dataTransfer.files ?? []));
@@ -108,7 +171,7 @@ export function ProductMediaSection({
     <FormSection
       id="product-media"
       title="Product media"
-      description="JPG, PNG or WEBP, under 2 MB each. Add 3–8 images — the first image is the cover. A YouTube walkthrough is optional."
+      description="JPG, PNG or WEBP, under 2 MB each. Add 3–8 images and choose which one is the primary cover. A YouTube walkthrough is optional."
       columns={1}
     >
       <FieldSet>
@@ -142,57 +205,101 @@ export function ProductMediaSection({
           )}
           {errorFor("images")}
         </Field>
-        <AttachmentGroup>
-          {visibleExisting.map((img, i) => (
-            <Attachment key={img.id} orientation="vertical" state="done">
-              <AttachmentActions>
-                <AttachmentAction type="button" aria-label="Edit image" onClick={() => openExistingCrop(img)}>
-                  <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
-                </AttachmentAction>
-                <AttachmentAction type="button" aria-label="Remove image" onClick={() => onRemoveExisting(img.path)}>
-                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                </AttachmentAction>
-              </AttachmentActions>
-              <AttachmentMedia variant="image">
+        {selected ? (
+          <div className="rounded-lg border border-border bg-muted/20 p-3 sm:p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-md border border-border bg-muted sm:mx-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img loading="lazy" decoding="async" src={productImageUrl(img.path)} alt={`Product image ${i + 1}`} />
-              </AttachmentMedia>
-              <AttachmentContent>
-                <AttachmentTitle>{i === 0 ? "Cover" : `Image ${i + 1}`}</AttachmentTitle>
-                <AttachmentDescription>Saved</AttachmentDescription>
-              </AttachmentContent>
-            </Attachment>
-          ))}
-          {newFiles.map((file, i) => {
-            const globalIndex = visibleExisting.length + i;
-            return (
-              <Attachment key={`${file.name}-${i}`} orientation="vertical" state="done">
-                <AttachmentActions>
-                  <AttachmentAction type="button" aria-label={`Edit ${file.name}`} onClick={() => openStagedCrop(i)}>
-                    <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
-                  </AttachmentAction>
-                  <AttachmentAction
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={selected.url}
+                  alt={selected.name}
+                  className="h-full w-full object-contain"
+                />
+                {selected.key === primaryImageKey ? (
+                  <Badge className="absolute top-2 left-2 gap-1" variant="default">
+                    <HugeiconsIcon icon={StarIcon} strokeWidth={2} className="size-3.5" />
+                    Primary
+                  </Badge>
+                ) : null}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{selected.name}</p>
+                  <p className="text-xs text-muted-foreground">{selected.meta}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => openGalleryCrop(selected)}>
+                    <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} data-icon="inline-start" />
+                    Edit
+                  </Button>
+                  {selected.key !== primaryImageKey ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => onMakePrimary(selected.key)}>
+                      <HugeiconsIcon icon={StarIcon} strokeWidth={2} data-icon="inline-start" />
+                      Make primary
+                    </Button>
+                  ) : null}
+                  <Button
                     type="button"
-                    aria-label={`Remove ${file.name}`}
-                    onClick={() => onRemoveStaged(i)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => removeGalleryItem(selected)}
                   >
-                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                  </AttachmentAction>
-                </AttachmentActions>
-                <AttachmentMedia variant="image">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img loading="lazy" decoding="async" src={previewUrls[i]} alt={`New upload ${globalIndex + 1}`} />
-                </AttachmentMedia>
-                <AttachmentContent>
-                  <AttachmentTitle>{globalIndex === 0 ? "Cover" : `Image ${globalIndex + 1}`}</AttachmentTitle>
-                  <AttachmentDescription>
-                    {file.name} · {Math.max(1, Math.round(file.size / 1024))} KB
-                  </AttachmentDescription>
-                </AttachmentContent>
-              </Attachment>
-            );
-          })}
-        </AttachmentGroup>
+                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} data-icon="inline-start" />
+                    Remove
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The primary image is the cover used in listings, search and product cards.
+                </p>
+              </div>
+            </div>
+            {gallery.length > 1 ? (
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                {gallery.map((item, index) => {
+                  const isSelected = item.key === selected.key;
+                  const isPrimary = item.key === primaryImageKey;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setSelectedKey(item.key)}
+                      aria-label={`Preview image ${index + 1}`}
+                      aria-current={isSelected}
+                      className={cn(
+                        "relative size-16 shrink-0 overflow-hidden rounded-md border-2 bg-muted outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        isSelected ? "border-primary" : "border-border hover:border-primary/50",
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={item.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                      {isPrimary ? (
+                        <span className="absolute top-1 left-1 flex size-5 items-center justify-center rounded-sm bg-primary text-primary-foreground">
+                          <HugeiconsIcon icon={StarIcon} strokeWidth={2} className="size-3.5" />
+                          <span className="sr-only">Primary</span>
+                        </span>
+                      ) : null}
+                      {isSelected ? (
+                        <span className="absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-sm bg-primary text-primary-foreground">
+                          <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="size-3.5" />
+                          <span className="sr-only">Selected</span>
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {canAddMore ? (
           <Empty
             className="border"

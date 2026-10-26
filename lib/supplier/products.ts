@@ -17,6 +17,51 @@ export const MIN_PRODUCT_IMAGES = 3;
 export const MAX_PRODUCT_IMAGE_BYTES = 2 * 1024 * 1024;
 export const MAX_VARIANTS = 20;
 
+export const PRIMARY_IMAGE_EXISTING_PREFIX = "existing:";
+export const PRIMARY_IMAGE_NEW_PREFIX = "new:";
+
+export function existingImageKey(path: string): string {
+  return `${PRIMARY_IMAGE_EXISTING_PREFIX}${path}`;
+}
+
+export function stagedImageKey(index: number): string {
+  return `${PRIMARY_IMAGE_NEW_PREFIX}${index}`;
+}
+
+export function stagedImageIndex(key: string | null | undefined): number | null {
+  const value = key?.trim() ?? "";
+  if (!value.startsWith(PRIMARY_IMAGE_NEW_PREFIX)) return null;
+  const index = Number(value.slice(PRIMARY_IMAGE_NEW_PREFIX.length));
+  return Number.isInteger(index) && index >= 0 ? index : null;
+}
+
+export function resolvePrimaryImagePath(
+  token: string | null | undefined,
+  existingPaths: string[],
+  newPaths: string[],
+): string | null {
+  const value = token?.trim() ?? "";
+  if (value === "") return null;
+
+  if (value.startsWith(PRIMARY_IMAGE_EXISTING_PREFIX)) {
+    const path = value.slice(PRIMARY_IMAGE_EXISTING_PREFIX.length);
+    return existingPaths.includes(path) ? path : null;
+  }
+
+  if (value.startsWith(PRIMARY_IMAGE_NEW_PREFIX)) {
+    const index = Number(value.slice(PRIMARY_IMAGE_NEW_PREFIX.length));
+    if (!Number.isInteger(index) || index < 0 || index >= newPaths.length) return null;
+    return newPaths[index];
+  }
+
+  return null;
+}
+
+export function orderImagePaths(paths: string[], primaryPath: string | null): string[] {
+  if (!primaryPath || !paths.includes(primaryPath)) return paths;
+  return [primaryPath, ...paths.filter((path) => path !== primaryPath)];
+}
+
 // SEO size constants live in rich-text.ts (imported by client + tests).
 export {
   MAX_SEO_TITLE_CHARS,
