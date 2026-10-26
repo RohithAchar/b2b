@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
@@ -56,6 +56,61 @@ function ItemContent({
   )
 }
 
+/** Ignore browser-chrome deltas; only lift for a real software keyboard. */
+const KEYBOARD_MIN_INSET = 120
+
+type KeyboardViewport = { inset: number; height: number }
+
+const CLOSED_VIEWPORT: KeyboardViewport = { inset: 0, height: 0 }
+
+/**
+ * Software-keyboard geometry for fixed bottom sheets.
+ *
+ * A fixed bottom sheet is anchored to the layout viewport, which iOS Safari
+ * (and Chromium with `resizes-visual`) does not shrink when the keyboard
+ * opens. The inset lifts the sheet above the keyboard, and the height caps it
+ * to the visible area so it can grow upward for suggestions without escaping
+ * the screen.
+ */
+function useKeyboardViewport(active: boolean) {
+  const [viewport, setViewport] = useState<KeyboardViewport>(CLOSED_VIEWPORT)
+
+  useEffect(() => {
+    if (!active) return
+    const visualViewport = window.visualViewport
+    if (!visualViewport) return
+
+    let frame = 0
+    const update = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const gap =
+          window.innerHeight - visualViewport.height - visualViewport.offsetTop
+        const next = {
+          inset: gap > KEYBOARD_MIN_INSET ? Math.round(gap) : 0,
+          height: Math.round(visualViewport.height),
+        }
+        setViewport((previous) =>
+          previous.inset === next.inset && previous.height === next.height
+            ? previous
+            : next
+        )
+      })
+    }
+
+    update()
+    visualViewport.addEventListener("resize", update)
+    visualViewport.addEventListener("scroll", update)
+    return () => {
+      cancelAnimationFrame(frame)
+      visualViewport.removeEventListener("resize", update)
+      visualViewport.removeEventListener("scroll", update)
+    }
+  }, [active])
+
+  return active ? viewport : CLOSED_VIEWPORT
+}
+
 /**
  * Search tab + bottom sheet. The shell persists across navigation, so the
  * parent remounts this component (keyed by route + query) and an open sheet
@@ -64,6 +119,7 @@ function ItemContent({
  */
 function BottomSearchSheet({ active }: { active: boolean }) {
   const [open, setOpen] = useState(false)
+  const keyboard = useKeyboardViewport(open)
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -78,12 +134,19 @@ function BottomSearchSheet({ active }: { active: boolean }) {
       >
         <ItemContent icon={Search01Icon} label="Search" active={active} />
       </SheetTrigger>
-      <SheetContent side="bottom" className="pb-(--safe-area-bottom)">
+      <SheetContent
+        side="bottom"
+        className="overflow-y-auto pb-(--safe-area-bottom)"
+        style={{
+          bottom: keyboard.inset > 0 ? keyboard.inset : undefined,
+          maxHeight: keyboard.height > 0 ? keyboard.height : undefined,
+        }}
+      >
         <SheetHeader>
           <SheetTitle>Search products</SheetTitle>
         </SheetHeader>
-        <div className="px-6 pb-6">
-          <StorefrontSearchForm autoFocus />
+        <div className="px-6 pb-10">
+          <StorefrontSearchForm autoFocus inlineSuggestions />
         </div>
       </SheetContent>
     </Sheet>

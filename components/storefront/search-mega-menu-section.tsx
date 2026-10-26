@@ -1,13 +1,6 @@
 import { getCachedMegaMenuCategories } from "@/lib/storefront-cache";
+import { TRENDING_SEARCHES } from "@/lib/search-suggest";
 import { SearchMegaMenu } from "./search-mega-menu";
-
-const TRENDING_SEARCHES = [
-  "cotton fabric",
-  "led lights",
-  "jute bags",
-  "steel bottles",
-  "spices",
-];
 
 /**
  * Homepage hero: the search mega menu fed with live catalog categories.

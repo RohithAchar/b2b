@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { usePathname, useSearchParams } from "next/navigation"
 import { navLinksFor } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
 import { MobileNav } from "@/components/layout/mobile-nav"
+import { StorefrontSearchOverlay } from "@/components/layout/storefront-search-overlay"
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
+import type { MegaMenuCategory } from "@/components/storefront/search-mega-menu"
 import { Button } from "@/components/ui/button"
 
 type User = { email: string; user_type: string; isStaff?: boolean } | null
@@ -17,14 +20,21 @@ const SCROLL_THRESHOLD = 10
 export function StorefrontHeader({
   user,
   categories = [],
+  megaCategories = [],
   cartCount = 0,
 }: {
   user: User
   categories?: NavCategory[]
+  megaCategories?: MegaMenuCategory[]
   cartCount?: number
 }) {
   const [scrolled, setScrolled] = useState(false)
   const navLinks = navLinksFor(user)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // Remount the overlay on navigation so an open panel can never stay over the
+  // next route/query without an extra state-sync effect.
+  const routeKey = `${pathname}?${searchParams.toString()}`
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
@@ -72,6 +82,10 @@ export function StorefrontHeader({
 
           {/* Right actions (desktop; mobile uses the bottom navigation) */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+            <StorefrontSearchOverlay
+              key={routeKey}
+              categories={megaCategories}
+            />
             <CartIconLink count={cartCount} />
             {user ? (
               <AccountMenu user={user} />

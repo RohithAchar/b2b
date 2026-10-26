@@ -8,8 +8,11 @@ import { ArrowRight01Icon, Search01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ImageSearchButton } from "@/components/storefront/image-search-button"
+import { RecentSearches } from "@/components/storefront/recent-searches"
 import { SearchSuggestionsDropdown } from "@/components/storefront/search-suggestions"
 import { useSearchSuggestions } from "@/components/storefront/use-search-suggestions"
+import { useRecentSearches } from "@/hooks/use-recent-searches"
+import { addRecentSearch, clearRecentSearches } from "@/lib/recent-searches"
 import { normalizeSuggestQuery, SUGGEST_MIN_CHARS } from "@/lib/search-suggest"
 import { publicTransformedImageUrl } from "@/lib/storage"
 
@@ -96,6 +99,7 @@ export function SearchMegaMenu({
   query = "",
   suggestions = [],
   visibleCount = 6,
+  autoFocus = false,
 }: {
   categories: MegaMenuCategory[]
   activeSlug?: string
@@ -103,6 +107,8 @@ export function SearchMegaMenu({
   query?: string
   suggestions?: MegaMenuSuggestion[]
   visibleCount?: number
+  /** Focus the search field on mount (used by the desktop search overlay). */
+  autoFocus?: boolean
 }) {
   const initial =
     categories.find((c) => c.slug === activeSlug) ?? categories[0] ?? null
@@ -114,6 +120,7 @@ export function SearchMegaMenu({
   const [value, setValue] = useState(query)
   const [touched, setTouched] = useState(false)
   const [open, setOpen] = useState(false)
+  const recentSearches = useRecentSearches()
   const listId = useId()
   const {
     products: liveProducts,
@@ -125,6 +132,10 @@ export function SearchMegaMenu({
   const showLiveDropdown = open && showLive && liveHasResults
   const showFallbackDropdown =
     !showLive && !showLiveDropdown && suggestions.length > 0
+  const showRecentSearches =
+    normalizeSuggestQuery(value).length === 0 &&
+    !showLiveDropdown &&
+    !showFallbackDropdown
   const active = categories.find((c) => c.slug === activeSlugState) ?? initial
   const visible = categories.slice(0, visibleCount)
   const hasMore = categories.length > visible.length
@@ -137,7 +148,6 @@ export function SearchMegaMenu({
           {/* Large search bar */}
           <div
             className="relative min-w-0"
-            data-mini-search-anchor
             onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
                 setOpen(false)
@@ -147,7 +157,10 @@ export function SearchMegaMenu({
             <form
               action="/products"
               method="get"
-              onSubmit={() => setOpen(false)}
+              onSubmit={() => {
+                addRecentSearch(value)
+                setOpen(false)
+              }}
               className="flex h-12 w-full min-w-0 items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 lg:border-2 lg:border-primary lg:focus-within:ring-0"
             >
               <input type="hidden" name="page" value="1" />
@@ -163,6 +176,7 @@ export function SearchMegaMenu({
                   name="q"
                   aria-label="Search products"
                   value={value}
+                  autoFocus={autoFocus}
                   placeholder="Search products, suppliers..."
                   autoComplete="off"
                   aria-expanded={showLiveDropdown || showFallbackDropdown}
@@ -216,6 +230,7 @@ export function SearchMegaMenu({
                     <li key={s.id}>
                       <Link
                         href={`/products?q=${encodeURIComponent(s.label)}`}
+                        onClick={() => addRecentSearch(s.label)}
                         className="flex items-center gap-2.5 px-4 py-2 text-sm text-foreground/85 hover:bg-muted"
                       >
                         <HugeiconsIcon
@@ -239,14 +254,23 @@ export function SearchMegaMenu({
             )}
           </div>
 
+          {showRecentSearches && (
+            <RecentSearches
+              searches={recentSearches}
+              onSelect={addRecentSearch}
+              onClear={clearRecentSearches}
+              className="mt-3"
+            />
+          )}
+
           {/* Popular categories: compact scannable chips on mobile */}
           {categories.length > 0 && (
-            <div className="no-scrollbar -mx-4 mt-3 flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-0.5 sm:hidden">
+            <div className="-mx-4 mt-3 no-scrollbar flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-0.5 sm:hidden">
               {categories.slice(0, 8).map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/category/${cat.slug}`}
-                  className="flex h-10 shrink-0 snap-start items-center gap-2 rounded-md border border-border bg-card pr-3 pl-1 text-xs font-medium press"
+                  className="flex h-10 shrink-0 press snap-start items-center gap-2 rounded-md border border-border bg-card pr-3 pl-1 text-xs font-medium"
                 >
                   {cat.image_path ? (
                     <span className="relative size-8 shrink-0 overflow-hidden rounded-sm bg-muted">
@@ -288,6 +312,7 @@ export function SearchMegaMenu({
                   <Link
                     key={term}
                     href={`/products?q=${encodeURIComponent(term)}`}
+                    onClick={() => addRecentSearch(term)}
                     className="inline-flex h-9 shrink-0 snap-start items-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground/80 transition-colors active:bg-muted lg:h-auto lg:shrink lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:hover:text-primary lg:hover:underline"
                   >
                     <span className="max-w-36 truncate">{term}</span>

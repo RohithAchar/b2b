@@ -7,18 +7,20 @@ import { Search01Icon, Store01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ImageSearchButton } from "@/components/storefront/image-search-button"
+import { RecentSearches } from "@/components/storefront/recent-searches"
 import { SearchSuggestionsDropdown } from "@/components/storefront/search-suggestions"
 import { useSearchSuggestions } from "@/components/storefront/use-search-suggestions"
+import { useRecentSearches } from "@/hooks/use-recent-searches"
+import { addRecentSearch, clearRecentSearches } from "@/lib/recent-searches"
 
 /**
  * The storefront search bar.
  *
- * Used by the header's search tier, the sticky mini-search, and the mobile
- * bottom-nav sheet — the only places a shopper searches from — so image
- * search is reachable from every search entry point rather than only one of
- * them. Typing shows live product + category suggestions from
- * `/api/search/suggest`; submitting keeps the native GET form contract
- * (`/products?q=` + `page=1`).
+ * Used by the mobile bottom-nav search sheet. Typing shows live product +
+ * category suggestions from `/api/search/suggest`; submitting keeps the native
+ * GET form contract (`/products?q=` + `page=1`). The sheet passes
+ * `inlineSuggestions` so it can grow with suggestions and recent searches
+ * instead of clipping an absolute dropdown at the bottom of the viewport.
  *
  * The file is a client component because `ImageSearchButton` opens a file
  * picker and navigates, and suggestions need controlled input state.
@@ -26,24 +28,32 @@ import { useSearchSuggestions } from "@/components/storefront/use-search-suggest
 export function StorefrontSearchForm({
   autoFocus = false,
   showBrowseAll = false,
+  inlineSuggestions = false,
 }: {
   autoFocus?: boolean
   showBrowseAll?: boolean
+  /** Keep live suggestions in flow so a bottom sheet can grow to fit them. */
+  inlineSuggestions?: boolean
 }) {
   const [value, setValue] = useState("")
   const [open, setOpen] = useState(false)
+  const recentSearches = useRecentSearches()
   const listId = useId()
   const { products, categories, hasResults } = useSearchSuggestions(
-    open ? value : "",
+    open ? value : ""
   )
   const showDropdown = open && hasResults
+  const showRecentSearches = value.trim().length === 0
 
   return (
     <form
       action="/products"
       method="get"
-      onSubmit={() => setOpen(false)}
-      className="flex w-full items-stretch gap-2"
+      onSubmit={() => {
+        addRecentSearch(value)
+        setOpen(false)
+      }}
+      className="flex w-full items-start gap-2"
     >
       <input type="hidden" name="page" value="1" />
       <div
@@ -90,6 +100,15 @@ export function StorefrontSearchForm({
             products={products}
             categories={categories}
             listId={listId}
+            inline={inlineSuggestions}
+          />
+        )}
+        {showRecentSearches && (
+          <RecentSearches
+            searches={recentSearches}
+            onSelect={addRecentSearch}
+            onClear={clearRecentSearches}
+            className="mt-3"
           />
         )}
       </div>

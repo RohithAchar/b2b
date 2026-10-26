@@ -134,9 +134,10 @@ Dark mode: navy-tinted neutral darks (cool hue, no warm cast), same orange prima
 
 ### Storefront header (`components/layout/storefront-header.tsx`)
 
-Three tiers on desktop: (1) logo + nav + auth actions, (2) full-width search,
-(3) horizontal category rail. On mobile only tier 1 remains (menu + logo);
-the search tier, category rail and header auth actions are hidden because the
+One row on desktop: logo, nav links, and search + cart + account actions. The
+search action is an icon that opens the [top search overlay](#top-search-overlay)
+instead of rendering a full-width search tier in the header. On mobile that
+row keeps the menu + logo and hides the desktop actions because the
 [bottom navigation](#mobile-bottom-navigation) covers those destinations.
 The mobile app bar is `h-(--storefront-header-height)` with `pt-(--safe-area-top)`
 so the brand row clears notches; menu and cart controls use 40px hit areas.
@@ -168,20 +169,19 @@ plus a "View all" link to `/products` — then the dense two-column mobile grid.
 No popularity metric is implied by the heading; it labels the real `getProducts`
 result, not a fabricated ranking.
 
-### Mini search bar (`components/storefront/storefront-mini-search.tsx`)
+### Top search overlay (`components/layout/storefront-search-overlay.tsx`)
 
-Compact sticky search bar rendered by `components/layout/storefront-shell.tsx`
-on browsing pages only (`/`, `/products`, `/categories`, `/category/*`, `/products/*` — never
-account/cart). It reuses `StorefrontSearchForm` (same `/products?q` contract) with
-the search glyph and camera action inside one 40px field. Hidden while a
-page-level search is on screen: on `/` an `IntersectionObserver` watches the
-hero search (`data-mini-search-anchor`); pages without an anchor fall back to a
-small scroll threshold. `fixed inset-x-0 top-(--mini-search-top) z-40` with `bg-card`
-(opaque — content scrolls under) plus `scroll-edge`; it only exists while
-the page is scrolled, so its edge fade is always on (`data-scrolled="true"`).
-It sits below `z-50` sheets/dropdowns and is fixed so page
-content never shifts. Slide transition is `motion-safe:` gated; hidden state is
-`aria-hidden` + `inert`.
+Desktop-only search entry point. The top-bar search icon opens the same
+`SearchMegaMenu` used by the homepage hero, inside a full-width panel fixed
+directly below the header (`top-(--storefront-header-offset)`); the page behind
+it is dimmed and blurred by the backdrop. No page content shifts, and the
+overlay closes on Escape, outside press, route/query change, or any link click.
+It is rendered from Base UI `Dialog` primitives with `modal="trap-focus"` so
+focus stays in the search UI while the header remains clickable; page scroll is
+locked manually while open. Mega-menu categories come from the cached
+`getCachedMegaMenuCategories()` call in the storefront layout, and "Hot"
+searches come from the shared `TRENDING_SEARCHES` constant in
+`lib/search-suggest.ts`. The homepage hero itself is unchanged.
 
 ### Mobile bottom navigation (`components/layout/storefront-bottom-nav.tsx`)
 
@@ -226,6 +226,13 @@ Five items, in order:
   pseudo-element so it does not add layout height.
 - Safe area: the bar adds `pb-(--safe-area-bottom)`; the interactive row is
   `h-(--bottom-nav-height)`. Both vars live in `app/globals.css`.
+- Keyboard: the Search sheet measures `window.visualViewport` while open,
+  lifts itself by the keyboard inset (ignoring small browser-chrome deltas) and
+  caps its height to the visible viewport, so the focused input stays visible
+  above the software keyboard on iOS Safari and Chromium. Its live suggestions
+  render in flow (`inlineSuggestions`) instead of as an absolute dropdown, so
+  the sheet grows upward to show them rather than clipping them below the
+  screen edge; longer lists scroll inside the capped sheet.
 
 **Fixed mobile navigation must never overlap scrollable content.** The storefront
 shell reserves `pb-(--bottom-nav-offset)` (= nav height + safe-area inset +

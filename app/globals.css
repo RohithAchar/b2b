@@ -142,7 +142,9 @@
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --storefront-header-height: 3.5rem;
-  --mini-search-top: calc(var(--storefront-header-height) + var(--safe-area-top));
+  --storefront-header-offset: calc(
+    var(--storefront-header-height) + var(--safe-area-top)
+  );
   --bottom-nav-height: 3.5rem;
   /* 1px buffer absorbs subpixel rounding at maximum scroll. */
   --bottom-nav-offset: calc(
