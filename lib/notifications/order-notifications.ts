@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { after } from "next/server";
 import { SITE_URL } from "@/lib/site";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatRupees } from "@/lib/format";
 import { sendWhatsAppMessage } from "./whatsapp";
 
@@ -133,12 +134,13 @@ export async function queueAndDeliver(
  * a later sweep can retry them; nothing else depends on them.
  */
 export async function deliverNotification(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   outboxId: string,
 ): Promise<void> {
   try {
-    // RLS scopes this read to the caller's own notifications; the queueing
-    // party is always the order's buyer or supplier side.
+    // Delivery is a system job: it reads the queue row and records the
+    // provider result, both of which clients must not be able to rewrite.
+    const supabase = createAdminClient();
     const { data: row } = await supabase
       .from("notification_outbox")
       .select("id, order_id, template, recipient_phone, payload, status, attempts")

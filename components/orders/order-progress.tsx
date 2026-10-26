@@ -23,12 +23,12 @@ function stepStates(
   status: OrderStatus,
   paymentStatus: PaymentStatus,
   hasQuotation: boolean,
+  quotationAccepted: boolean,
 ): StepState[] {
-  const quoted = hasQuotation || status !== "new";
-  const advanced = ["quoted", "confirmed", "processing", "shipped", "delivered"];
+  const quotedDone = quotationAccepted || (status !== "quoted" && (hasQuotation || status !== "new"));
   const done = [
     true,
-    quoted && advanced.includes(status),
+    quotedDone,
     paymentStatus === "claimed" || paymentStatus === "paid",
     paymentStatus === "paid",
     status === "processing" || status === "shipped" || status === "delivered",
@@ -72,11 +72,13 @@ export function OrderProgress({
   status,
   paymentStatus,
   hasQuotation = false,
+  quotationAccepted = false,
   cancelledReason,
 }: {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   hasQuotation?: boolean;
+  quotationAccepted?: boolean;
   cancelledReason?: string | null;
 }) {
   if (status === "cancelled") {
@@ -95,7 +97,7 @@ export function OrderProgress({
     );
   }
 
-  const states = stepStates(status, paymentStatus, hasQuotation);
+  const states = stepStates(status, paymentStatus, hasQuotation, quotationAccepted);
 
   return (
     <div aria-label="Order progress">

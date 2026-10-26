@@ -71,7 +71,7 @@ export function SupplierOrdersTable({
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search order or buyer"
+            placeholder="Search this page"
             aria-label="Search orders"
             className="pl-9"
           />

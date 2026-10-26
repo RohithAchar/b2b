@@ -653,6 +653,60 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
       expect(Number(items?.[0]?.line_total)).toBeCloseTo(181);
     });
 
+    it("supersedes older revisions and accepts without confirming the order", async () => {
+      const first = await service
+        .from("quotations")
+        .select("id, status")
+        .eq("order_id", quoteOrderId)
+        .order("version", { ascending: true });
+      const firstId = first.data?.[0]?.id as string;
+
+      const { data: revision, error: revisionError } = await supplierClient.rpc(
+        "create_quotation",
+        {
+          p_order_id: quoteOrderId,
+          p_lines: [{ order_item_id: quoteItemId, quantity: 2, unit_price: 95 }],
+          p_delivery_charge: 0,
+          p_tax_amount: 0,
+          p_note: "Final offer",
+          p_expires_at: null,
+        },
+      );
+      expect(revisionError).toBeNull();
+      const revisionId = (revision as { quotation_id: string }).quotation_id;
+
+      const { data: oldQuote } = await service
+        .from("quotations")
+        .select("status")
+        .eq("id", firstId)
+        .single();
+      expect(oldQuote?.status).toBe("superseded");
+
+      const { error: acceptError } = await buyerClient.rpc(
+        "respond_to_quotation",
+        { p_quotation_id: revisionId, p_accept: true },
+      );
+      expect(acceptError).toBeNull();
+
+      const { data: order } = await service
+        .from("orders")
+        .select("status, payment_status")
+        .eq("id", quoteOrderId)
+        .single();
+      expect(order?.status).toBe("quoted");
+      expect(order?.payment_status).toBe("not_requested");
+
+      const { error: anotherError } = await supplierClient.rpc("create_quotation", {
+        p_order_id: quoteOrderId,
+        p_lines: [{ order_item_id: quoteItemId, quantity: 2, unit_price: 80 }],
+        p_delivery_charge: 0,
+        p_tax_amount: 0,
+        p_note: null,
+        p_expires_at: null,
+      });
+      expect(anotherError?.message).toContain("already accepted");
+    });
+
     it("rejects a line that does not belong to the order", async () => {
       const otherOrderId = await makeOrder(companyId, buyerUserId, { status: "new" });
       const { error } = await supplierClient.rpc("create_quotation", {
@@ -711,7 +765,7 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
       expect(data ?? []).toHaveLength(0);
     });
 
-    it("lets the supplier mark delivery results the provider confirmed", async () => {
+    it("keeps provider-result updates server-side only", async () => {
       const { data: rows } = await supplierClient
         .from("notification_outbox")
         .select("id, status")
@@ -720,7 +774,13 @@ describe.skipIf(!available)("order lifecycle (DB)", () => {
       const row = (rows ?? [])[0];
       expect(row).toBeTruthy();
 
-      const { error } = await supplierClient
+      const { error: clientError } = await supplierClient
+        .from("notification_outbox")
+        .update({ status: "sent", provider: "mock", provider_message_id: "mock-1" })
+        .eq("id", row!.id as string);
+      expect(clientError).not.toBeNull();
+
+      const { error } = await service
         .from("notification_outbox")
         .update({ status: "sent", provider: "mock", provider_message_id: "mock-1" })
         .eq("id", row!.id as string);

@@ -4,9 +4,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildTrendSeries,
+  earliestDate,
+  resolvePreviousBounds,
   resolveRangeBounds,
+  windowDays,
   type DashboardRange,
 } from "@/lib/supplier/analytics";
+import { latestAcceptedQuotation } from "@/lib/orders/quotation";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export type DeltaMetric = {
   value: number;
@@ -44,6 +49,13 @@ export function changePct(current: number, previous: number): number | null {
   return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
 }
 
+type QuotationLink = {
+  id: string;
+  status: string;
+  version: number;
+  total: number;
+};
+
 type SalesOrderRow = {
   id: string;
   status: string;
@@ -51,7 +63,12 @@ type SalesOrderRow = {
   buyer_id: string;
   region: string | null;
   created_at: string;
+  quotations?: QuotationLink[];
 };
+
+function orderValue(order: SalesOrderRow): number {
+  return Number(latestAcceptedQuotation(order.quotations)?.total ?? order.subtotal);
+}
 
 type SalesEventRow = {
   session_id: string;
@@ -62,6 +79,7 @@ type SalesEventRow = {
 };
 
 type ItemRow = {
+  id: string;
   order_id: string;
   quantity: number;
   unit_price: number;
@@ -83,30 +101,32 @@ function conversionOf(events: SalesEventRow[]): number {
   return Math.round((ordering.size / sessions.size) * 1000) / 10;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const ORDERS_PAGE_SIZE = 5000;
-const EVENTS_PAGE_SIZE = 10000;
-
-function windowedQuery(
+function windowedQuery<T>(
   supabase: SupabaseClient,
   table: "orders" | "storefront_events",
   columns: string,
   supplierId: string,
   from: Date | null,
   to: Date,
-  limit: number,
-) {
-  let query = supabase
-    .from(table)
-    .select(columns)
-    .eq("supplier_id", supplierId)
-    .lt("created_at", to.toISOString())
-    .order("created_at", { ascending: true })
-    .limit(limit);
-  if (from) {
-    query = query.gte("created_at", from.toISOString());
-  }
-  return query;
+  label: string,
+): Promise<T[]> {
+  return fetchAllRows<T>(label, (offset, limit) => {
+    let query = supabase
+      .from(table)
+      .select(columns)
+      .eq("supplier_id", supplierId)
+      .lt("created_at", to.toISOString())
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, limit);
+    if (from) {
+      query = query.gte("created_at", from.toISOString());
+    }
+    return query as unknown as PromiseLike<{
+      data: T[] | null;
+      error: { message: string } | null;
+    }>;
+  });
 }
 
 /**
@@ -121,57 +141,90 @@ export async function getSalesAnalytics(
   now: Date = new Date(),
 ): Promise<SalesAnalytics> {
   const { from, to } = resolveRangeBounds(range, now);
-  const spanMs = from ? Math.max(to.getTime() - from.getTime(), 0) : 0;
-  const prevTo = from;
-  const prevFrom = from && spanMs > 0 ? new Date(from.getTime() - spanMs) : null;
-  const daysInWindow = Math.max(spanMs / DAY_MS, from ? 1 / 24 : 1);
+  const previous = resolvePreviousBounds(range, now);
+  const prevFrom = previous?.from ?? null;
+  const prevTo = previous?.to ?? null;
 
-  const ORDER_COLUMNS = "id, status, subtotal, buyer_id, region, created_at";
+  const ORDER_COLUMNS =
+    "id, status, subtotal, buyer_id, region, created_at, quotations(id, status, version, total)";
   const EVENT_COLUMNS = "session_id, event, source, buyer_id, created_at";
 
-  const [currentOrdersRes, prevOrdersRes, currentEventsRes, buyerCountsRes] =
-    await Promise.all([
-      windowedQuery(supabase, "orders", ORDER_COLUMNS, supplierId, from, to, ORDERS_PAGE_SIZE),
-      prevFrom && prevTo
-        ? windowedQuery(supabase, "orders", ORDER_COLUMNS, supplierId, prevFrom, prevTo, ORDERS_PAGE_SIZE)
-        : Promise.resolve({ data: [] as SalesOrderRow[], error: null }),
-      windowedQuery(supabase, "storefront_events", EVENT_COLUMNS, supplierId, from, to, EVENTS_PAGE_SIZE),
-      // All-time per-buyer counts to detect returning customers.
-      supabase
-        .from("orders")
-        .select("buyer_id")
-        .eq("supplier_id", supplierId)
-        .limit(20000),
-    ]);
+  const [orders, prevOrders, currentEvents, buyerCounts] = await Promise.all([
+    windowedQuery<SalesOrderRow>(
+      supabase,
+      "orders",
+      ORDER_COLUMNS,
+      supplierId,
+      from,
+      to,
+      "Sales analytics orders",
+    ),
+    prevFrom && prevTo
+      ? windowedQuery<SalesOrderRow>(
+          supabase,
+          "orders",
+          ORDER_COLUMNS,
+          supplierId,
+          prevFrom,
+          prevTo,
+          "Sales analytics previous orders",
+        )
+      : Promise.resolve([] as SalesOrderRow[]),
+    windowedQuery<SalesEventRow>(
+      supabase,
+      "storefront_events",
+      EVENT_COLUMNS,
+      supplierId,
+      from,
+      to,
+      "Sales analytics events",
+    ),
+    // All-time per-buyer counts to detect returning customers.
+    fetchAllRows<{ buyer_id: string; status: string }>(
+      "Sales analytics buyer counts",
+      (offset, limit) =>
+        supabase
+          .from("orders")
+          .select("buyer_id, status")
+          .eq("supplier_id", supplierId)
+          .neq("status", "cancelled")
+          .order("buyer_id", { ascending: true })
+          .range(offset, limit),
+    ),
+  ]);
 
-  for (const [label, res] of [
-    ["orders", currentOrdersRes],
-    ["previous orders", prevOrdersRes],
-    ["events", currentEventsRes],
-    ["buyer counts", buyerCountsRes],
-  ] as const) {
-    if (res.error) throw new Error(`Sales analytics ${label} query failed: ${res.error.message}`);
-  }
-
-  const orders = (currentOrdersRes.data ?? []) as unknown as SalesOrderRow[];
-  const prevOrders = (prevOrdersRes.data ?? []) as unknown as SalesOrderRow[];
-  const events = ((currentEventsRes.data ?? []) as unknown as SalesEventRow[]).filter(
-    (e) => e.event === "view" || e.event === "cart" || e.event === "order",
+  const events = currentEvents.filter(
+    (event) => event.event === "view" || event.event === "cart" || event.event === "order",
+  );
+  const liveOrders = orders.filter((order) => order.status !== "cancelled");
+  const livePrevOrders = prevOrders.filter((order) => order.status !== "cancelled");
+  const daysInWindow = windowDays(
+    from,
+    to,
+    earliestDate([
+      ...liveOrders.map((order) => order.created_at),
+      ...events.map((event) => event.created_at),
+    ]),
+  );
+  const prevDaysInWindow = windowDays(
+    prevFrom,
+    prevTo ?? to,
+    earliestDate(livePrevOrders.map((order) => order.created_at)),
   );
 
   const summarize = (rows: SalesOrderRow[]) => ({
     count: rows.length,
-    sales: rows.reduce((sum, o) => sum + o.subtotal, 0),
+    sales: rows.reduce((sum, order) => sum + orderValue(order), 0),
   });
-  const cur = summarize(orders);
-  const prev = summarize(prevOrders);
+  const cur = summarize(liveOrders);
+  const prev = summarize(livePrevOrders);
 
   const allTimeCounts = new Map<string, number>();
-  for (const row of (buyerCountsRes.data ?? []) as { buyer_id: string }[]) {
+  for (const row of buyerCounts) {
     allTimeCounts.set(row.buyer_id, (allTimeCounts.get(row.buyer_id) ?? 0) + 1);
   }
   const returningIn = (rows: SalesOrderRow[]) => {
-    const buyers = new Set(rows.map((o) => o.buyer_id));
+    const buyers = new Set(rows.map((order) => order.buyer_id));
     if (buyers.size === 0) return 0;
     let returning = 0;
     for (const buyer of buyers) {
@@ -179,32 +232,82 @@ export async function getSalesAnalytics(
     }
     return Math.round((returning / buyers.size) * 1000) / 10;
   };
-  const returningPct = returningIn(orders);
-  const prevReturningPct = returningIn(prevOrders);
+  const returningPct = returningIn(liveOrders);
+  const prevReturningPct = returningIn(livePrevOrders);
 
   const hasPrevious = prevFrom !== null;
   const avgOrdersPerDay = cur.count / daysInWindow;
-  const prevAvgOrdersPerDay = prev.count / daysInWindow;
+  const prevAvgOrdersPerDay = prev.count / prevDaysInWindow;
   const avgOrderValue = cur.count === 0 ? 0 : cur.sales / cur.count;
   const prevAvgOrderValue = prev.count === 0 ? 0 : prev.sales / prev.count;
   const avgSalesPerDay = cur.sales / daysInWindow;
-  const prevAvgSalesPerDay = prev.sales / daysInWindow;
+  const prevAvgSalesPerDay = prev.sales / prevDaysInWindow;
 
   // Category breakdown via this window's order items.
   let topCategories: ShareSlice[] = [];
-  if (orders.length > 0) {
-    const { data: itemRows, error: itemsError } = await supabase
-      .from("order_items")
-      .select("order_id, quantity, unit_price, product:product_id(category_id)")
-      .in(
-        "order_id",
-        orders.map((o) => o.id),
-      )
-      .limit(ORDERS_PAGE_SIZE);
-    if (itemsError) throw new Error(`Sales analytics items query failed: ${itemsError.message}`);
-    const items = (itemRows ?? []) as unknown as ItemRow[];
+  if (liveOrders.length > 0) {
+    const items = await fetchAllRows<ItemRow>(
+      "Sales analytics items",
+      (offset, limit) =>
+        supabase
+          .from("order_items")
+          .select(
+            "id, order_id, quantity, unit_price, product:product_id(category_id)",
+          )
+          .in(
+            "order_id",
+            liveOrders.map((order) => order.id),
+          )
+          .order("id", { ascending: true })
+          .range(offset, limit),
+    );
+
+    const acceptedQuoteByOrder = new Map<string, string>();
+    for (const order of liveOrders) {
+      const quote = latestAcceptedQuotation(order.quotations);
+      if (quote) acceptedQuoteByOrder.set(order.id, quote.id);
+    }
+    const quoteLines = new Map<
+      string,
+      { order_item_id: string | null; quantity: number; unit_price: number }
+    >();
+    const quoteIds = [...new Set(acceptedQuoteByOrder.values())];
+    if (quoteIds.length > 0) {
+      const rows = await fetchAllRows<{
+        order_item_id: string | null;
+        quantity: number;
+        unit_price: number;
+      }>(
+        "Sales analytics agreed quotation lines",
+        (offset, limit) =>
+          supabase
+            .from("quotation_items")
+            .select("order_item_id, quantity, unit_price")
+            .in("quotation_id", quoteIds)
+            .order("id", { ascending: true })
+            .range(offset, limit),
+      );
+      for (const row of rows) {
+        if (row.order_item_id) quoteLines.set(row.order_item_id, row);
+      }
+    }
+
+    const pricedItems = items.flatMap((item) => {
+      if (!acceptedQuoteByOrder.has(item.order_id)) return [item];
+      const line = quoteLines.get(item.id);
+      return line
+        ? [
+            {
+              ...item,
+              quantity: Number(line.quantity),
+              unit_price: Number(line.unit_price),
+            },
+          ]
+        : [];
+    });
+
     const categoryIds = new Set<string>();
-    for (const item of items) {
+    for (const item of pricedItems) {
       const categoryId = itemCategoryId(item);
       if (categoryId) categoryIds.add(categoryId);
     }
@@ -220,7 +323,7 @@ export async function getSalesAnalytics(
       }
     }
     const byCategory = new Map<string, number>();
-    for (const item of items) {
+    for (const item of pricedItems) {
       const categoryId = itemCategoryId(item);
       if (!categoryId) continue;
       const label = names.get(categoryId) ?? "Uncategorised";
@@ -239,9 +342,9 @@ export async function getSalesAnalytics(
 
   // Regional breakdown from attributed orders.
   const byRegion = new Map<string, number>();
-  for (const order of orders) {
+  for (const order of liveOrders) {
     if (!order.region) continue;
-    byRegion.set(order.region, (byRegion.get(order.region) ?? 0) + order.subtotal);
+    byRegion.set(order.region, (byRegion.get(order.region) ?? 0) + orderValue(order));
   }
   const regionTotal = [...byRegion.values()].reduce((sum, v) => sum + v, 0);
   const topRegions = [...byRegion.entries()]
@@ -263,13 +366,13 @@ export async function getSalesAnalytics(
     orderEventsByBuyer.set(event.buyer_id, list);
   }
   const bySource = new Map<string, number>();
-  for (const order of orders) {
+  for (const order of liveOrders) {
     const candidates = (orderEventsByBuyer.get(order.buyer_id) ?? []).filter(
       (c) => c.at <= new Date(order.created_at).getTime(),
     );
     if (candidates.length === 0) continue;
     const source = candidates.sort((a, b) => b.at - a.at)[0].source;
-    bySource.set(source, (bySource.get(source) ?? 0) + order.subtotal);
+    bySource.set(source, (bySource.get(source) ?? 0) + orderValue(order));
   }
   const sourceTotal = [...bySource.values()].reduce((sum, v) => sum + v, 0);
   const SOURCE_LABELS: Record<string, string> = {
@@ -287,7 +390,10 @@ export async function getSalesAnalytics(
     .sort((a, b) => b.sales - a.sales);
 
   const series = buildTrendSeries({
-    orders: orders.map((o) => ({ created_at: o.created_at, subtotal: o.subtotal })),
+    orders: liveOrders.map((order) => ({
+      created_at: order.created_at,
+      subtotal: orderValue(order),
+    })),
     events,
     from,
     to,

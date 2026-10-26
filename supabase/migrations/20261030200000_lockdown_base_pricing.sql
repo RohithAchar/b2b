@@ -1,11 +1,8 @@
--- HELD BACK ON PURPOSE. This is step 3 of the margin rollout, not a migration.
--- It lives here, outside supabase/migrations/, so that `supabase db push` cannot
--- apply it by accident.
+-- Step 3 of the margin rollout: hide supplier base prices from the Data API.
 --
--- Move it into supabase/migrations/ with a fresh timestamp ONLY after step 2 (the
--- app that reads customer prices from storefront_prices) is deployed and working.
--- Applying it earlier breaks the storefront: until the new code ships, nothing
--- reads those views.
+-- The app already reads customer prices from storefront_prices and private base
+-- prices from supplier_prices, so direct base-price columns are no longer needed
+-- by anon or authenticated clients.
 --
 -- What it does: drops SELECT on products / product_variants for anon AND
 -- authenticated, then re-grants every column except the base price. Column-level
@@ -49,6 +46,9 @@ grant select (
   youtube_id,
   status,
   is_hidden,
+  rejection_note,
+  submitted_at,
+  reviewed_by,
   created_at,
   updated_at,
   seo_title,

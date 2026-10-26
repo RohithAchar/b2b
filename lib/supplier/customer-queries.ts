@@ -2,6 +2,8 @@
 // the export route and the detail page. Classification and duplicate flags
 // come from lib/supplier/customers.ts; order truth stays in orders.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { orderAmount } from "@/lib/orders/quotation";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import {
   classifyCustomer,
   type CustomerRow,
@@ -18,21 +20,36 @@ export type AudienceCustomer = CustomerRow & {
 const ROW_COLUMNS =
   "id, supplier_id, buyer_id, name, phone, email, city, source, created_at";
 
+type CustomerOrderRow = {
+  id: string;
+  buyer_id: string;
+  status: string;
+  subtotal: number;
+  created_at: string;
+  quotations?: { status: string; version: number; total: number }[] | null;
+};
+
 async function buyerOrderStats(
   supabase: SupabaseClient,
   supplierId: string,
 ): Promise<Map<string, { count: number; sales: number }>> {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("buyer_id, subtotal")
-    .eq("supplier_id", supplierId)
-    .limit(5000);
-  if (error) throw new Error(`Audience orders query failed: ${error.message}`);
+  const orders = await fetchAllRows<CustomerOrderRow>(
+    "Audience orders",
+    (offset, limit) =>
+      supabase
+        .from("orders")
+        .select("id, buyer_id, status, subtotal, created_at, quotations(status, version, total)")
+        .eq("supplier_id", supplierId)
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: false })
+        .range(offset, limit),
+  );
   const stats = new Map<string, { count: number; sales: number }>();
-  for (const order of (data ?? []) as { buyer_id: string; subtotal: number }[]) {
+  for (const order of orders) {
+    if (!order.buyer_id) continue;
     const entry = stats.get(order.buyer_id) ?? { count: 0, sales: 0 };
     entry.count += 1;
-    entry.sales += order.subtotal;
+    entry.sales += orderAmount(order.subtotal, order.quotations);
     stats.set(order.buyer_id, entry);
   }
   return stats;
@@ -47,28 +64,28 @@ export async function getAudienceCustomers(
   supplierId: string,
   opts: { q: string; from: Date | null; to: Date },
 ): Promise<AudienceCustomer[]> {
-  let query = supabase
-    .from("store_customers")
-    .select(ROW_COLUMNS)
-    .eq("supplier_id", supplierId)
-    .lt("created_at", opts.to.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1000);
-  if (opts.from) {
-    query = query.gte("created_at", opts.from.toISOString());
-  }
-  if (opts.q) {
-    const pattern = `%${opts.q}%`;
-    query = query.or(
-      `name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern},city.ilike.${pattern}`,
-    );
-  }
-  const [{ data, error }, stats] = await Promise.all([
-    query,
+  const pattern = opts.q ? `%${opts.q}%` : null;
+  const [rows, stats] = await Promise.all([
+    fetchAllRows<CustomerRow>("Audience customers", (offset, limit) => {
+      let query = supabase
+        .from("store_customers")
+        .select(ROW_COLUMNS)
+        .eq("supplier_id", supplierId)
+        .lt("created_at", opts.to.toISOString())
+        .order("created_at", { ascending: false })
+        .range(offset, limit);
+      if (opts.from) {
+        query = query.gte("created_at", opts.from.toISOString());
+      }
+      if (pattern) {
+        query = query.or(
+          `name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern},city.ilike.${pattern}`,
+        );
+      }
+      return query;
+    }),
     buyerOrderStats(supabase, supplierId),
   ]);
-  if (error) throw new Error(`Audience customers query failed: ${error.message}`);
-  const rows = (data ?? []) as CustomerRow[];
 
   const phoneFreq = new Map<string, number>();
   const emailFreq = new Map<string, number>();
@@ -97,7 +114,13 @@ export type CustomerDetail = {
   orderCount: number;
   totalSales: number;
   category: Exclude<CustomerTab, "all">;
-  orders: { id: string; status: string; subtotal: number; created_at: string }[];
+  orders: {
+    id: string;
+    status: string;
+    subtotal: number;
+    created_at: string;
+    quotations?: { status: string; version: number; total: number }[] | null;
+  }[];
   activity: { event: string; productTitle: string | null; created_at: string }[];
 };
 
@@ -118,28 +141,33 @@ export async function getCustomerDetail(
   const customer = row as CustomerRow;
 
   let orders: CustomerDetail["orders"] = [];
+  let totalOrderCount = 0;
   let activity: CustomerDetail["activity"] = [];
   if (customer.buyer_id) {
-    const [{ data: orderRows, error: ordersError }, { data: eventRows, error: eventsError }] =
-      await Promise.all([
-        supabase
-          .from("orders")
-          .select("id, status, subtotal, created_at")
-          .eq("supplier_id", supplierId)
-          .eq("buyer_id", customer.buyer_id)
-          .order("created_at", { ascending: false })
-          .limit(50),
-        supabase
-          .from("storefront_events")
-          .select("event, product_id, created_at")
-          .eq("supplier_id", supplierId)
-          .eq("buyer_id", customer.buyer_id)
-          .order("created_at", { ascending: false })
-          .limit(10),
-      ]);
-    if (ordersError) throw new Error(`Audience orders query failed: ${ordersError.message}`);
+    const [orderRows, { data: eventRows, error: eventsError }] = await Promise.all([
+      fetchAllRows<CustomerDetail["orders"][number]>(
+        "Audience customer orders",
+        (offset, limit) =>
+          supabase
+            .from("orders")
+            .select("id, status, subtotal, created_at, quotations(status, version, total)")
+            .eq("supplier_id", supplierId)
+            .eq("buyer_id", customer.buyer_id)
+            .neq("status", "cancelled")
+            .order("created_at", { ascending: false })
+            .range(offset, limit),
+      ),
+      supabase
+        .from("storefront_events")
+        .select("event, product_id, created_at")
+        .eq("supplier_id", supplierId)
+        .eq("buyer_id", customer.buyer_id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
     if (eventsError) throw new Error(`Audience activity query failed: ${eventsError.message}`);
-    orders = (orderRows ?? []) as CustomerDetail["orders"];
+    totalOrderCount = orderRows.length;
+    orders = orderRows.slice(0, 50);
     const events = (eventRows ?? []) as { event: string; product_id: string | null; created_at: string }[];
     const productIds = [...new Set(events.map((e) => e.product_id).filter((id): id is string => !!id))];
     const titles = new Map<string, string>();
@@ -156,12 +184,15 @@ export async function getCustomerDetail(
     }));
   }
 
-  const totalSales = orders.reduce((sum, o) => sum + o.subtotal, 0);
+  const totalSales = orders.reduce(
+    (sum, order) => sum + orderAmount(order.subtotal, order.quotations),
+    0,
+  );
   return {
     customer,
-    orderCount: orders.length,
+    orderCount: totalOrderCount,
     totalSales,
-    category: classifyCustomer(customer.source, orders.length),
+    category: classifyCustomer(customer.source, totalOrderCount),
     orders,
     activity,
   };

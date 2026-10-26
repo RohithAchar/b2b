@@ -17,6 +17,14 @@ import {
   type SupplierOrderListItem,
 } from "./supplier-orders-table"
 import { StatusFilterChip } from "@/components/orders/status-filter-chip"
+import { latestAcceptedQuotation } from "@/lib/orders/quotation"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 export const metadata: Metadata = { title: "Orders" }
 
@@ -44,14 +52,16 @@ type OrderRow = {
   created_at: string
   updated_at: string
   delivery: { fullName?: string } | null
+  quotations?: { status: string; version: number; total: number }[]
 }
 
 export default async function SupplierOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; payment?: string }>
+  searchParams: Promise<{ status?: string; payment?: string; page?: string }>
 }) {
   const params = await searchParams
+  const requestedPage = Math.max(1, Math.floor(Number(params.page) || 1))
   const paymentClaimOnly = params.payment === "claimed"
   const requested = (params.status ?? "")
     .split(",")
@@ -100,14 +110,34 @@ export default async function SupplierOrdersPage({
     headCount().eq("status", "cancelled"),
   ])
 
+  let countQuery = supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("supplier_id", companyId)
+  if (requested.length === 1) {
+    countQuery = countQuery.eq("status", requested[0])
+  } else if (requested.length > 1) {
+    countQuery = countQuery.in("status", requested)
+  }
+  if (paymentClaimOnly) {
+    countQuery = countQuery.eq("payment_status", "claimed")
+  }
+  const { count: filteredCount, error: countError } = await countQuery
+  if (countError) {
+    throw countError
+  }
+
+  const totalPages = Math.max(1, Math.ceil((filteredCount ?? 0) / PAGE_SIZE))
+  const page = Math.min(requestedPage, totalPages)
+
   let query = supabase
     .from("orders")
     .select(
-      "id, reference, status, payment_status, subtotal, item_count, created_at, updated_at, delivery"
+      "id, reference, status, payment_status, subtotal, item_count, created_at, updated_at, delivery, quotations(status, version, total)"
     )
     .eq("supplier_id", companyId)
     .order("created_at", { ascending: false })
-    .limit(PAGE_SIZE)
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
   if (requested.length === 1) {
     query = query.eq("status", requested[0])
   } else if (requested.length > 1) {
@@ -128,7 +158,9 @@ export default async function SupplierOrdersPage({
       reference: order.reference,
       status: order.status,
       paymentStatus: order.payment_status,
-      subtotal: Number(order.subtotal),
+      subtotal: Number(
+        latestAcceptedQuotation(order.quotations)?.total ?? order.subtotal
+      ),
       itemCount: order.item_count,
       buyerName: order.delivery?.fullName ?? null,
       createdAt: order.created_at,
@@ -141,6 +173,15 @@ export default async function SupplierOrdersPage({
     : requested.length === 1
       ? requested[0]
       : "all"
+
+  const pageHref = (target: number) => {
+    const query = new URLSearchParams()
+    if (requested.length > 0) query.set("status", requested.join(","))
+    if (paymentClaimOnly) query.set("payment", "claimed")
+    if (target > 1) query.set("page", String(target))
+    const suffix = query.toString()
+    return suffix ? `${BASE}?${suffix}` : BASE
+  }
 
   const filters = [
     { key: "all", label: "All orders", href: BASE, count: totalCount ?? 0 },
@@ -248,6 +289,34 @@ export default async function SupplierOrdersPage({
       </div>
 
       <SupplierOrdersTable orders={orders} basePath={BASE} />
+
+      {totalPages > 1 ? (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={pageHref(Math.max(1, page - 1))}
+                aria-disabled={page === 1}
+                className={page === 1 ? "pointer-events-none opacity-50" : undefined}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="px-2 text-xs text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href={pageHref(Math.min(totalPages, page + 1))}
+                aria-disabled={page === totalPages}
+                className={
+                  page === totalPages ? "pointer-events-none opacity-50" : undefined
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      ) : null}
     </div>
   )
 }

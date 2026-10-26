@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierContext } from "@/lib/auth/guard";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import {
   mapCustomerCsvRows,
   parseCustomerCsv,
@@ -99,14 +100,19 @@ export async function importCustomers(
   const text = await file.text();
   const mapped = mapCustomerCsvRows(parseCustomerCsv(text)).slice(0, MAX_IMPORT_ROWS);
 
-  const { data: existing } = await supabase
-    .from("store_customers")
-    .select("phone, email")
-    .eq("supplier_id", companyId)
-    .limit(5000);
-  const seenPhones = new Set(((existing ?? []) as { phone: string }[]).map((r) => r.phone));
+  const existing = await fetchAllRows<{ phone: string; email: string | null }>(
+    "Customer import duplicates",
+    (offset, limit) =>
+      supabase
+        .from("store_customers")
+        .select("phone, email")
+        .eq("supplier_id", companyId)
+        .order("id", { ascending: true })
+        .range(offset, limit),
+  );
+  const seenPhones = new Set(existing.map((r) => r.phone));
   const seenEmails = new Set(
-    ((existing ?? []) as { email: string | null }[])
+    existing
       .map((r) => r.email?.toLowerCase())
       .filter((e): e is string => !!e),
   );

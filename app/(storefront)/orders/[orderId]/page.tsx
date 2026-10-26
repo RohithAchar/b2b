@@ -29,6 +29,11 @@ import {
 } from "@/lib/orders/lifecycle";
 import { getOrderItemImages } from "@/lib/orders/item-images";
 import {
+  grossItemsTotal,
+  latestAcceptedQuotation,
+  orderAmount,
+} from "@/lib/orders/quotation";
+import {
   type DeliverySnapshot,
 } from "@/lib/orders/delivery";
 import {
@@ -190,6 +195,7 @@ const QUOTATION_STATUS_LABELS: Record<string, string> = {
   accepted: "Accepted",
   rejected: "Rejected",
   expired: "Expired",
+  superseded: "Superseded",
 };
 
 export default async function BuyerOrderPage({
@@ -287,8 +293,8 @@ export default async function BuyerOrderPage({
         expired: isExpired(pendingQuoteRow.expires_at),
       }
     : null;
-  const acceptedQuote =
-    quoteRows.filter((quote) => quote.status === "accepted").at(-1) ?? null;
+  const acceptedQuote = latestAcceptedQuotation(quoteRows);
+  const itemsTotal = grossItemsTotal(orderRow.subtotal, orderRow.discount);
 
   const hasQuotation = quoteRows.length > 0;
 
@@ -297,9 +303,7 @@ export default async function BuyerOrderPage({
   );
 
   const paymentStatus = parsePaymentStatus(orderRow.payment_status) ?? "not_requested";
-  const paymentAmount = Number(
-    acceptedQuote?.total ?? Number(orderRow.subtotal) - Number(orderRow.discount),
-  );
+  const paymentAmount = orderAmount(orderRow.subtotal, quoteRows);
   const paymentActionable =
     paymentStatus === "pending" ||
     acceptedQuote !== null ||
@@ -350,6 +354,7 @@ export default async function BuyerOrderPage({
           status={status}
           paymentStatus={paymentStatus}
           hasQuotation={hasQuotation}
+          quotationAccepted={acceptedQuote !== null}
           cancelledReason={orderRow.rejection_reason}
         />
       </Card>
@@ -362,6 +367,7 @@ export default async function BuyerOrderPage({
         paymentAmount={paymentAmount}
         canPay={canPay}
         hasQuotation={hasQuotation}
+        acceptedQuote={acceptedQuote !== null}
         pendingQuote={pendingQuote}
       />
 
@@ -434,7 +440,7 @@ export default async function BuyerOrderPage({
           <div className="mt-3 space-y-1.5 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Items subtotal</span>
-              <span className="tabular-nums">{formatRupees(Number(orderRow.subtotal))}</span>
+              <span className="tabular-nums">{formatRupees(itemsTotal)}</span>
             </div>
             {Number(orderRow.discount) > 0 ? (
               <div className="flex items-center justify-between">
@@ -464,7 +470,7 @@ export default async function BuyerOrderPage({
               <div className="flex items-center justify-between border-t border-border pt-2">
                 <span className="font-medium">Total</span>
                 <span className="font-bold tabular-nums">
-                  {formatRupees(Number(orderRow.subtotal) - Number(orderRow.discount))}
+                  {formatRupees(Number(orderRow.subtotal))}
                 </span>
               </div>
             )}

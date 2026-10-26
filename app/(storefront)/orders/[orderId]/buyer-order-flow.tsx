@@ -30,6 +30,7 @@ export function BuyerOrderFlow({
   paymentAmount,
   canPay,
   hasQuotation,
+  acceptedQuote,
   pendingQuote,
 }: {
   orderId: string
@@ -38,6 +39,8 @@ export function BuyerOrderFlow({
   paymentAmount: number
   canPay: boolean
   hasQuotation: boolean
+  /** True when the buyer has accepted the latest quotation. */
+  acceptedQuote: boolean
   /** The quotation awaiting a response, if one is out there. */
   pendingQuote: { id: string; totalLabel: string; expired: boolean } | null
 }) {
@@ -47,7 +50,7 @@ export function BuyerOrderFlow({
     return null
   }
 
-  const quoteDone = orderStatus !== "quoted"
+  const quoteDone = orderStatus !== "quoted" || acceptedQuote
   const paymentDone =
     payment === "paid" || orderAtOrBeyond(orderStatus, "delivered")
   const shipmentDone = orderAtOrBeyond(orderStatus, "shipped")
@@ -68,9 +71,11 @@ export function BuyerOrderFlow({
       key: "quotation",
       title: "Review quotation",
       description: quoteDone
-        ? hasQuotation
-          ? "Quotation settled."
-          : "The supplier went ahead without a separate quotation."
+        ? acceptedQuote
+          ? "You accepted the quotation. The supplier will confirm the order next."
+          : hasQuotation
+            ? "Quotation settled."
+            : "The supplier went ahead without a separate quotation."
         : !pendingQuote
           ? "Waiting for the supplier's quotation."
           : pendingQuote.expired

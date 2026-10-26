@@ -2,7 +2,7 @@
 // Best-effort: logging never throws, so a failed insert can never break the
 // buyer flow. Reads go through RLS (supplier-only) in lib/supplier/analytics.
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   STOREFRONT_DEVICE_COOKIE,
   STOREFRONT_SESSION_COOKIE,
@@ -61,7 +61,10 @@ export async function logStorefrontEvent(input: {
   device?: DeviceClass | null;
 }): Promise<void> {
   try {
-    const supabase = await createClient();
+    // Server actions are the only writers. The service-role client keeps the
+    // event log append-only from the browser's perspective while preserving
+    // the cookie-derived session/source/device attribution below.
+    const supabase = createAdminClient();
     // One cookies() read serves all three fallbacks.
     const [source, device, sessionId] = await Promise.all([
       input.source ?? getStorefrontSource(),

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildTrendSeries,
   parseDashboardRange,
+  resolvePreviousBounds,
   resolveRangeBounds,
 } from "../lib/supplier/analytics";
 import { changePct } from "../lib/supplier/sales-analytics";
@@ -22,22 +23,35 @@ describe("parseDashboardRange", () => {
 });
 
 describe("resolveRangeBounds", () => {
-  it("resolves today to the UTC day start", () => {
+  it("resolves today to the IST day start", () => {
     const { from, to } = resolveRangeBounds("today", NOW);
-    expect(from?.toISOString()).toBe("2026-10-13T00:00:00.000Z");
+    expect(from?.toISOString()).toBe("2026-10-12T18:30:00.000Z");
     expect(to).toBe(NOW);
   });
 
-  it("resolves yesterday to the previous UTC day", () => {
+  it("resolves yesterday to the previous IST day", () => {
     const { from, to } = resolveRangeBounds("yesterday", NOW);
-    expect(from?.toISOString()).toBe("2026-10-12T00:00:00.000Z");
-    expect(to.toISOString()).toBe("2026-10-13T00:00:00.000Z");
+    expect(from?.toISOString()).toBe("2026-10-11T18:30:00.000Z");
+    expect(to.toISOString()).toBe("2026-10-12T18:30:00.000Z");
   });
 
-  it("resolves rolling windows and lifetime", () => {
-    expect(resolveRangeBounds("7d", NOW).from?.toISOString()).toBe("2026-10-06T12:00:00.000Z");
-    expect(resolveRangeBounds("1y", NOW).from?.toISOString()).toBe("2025-10-13T12:00:00.000Z");
+  it("resolves day-aligned windows and lifetime", () => {
+    expect(resolveRangeBounds("7d", NOW).from?.toISOString()).toBe("2026-10-06T18:30:00.000Z");
+    expect(resolveRangeBounds("1y", NOW).from?.toISOString()).toBe("2025-10-13T18:30:00.000Z");
     expect(resolveRangeBounds("lifetime", NOW).from).toBeNull();
+  });
+
+  it("compares today with the same elapsed slice of yesterday", () => {
+    const previous = resolvePreviousBounds("today", NOW);
+    expect(previous?.from?.toISOString()).toBe("2026-10-11T18:30:00.000Z");
+    expect(previous?.to.toISOString()).toBe("2026-10-12T12:00:00.000Z");
+  });
+
+  it("compares whole-day ranges with the preceding equal period", () => {
+    const previous = resolvePreviousBounds("7d", NOW);
+    expect(previous?.from?.toISOString()).toBe("2026-09-29T18:30:00.000Z");
+    expect(previous?.to.toISOString()).toBe("2026-10-06T18:30:00.000Z");
+    expect(resolvePreviousBounds("lifetime", NOW)).toBeNull();
   });
 });
 
@@ -69,14 +83,13 @@ describe("buildTrendSeries", () => {
   });
 
   it("computes sessions and conversion per bucket", () => {
-    const from = new Date("2026-10-10T00:00:00Z");
-    const to = new Date("2026-10-10T23:59:59Z");
+    const from = new Date("2026-10-09T18:30:00Z");
+    const to = new Date("2026-10-10T18:29:59Z");
     const points = buildTrendSeries({
       orders: [],
       events: [
-        { created_at: "2026-10-10T09:05:00Z", session_id: "a", event: "view" },
-        { created_at: "2026-10-10T10:00:00Z", session_id: "b", event: "view" },
-        { created_at: "2026-10-10T09:40:00Z", session_id: "a", event: "order" },
+        { created_at: "2026-10-10T03:35:00Z", session_id: "a", event: "view" },
+        { created_at: "2026-10-10T04:20:00Z", session_id: "a", event: "order" },
       ],
       from,
       to,
@@ -138,16 +151,16 @@ describe("buildTrafficSeries", () => {
   it("counts views and distinct visitors per bucket, continuously", () => {
     const points = buildTrafficSeries({
       views: [
-        { created_at: "2026-10-10T09:05:00Z", session_id: "a" },
-        { created_at: "2026-10-10T09:40:00Z", session_id: "a" },
-        { created_at: "2026-10-10T10:10:00Z", session_id: "b" },
+        { created_at: "2026-10-10T03:35:00Z", session_id: "a" },
+        { created_at: "2026-10-10T04:20:00Z", session_id: "a" },
+        { created_at: "2026-10-10T04:25:00Z", session_id: "b" },
       ],
-      from: new Date("2026-10-10T00:00:00Z"),
-      to: new Date("2026-10-10T23:59:59Z"),
+      from: new Date("2026-10-09T18:30:00Z"),
+      to: new Date("2026-10-10T18:29:59Z"),
     });
     const morning = points.find((p) => p.label === "9 AM");
-    expect(morning?.views).toBe(2);
-    expect(morning?.visitors).toBe(1);
+    expect(morning?.views).toBe(3);
+    expect(morning?.visitors).toBe(2);
     expect(points.length).toBe(24);
   });
 });

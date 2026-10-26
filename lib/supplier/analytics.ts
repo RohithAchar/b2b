@@ -1,6 +1,8 @@
 // Supplier dashboard analytics: date-range resolution, trend bucketing (pure,
 // unit-tested) and the server-side metrics query over orders + storefront_events.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { latestAcceptedQuotation } from "@/lib/orders/quotation";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export const DASHBOARD_RANGES = [
   "today",
@@ -14,13 +16,32 @@ export const DASHBOARD_RANGES = [
 
 export type DashboardRange = (typeof DASHBOARD_RANGES)[number];
 
+/** Number of whole calendar days a preset includes, including today. */
+export function rangeDayCount(range: DashboardRange): number {
+  switch (range) {
+    case "today":
+    case "yesterday":
+      return 1;
+    case "7d":
+      return 7;
+    case "30d":
+      return 30;
+    case "90d":
+      return 90;
+    case "1y":
+      return 365;
+    case "lifetime":
+      return 0;
+  }
+}
+
 export const DASHBOARD_RANGE_LABELS: Record<DashboardRange, string> = {
   today: "Today",
   yesterday: "Yesterday",
   "7d": "Last 7 days",
   "30d": "Last 30 days",
   "90d": "Last 90 days",
-  "1y": "This year",
+  "1y": "Last 12 months",
   lifetime: "Lifetime",
 };
 
@@ -38,32 +59,96 @@ export type RangeBounds = {
   to: Date;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+/** Start of the calendar day in India, expressed as a UTC instant. */
+export function startOfIstDay(date: Date): Date {
+  const shifted = new Date(date.getTime() + IST_OFFSET_MS);
+  return new Date(
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      shifted.getUTCDate(),
+    ) - IST_OFFSET_MS,
+  );
 }
 
-/** Resolve a preset to an absolute [from, to) window. `now` is injectable for tests. */
+/**
+ * Resolve a preset to an absolute [from, to) window. Busy-day boundaries use
+ * IST so "Today" and "Yesterday" match the supplier's calendar; rolling
+ * presets are aligned to the start of the first included IST day.
+ */
 export function resolveRangeBounds(range: DashboardRange, now: Date = new Date()): RangeBounds {
-  const todayStart = startOfUtcDay(now);
+  const todayStart = startOfIstDay(now);
   switch (range) {
     case "today":
       return { from: todayStart, to: now };
     case "yesterday":
       return { from: new Date(todayStart.getTime() - DAY_MS), to: todayStart };
     case "7d":
-      return { from: new Date(now.getTime() - 7 * DAY_MS), to: now };
+      return { from: new Date(todayStart.getTime() - 6 * DAY_MS), to: now };
     case "90d":
-      return { from: new Date(now.getTime() - 90 * DAY_MS), to: now };
+      return { from: new Date(todayStart.getTime() - 89 * DAY_MS), to: now };
     case "1y":
-      return { from: new Date(now.getTime() - 365 * DAY_MS), to: now };
+      return { from: new Date(todayStart.getTime() - 364 * DAY_MS), to: now };
     case "lifetime":
       return { from: null, to: now };
     case "30d":
     default:
-      return { from: new Date(now.getTime() - 30 * DAY_MS), to: now };
+      return { from: new Date(todayStart.getTime() - 29 * DAY_MS), to: now };
   }
+}
+
+/**
+ * Previous comparable window. "Today" compares the same elapsed slice of
+ * yesterday; whole-day presets compare the equally long window immediately
+ * before their first day. Lifetime has no meaningful comparison.
+ */
+export function resolvePreviousBounds(
+  range: DashboardRange,
+  now: Date = new Date(),
+): RangeBounds | null {
+  const current = resolveRangeBounds(range, now);
+  if (!current.from || range === "lifetime") return null;
+  if (range === "today") {
+    return {
+      from: new Date(current.from.getTime() - DAY_MS),
+      to: new Date(current.to.getTime() - DAY_MS),
+    };
+  }
+  const days = rangeDayCount(range);
+  return {
+    from: new Date(current.from.getTime() - days * DAY_MS),
+    to: current.from,
+  };
+}
+
+/**
+ * Number of days the averages divide by. Lifetime has no lower bound, so the
+ * earliest row is the real measurement start; with no data, one day avoids a
+ * divide-by-zero without inventing a window.
+ */
+export function windowDays(
+  from: Date | null,
+  to: Date,
+  earliest: Date | null,
+): number {
+  if (from) return Math.max((to.getTime() - from.getTime()) / DAY_MS, 1 / 24);
+  if (earliest) {
+    return Math.max((to.getTime() - earliest.getTime()) / DAY_MS, 1);
+  }
+  return 1;
+}
+
+export function earliestDate(dates: (string | Date)[]): Date | null {
+  let earliest: Date | null = null;
+  for (const value of dates) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) continue;
+    if (!earliest || date < earliest) earliest = date;
+  }
+  return earliest;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,35 +171,61 @@ export type TrendPoint = {
 type OrderRow = { created_at: string; subtotal: number };
 type EventRow = { created_at: string; session_id: string; event: string };
 
-function bucketStart(date: Date, granularity: "hour" | "day" | "month"): Date {
-  if (granularity === "hour") {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours()));
-  }
-  if (granularity === "day") {
-    return startOfUtcDay(date);
-  }
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+export type ChartGranularity = "hour" | "day" | "month";
+
+export function chartGranularity(spanMs: number): ChartGranularity {
+  return spanMs <= 2 * DAY_MS ? "hour" : spanMs <= 120 * DAY_MS ? "day" : "month";
 }
 
-function bucketLabel(start: Date, granularity: "hour" | "day" | "month"): string {
+export function bucketStart(date: Date, granularity: ChartGranularity): Date {
+  const shifted = new Date(date.getTime() + IST_OFFSET_MS);
   if (granularity === "hour") {
-    const hour = start.getUTCHours();
+    return new Date(
+      Date.UTC(
+        shifted.getUTCFullYear(),
+        shifted.getUTCMonth(),
+        shifted.getUTCDate(),
+        shifted.getUTCHours(),
+      ) - IST_OFFSET_MS,
+    );
+  }
+  if (granularity === "day") return startOfIstDay(date);
+  return new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), 1) - IST_OFFSET_MS,
+  );
+}
+
+export function bucketLabel(start: Date, granularity: ChartGranularity): string {
+  if (granularity === "hour") {
+    const hour = new Date(start.getTime() + IST_OFFSET_MS).getUTCHours();
     const suffix = hour < 12 ? "AM" : "PM";
     const twelve = hour % 12 === 0 ? 12 : hour % 12;
     return `${twelve} ${suffix}`;
   }
   if (granularity === "day") {
-    return start.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
+    return start.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      timeZone: "Asia/Kolkata",
+    });
   }
-  return start.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "UTC" });
+  return start.toLocaleDateString("en-IN", {
+    month: "short",
+    year: "2-digit",
+    timeZone: "Asia/Kolkata",
+  });
 }
 
-function addBucket(start: Date, granularity: "hour" | "day" | "month", index: number): Date {
-  const next = new Date(start.getTime());
+export function addBucket(
+  start: Date,
+  granularity: ChartGranularity,
+  index: number,
+): Date {
+  const next = new Date(start.getTime() + IST_OFFSET_MS);
   if (granularity === "hour") next.setUTCHours(next.getUTCHours() + index);
   else if (granularity === "day") next.setUTCDate(next.getUTCDate() + index);
   else next.setUTCMonth(next.getUTCMonth() + index);
-  return next;
+  return new Date(next.getTime() - IST_OFFSET_MS);
 }
 
 /**
@@ -135,7 +246,7 @@ export function buildTrendSeries(args: {
   const windowStart = args.from ?? (earliestRow.length > 0 ? new Date(Math.min(...earliestRow)) : to);
 
   const spanMs = Math.max(to.getTime() - windowStart.getTime(), 0);
-  const granularity = spanMs <= 2 * DAY_MS ? "hour" : spanMs <= 120 * DAY_MS ? "day" : "month";
+  const granularity = chartGranularity(spanMs);
 
   const first = bucketStart(windowStart, granularity);
   const points: TrendPoint[] = [];
@@ -196,12 +307,21 @@ export type DashboardMetrics = {
   sessions: number;
   conversionPct: number;
   newOrders: { count: number; value: number };
-  /** Action queue: new + confirmed orders of all time (not range-scoped). */
+  /** Action queue: confirmed orders of all time (not range-scoped). */
   shipQueue: { count: number; value: number };
+  /** Orders with an unanswered quotation, all time. */
+  quoteQueue: { count: number; value: number };
   /** Distinct sessions with a cart event but no order event in the window. */
   abandonedCount: number;
   salesSeries: { label: string; sales: number }[];
   conversionSeries: { label: string; rate: number }[];
+  seriesGranularity: ChartGranularity;
+};
+
+type QuotationLink = {
+  status: string;
+  version: number;
+  total: number;
 };
 
 type OrderMetricRow = {
@@ -209,14 +329,17 @@ type OrderMetricRow = {
   status: string;
   subtotal: number;
   created_at: string;
+  quotations?: QuotationLink[];
 };
 
-const ORDERS_PAGE_SIZE = 5000;
-const EVENTS_PAGE_SIZE = 10000;
+function orderValue(order: OrderMetricRow): number {
+  return Number(latestAcceptedQuotation(order.quotations)?.total ?? order.subtotal);
+}
 
 /**
- * Fetch every dashboard metric in three parallel queries and fold them in
- * memory. Throws on query failure — the page renders the error state.
+ * Fetch every dashboard metric in three paginated queries and fold them in
+ * memory. Throws on query failure or a truncated scan — the page renders the
+ * error state instead of a silently undercounted number.
  */
 export async function getDashboardMetrics(
   supabase: SupabaseClient,
@@ -228,83 +351,122 @@ export async function getDashboardMetrics(
   const fromISO = from?.toISOString() ?? null;
   const toISO = to.toISOString();
 
-  let ordersQuery = supabase
-    .from("orders")
-    .select("id, status, subtotal, created_at")
-    .eq("supplier_id", supplierId)
-    .lt("created_at", toISO)
-    .order("created_at", { ascending: true })
-    .limit(ORDERS_PAGE_SIZE);
-  if (fromISO) {
-    ordersQuery = ordersQuery.gte("created_at", fromISO);
-  }
+  const [orders, eventRows, shipList, quotedList] = await Promise.all([
+    fetchAllRows<OrderMetricRow>("Dashboard orders", (offset, limit) => {
+      let query = supabase
+        .from("orders")
+        .select("id, status, subtotal, created_at, quotations(status, version, total)")
+        .eq("supplier_id", supplierId)
+        .lt("created_at", toISO)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, limit);
+      if (fromISO) query = query.gte("created_at", fromISO);
+      return query;
+    }),
+    fetchAllRows<EventRow>("Dashboard events", (offset, limit) => {
+      let query = supabase
+        .from("storefront_events")
+        .select("session_id, event, created_at")
+        .eq("supplier_id", supplierId)
+        .lt("created_at", toISO)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, limit);
+      if (fromISO) query = query.gte("created_at", fromISO);
+      return query;
+    }),
+    fetchAllRows<OrderMetricRow>("Dashboard ship queue", (offset, limit) =>
+      supabase
+        .from("orders")
+        .select("id, status, subtotal, created_at, quotations(status, version, total)")
+        .eq("supplier_id", supplierId)
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, limit),
+    ),
+    fetchAllRows<OrderMetricRow>("Dashboard quote queue", (offset, limit) =>
+      supabase
+        .from("orders")
+        .select("id, status, subtotal, created_at, quotations(status, version, total)")
+        .eq("supplier_id", supplierId)
+        .eq("status", "quoted")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, limit),
+    ),
+  ]);
 
-  let eventsQuery = supabase
-    .from("storefront_events")
-    .select("session_id, event, created_at")
-    .eq("supplier_id", supplierId)
-    .lt("created_at", toISO)
-    .order("created_at", { ascending: true })
-    .limit(EVENTS_PAGE_SIZE);
-  if (fromISO) {
-    eventsQuery = eventsQuery.gte("created_at", fromISO);
-  }
+  const waitingOnBuyer = quotedList.filter(
+    (order) => !latestAcceptedQuotation(order.quotations),
+  );
 
-  const shipQuery = supabase
-    .from("orders")
-    .select("id, subtotal")
-    .eq("supplier_id", supplierId)
-    .in("status", ["new", "confirmed"])
-    .limit(ORDERS_PAGE_SIZE);
+  const liveOrders = orders.filter((order) => order.status !== "cancelled");
+  const events = eventRows.filter(
+    (event) => event.event === "view" || event.event === "cart" || event.event === "order",
+  );
 
-  const [{ data: orderRows, error: ordersError }, { data: eventRows, error: eventsError }, { data: shipRows, error: shipError }] =
-    await Promise.all([ordersQuery, eventsQuery, shipQuery]);
+  const salesTotal = liveOrders.reduce((sum, order) => sum + orderValue(order), 0);
+  const newInWindow = liveOrders.filter((order) => order.status === "new");
 
-  if (ordersError) throw new Error(`Dashboard orders query failed: ${ordersError.message}`);
-  if (eventsError) throw new Error(`Dashboard events query failed: ${eventsError.message}`);
-  if (shipError) throw new Error(`Dashboard ship-queue query failed: ${shipError.message}`);
-
-  const orders = (orderRows ?? []) as OrderMetricRow[];
-  const events = ((eventRows ?? []) as EventRow[]).filter((e) => e.event === "view" || e.event === "cart" || e.event === "order");
-
-  const salesTotal = orders.reduce((sum, o) => sum + o.subtotal, 0);
-  const newInWindow = orders.filter((o) => o.status === "new");
-
-  const sessionIds = new Set(events.map((e) => e.session_id));
-  const orderingSessions = new Set(events.filter((e) => e.event === "order").map((e) => e.session_id));
-  const cartSessions = new Set(events.filter((e) => e.event === "cart").map((e) => e.session_id));
+  const sessionIds = new Set(events.map((event) => event.session_id));
+  const orderingSessions = new Set(
+    events.filter((event) => event.event === "order").map((event) => event.session_id),
+  );
+  const cartSessions = new Set(
+    events.filter((event) => event.event === "cart").map((event) => event.session_id),
+  );
   const sessions = sessionIds.size;
-  const conversionPct = sessions === 0 ? 0 : Math.round((orderingSessions.size / sessions) * 1000) / 10;
+  const conversionPct =
+    sessions === 0 ? 0 : Math.round((orderingSessions.size / sessions) * 1000) / 10;
 
   let abandonedCount = 0;
   for (const session of cartSessions) {
     if (!orderingSessions.has(session)) abandonedCount += 1;
   }
 
-  const shipList = ((shipRows ?? []) as { subtotal: number }[]);
   const series = buildTrendSeries({
-    orders: orders.map((o) => ({ created_at: o.created_at, subtotal: o.subtotal })),
+    orders: liveOrders.map((order) => ({
+      created_at: order.created_at,
+      subtotal: orderValue(order),
+    })),
     events,
     from,
     to,
   });
+  const seriesStart =
+    from ??
+    earliestDate([
+      ...liveOrders.map((order) => order.created_at),
+      ...events.map((event) => event.created_at),
+    ]) ??
+    to;
+  const seriesGranularity = chartGranularity(
+    Math.max(to.getTime() - seriesStart.getTime(), 0),
+  );
 
   return {
     range,
     salesTotal,
-    orderCount: orders.length,
+    orderCount: liveOrders.length,
     sessions,
     conversionPct,
     newOrders: {
       count: newInWindow.length,
-      value: newInWindow.reduce((sum, o) => sum + o.subtotal, 0),
+      value: newInWindow.reduce((sum, order) => sum + orderValue(order), 0),
     },
     shipQueue: {
       count: shipList.length,
-      value: shipList.reduce((sum, o) => sum + o.subtotal, 0),
+      value: shipList.reduce((sum, order) => sum + orderValue(order), 0),
+    },
+    quoteQueue: {
+      count: waitingOnBuyer.length,
+      value: waitingOnBuyer.reduce((sum, order) => sum + orderValue(order), 0),
     },
     abandonedCount,
-    salesSeries: series.map((p) => ({ label: p.label, sales: p.sales })),
-    conversionSeries: series.map((p) => ({ label: p.label, rate: p.conversion })),
+    salesSeries: series.map((point) => ({ label: point.label, sales: point.sales })),
+    conversionSeries: series.map((point) => ({ label: point.label, rate: point.conversion })),
+    seriesGranularity,
   };
 }

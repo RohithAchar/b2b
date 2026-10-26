@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { formatRupees, formatDateMed } from "@/lib/format";
+import { orderAmount } from "@/lib/orders/quotation";
 import { KpiStat } from "@/components/dashboard/kpi-stat";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { getCustomerDetail } from "@/lib/supplier/customer-queries";
@@ -142,7 +143,7 @@ export default async function CustomerDetailPage({
             <Card className="!gap-0 !pb-0 lg:col-span-4">
               <CardHeader className="border-b border-border">
                 <CardTitle>Order history</CardTitle>
-                <CardDescription>Every linked order, newest first.</CardDescription>
+                <CardDescription>Most recent linked orders.</CardDescription>
               </CardHeader>
               <CardContent className="!px-0">
                 {detail.orders.length === 0 ? (
@@ -167,7 +168,7 @@ export default async function CustomerDetailPage({
                             {formatDateMed(order.created_at)}
                           </TableCell>
                           <TableCell className="text-right font-medium tabular-nums">
-                            {formatRupees(order.subtotal)}
+                            {formatRupees(orderAmount(order.subtotal, order.quotations))}
                           </TableCell>
                           <TableCell>
                             <StatusBadge status="order" value={order.status} />

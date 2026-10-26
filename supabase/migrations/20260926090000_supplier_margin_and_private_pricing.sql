@@ -6,11 +6,10 @@
 --   1. this migration  - additive: margin column + two pricing views
 --   2. app deploy      - read customer prices from the views
 --   3. step 3 lockdown - revoke base-price columns from anon/authenticated
---                        (SQL kept in supabase/03_lockdown_base_pricing.sql,
---                        outside migrations/ so db push cannot apply it)
+--                        (applied later in 20261030200000_lockdown_base_pricing.sql)
 --
--- Step 3 must not be folded in here: revoking the columns before the new code is
--- live breaks the storefront.
+-- Step 3 is a separate migration because revoking the columns before the new
+-- code is live breaks the storefront.
 
 -- =============================================================================
 -- 1. Margin

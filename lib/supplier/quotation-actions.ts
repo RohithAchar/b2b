@@ -118,6 +118,16 @@ export async function sendQuotation(
     return err("This order can no longer be quoted in its current state.");
   }
 
+  const { data: acceptedQuote } = await supabase
+    .from("quotations")
+    .select("id")
+    .eq("order_id", parsedOrderId.data)
+    .eq("status", "accepted")
+    .maybeSingle();
+  if (acceptedQuote) {
+    return err("The buyer already accepted a quotation for this order.");
+  }
+
   const { data, error } = await supabase.rpc("create_quotation", {
     p_order_id: parsedOrderId.data,
     p_lines: parsed.data.lines.map((line) => ({

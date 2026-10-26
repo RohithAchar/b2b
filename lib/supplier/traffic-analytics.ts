@@ -3,9 +3,18 @@
 // never treated as traffic. Pure helpers are unit-tested.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  DAY_MS,
+  addBucket,
+  bucketLabel,
+  bucketStart,
+  earliestDate,
+  resolvePreviousBounds,
   resolveRangeBounds,
+  windowDays,
   type DashboardRange,
+  type ChartGranularity,
 } from "@/lib/supplier/analytics";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { changePct, type DeltaMetric } from "@/lib/supplier/sales-analytics";
 
 export type TrafficPoint = {
@@ -44,46 +53,6 @@ type ViewEventRow = {
   created_at: string;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const EVENTS_PAGE_SIZE = 10000;
-const SESSIONS_PAGE_SIZE = 20000;
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-type Granularity = "hour" | "day" | "month";
-
-function bucketStart(date: Date, granularity: Granularity): Date {
-  if (granularity === "hour") {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours()));
-  }
-  if (granularity === "day") {
-    return startOfUtcDay(date);
-  }
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-}
-
-function bucketLabel(start: Date, granularity: Granularity): string {
-  if (granularity === "hour") {
-    const hour = start.getUTCHours();
-    const suffix = hour < 12 ? "AM" : "PM";
-    const twelve = hour % 12 === 0 ? 12 : hour % 12;
-    return `${twelve} ${suffix}`;
-  }
-  if (granularity === "day") {
-    return start.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
-  }
-  return start.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "UTC" });
-}
-
-function addBucket(start: Date, granularity: Granularity, index: number): Date {
-  const next = new Date(start.getTime());
-  if (granularity === "hour") next.setUTCHours(next.getUTCHours() + index);
-  else if (granularity === "day") next.setUTCDate(next.getUTCDate() + index);
-  else next.setUTCMonth(next.getUTCMonth() + index);
-  return next;
-}
 
 /**
  * Fold view events into a continuous series — every bucket appears, even
@@ -101,7 +70,7 @@ export function buildTrafficSeries(args: {
   const windowStart = args.from ?? (times.length > 0 ? new Date(Math.min(...times)) : to);
 
   const spanMs = Math.max(to.getTime() - windowStart.getTime(), 0);
-  const granularity: Granularity =
+  const granularity: ChartGranularity =
     spanMs <= 2 * DAY_MS ? "hour" : spanMs <= 120 * DAY_MS ? "day" : "month";
 
   const first = bucketStart(windowStart, granularity);
@@ -145,32 +114,39 @@ function windowedViews(
   supplierId: string,
   from: Date | null,
   to: Date,
-) {
-  let query = supabase
-    .from("storefront_events")
-    .select("session_id, device, source, created_at")
-    .eq("supplier_id", supplierId)
-    .eq("event", "view")
-    .lt("created_at", to.toISOString())
-    .order("created_at", { ascending: true })
-    .limit(EVENTS_PAGE_SIZE);
-  if (from) {
-    query = query.gte("created_at", from.toISOString());
-  }
-  return query;
+  label: string,
+): Promise<ViewEventRow[]> {
+  return fetchAllRows<ViewEventRow>(label, (offset, limit) => {
+    let query = supabase
+      .from("storefront_events")
+      .select("session_id, device, source, created_at")
+      .eq("supplier_id", supplierId)
+      .eq("event", "view")
+      .lt("created_at", to.toISOString())
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, limit);
+    if (from) query = query.gte("created_at", from.toISOString());
+    return query;
+  });
 }
 
 function sessionsBefore(
   supabase: SupabaseClient,
   supplierId: string,
   before: Date,
-) {
-  return supabase
-    .from("storefront_events")
-    .select("session_id")
-    .eq("supplier_id", supplierId)
-    .lt("created_at", before.toISOString())
-    .limit(SESSIONS_PAGE_SIZE);
+  label: string,
+): Promise<{ session_id: string }[]> {
+  return fetchAllRows<{ session_id: string }>(label, (offset, limit) =>
+    supabase
+      .from("storefront_events")
+      .select("session_id")
+      .eq("supplier_id", supplierId)
+      .lt("created_at", before.toISOString())
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, limit),
+  );
 }
 
 /**
@@ -185,40 +161,47 @@ export async function getTrafficAnalytics(
   now: Date = new Date(),
 ): Promise<TrafficAnalytics> {
   const { from, to } = resolveRangeBounds(range, now);
-  const spanMs = from ? Math.max(to.getTime() - from.getTime(), 0) : 0;
-  const prevTo = from;
-  const prevFrom = from && spanMs > 0 ? new Date(from.getTime() - spanMs) : null;
-  const daysInWindow = Math.max(spanMs / DAY_MS, from ? 1 / 24 : 1);
+  const previous = resolvePreviousBounds(range, now);
+  const prevFrom = previous?.from ?? null;
+  const prevTo = previous?.to ?? null;
 
-  const [currentRes, prevRes, priorSessionsRes, prevPriorSessionsRes] = await Promise.all([
-    windowedViews(supabase, supplierId, from, to),
+  const [views, prevViews, priorSessions, prevPriorSessions] = await Promise.all([
+    windowedViews(supabase, supplierId, from, to, "Traffic analytics views"),
     prevFrom && prevTo
-      ? windowedViews(supabase, supplierId, prevFrom, prevTo)
-      : Promise.resolve({ data: [] as ViewEventRow[], error: null }),
+      ? windowedViews(
+          supabase,
+          supplierId,
+          prevFrom,
+          prevTo,
+          "Traffic analytics previous views",
+        )
+      : Promise.resolve([] as ViewEventRow[]),
     from
-      ? sessionsBefore(supabase, supplierId, from)
-      : Promise.resolve({ data: [] as { session_id: string }[], error: null }),
+      ? sessionsBefore(supabase, supplierId, from, "Traffic analytics prior sessions")
+      : Promise.resolve([] as { session_id: string }[]),
     prevFrom
-      ? sessionsBefore(supabase, supplierId, prevFrom)
-      : Promise.resolve({ data: [] as { session_id: string }[], error: null }),
+      ? sessionsBefore(
+          supabase,
+          supplierId,
+          prevFrom,
+          "Traffic analytics previous prior sessions",
+        )
+      : Promise.resolve([] as { session_id: string }[]),
   ]);
 
-  for (const [label, res] of [
-    ["views", currentRes],
-    ["previous views", prevRes],
-    ["prior sessions", priorSessionsRes],
-    ["previous prior sessions", prevPriorSessionsRes],
-  ] as const) {
-    if (res.error) throw new Error(`Traffic analytics ${label} query failed: ${res.error.message}`);
-  }
-
-  const views = (currentRes.data ?? []) as unknown as ViewEventRow[];
-  const prevViews = (prevRes.data ?? []) as unknown as ViewEventRow[];
-  const priorSessions = new Set(
-    ((priorSessionsRes.data ?? []) as { session_id: string }[]).map((r) => r.session_id),
+  const priorSessionIds = new Set(priorSessions.map((row) => row.session_id));
+  const prevPriorSessionIds = new Set(
+    prevPriorSessions.map((row) => row.session_id),
   );
-  const prevPriorSessions = new Set(
-    ((prevPriorSessionsRes.data ?? []) as { session_id: string }[]).map((r) => r.session_id),
+  const daysInWindow = windowDays(
+    from,
+    to,
+    earliestDate(views.map((view) => view.created_at)),
+  );
+  const prevDaysInWindow = windowDays(
+    prevFrom,
+    prevTo ?? to,
+    earliestDate(prevViews.map((view) => view.created_at)),
   );
 
   const summarize = (rows: ViewEventRow[], seenBefore: Set<string>) => {
@@ -235,8 +218,8 @@ export async function getTrafficAnalytics(
     };
   };
 
-  const cur = summarize(views, priorSessions);
-  const prev = summarize(prevViews, prevPriorSessions);
+  const cur = summarize(views, priorSessionIds);
+  const prev = summarize(prevViews, prevPriorSessionIds);
   const hasPrevious = prevFrom !== null;
 
   const byDevice = new Map<string, number>();
@@ -282,7 +265,7 @@ export async function getTrafficAnalytics(
     totalVisitors: { value: cur.visitors, changePct: hasPrevious ? changePct(cur.visitors, prev.visitors) : null },
     avgViewsPerDay: {
       value: Math.round((cur.views / daysInWindow) * 10) / 10,
-      changePct: hasPrevious ? changePct(cur.views / daysInWindow, prev.views / daysInWindow) : null,
+      changePct: hasPrevious ? changePct(cur.views / daysInWindow, prev.views / prevDaysInWindow) : null,
     },
     returningVisitors: {
       count: cur.returning,

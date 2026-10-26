@@ -58,6 +58,51 @@ export type QuotationTotals = {
   total: number;
 };
 
+type QuotationRef = {
+  status: string;
+  version: number;
+  total: number | string;
+};
+
+function quotationList<T extends QuotationRef>(
+  rows: T | readonly T[] | null | undefined,
+): readonly T[] {
+  if (!rows) return [];
+  return Array.isArray(rows) ? rows : [rows as T];
+}
+
+/** Latest accepted quotation, or null. Relations arrive as arrays from Supabase. */
+export function latestAcceptedQuotation<T extends QuotationRef>(
+  rows: T | readonly T[] | null | undefined,
+): T | null {
+  let latest: T | null = null;
+  for (const quote of quotationList(rows)) {
+    if (quote.status !== "accepted") continue;
+    if (!latest || quote.version > latest.version) latest = quote;
+  }
+  return latest;
+}
+
+/**
+ * Amount actually owed for an order: the accepted quotation wins, otherwise
+ * the order's stored subtotal. `subtotal` is already net of any coupon, so
+ * discount must never be subtracted again.
+ */
+export function orderAmount(
+  subtotal: number | string,
+  quotations?: QuotationRef | readonly QuotationRef[] | null,
+): number {
+  return Number(latestAcceptedQuotation(quotations)?.total ?? subtotal);
+}
+
+/** Pre-discount item value, for a readable subtotal → discount → total block. */
+export function grossItemsTotal(
+  netSubtotal: number | string,
+  discount: number | string | null | undefined,
+): number {
+  return Number(netSubtotal) + Number(discount ?? 0);
+}
+
 /**
  * Server-mirrored total math: line totals round to paise, then charges add
  * on top. Must stay in step with create_quotation in the migration.

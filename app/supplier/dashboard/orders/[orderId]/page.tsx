@@ -30,6 +30,11 @@ import { OrderProgress } from "@/components/orders/order-progress";
 import { OrderNotifications } from "@/components/orders/order-notifications";
 import type { DeliverySnapshot } from "@/lib/orders/delivery";
 import { getOrderItemImages } from "@/lib/orders/item-images";
+import {
+  grossItemsTotal,
+  latestAcceptedQuotation,
+  orderAmount,
+} from "@/lib/orders/quotation";
 import type {
   OrderStatus,
   PaymentStatus,
@@ -204,8 +209,9 @@ export default async function SupplierOrderDetailPage({
   const orderRow = order as unknown as OrderRow;
   const delivery = orderRow.delivery;
   const quoteRows = (quotations ?? []) as unknown as QuotationRow[];
-  const acceptedQuote =
-    quoteRows.filter((quote) => quote.status === "accepted").at(-1) ?? null;
+  const acceptedQuote = latestAcceptedQuotation(quoteRows);
+  const itemsTotal = grossItemsTotal(orderRow.subtotal, orderRow.discount);
+  const amountDue = orderAmount(orderRow.subtotal, quoteRows);
   const orderItems = orderItemsForImages;
   const quoteItemRows = (quotationItems ?? []) as unknown as {
     id: string;
@@ -249,6 +255,7 @@ export default async function SupplierOrderDetailPage({
           hasQuotation={
             orderRow.status !== "new" || quoteRows.length > 0
           }
+          quotationAccepted={acceptedQuote !== null}
           cancelledReason={orderRow.rejection_reason}
         />
       </Card>
@@ -257,6 +264,7 @@ export default async function SupplierOrderDetailPage({
         orderId={orderRow.id}
         status={orderRow.status}
         paymentStatus={orderRow.payment_status}
+        hasAcceptedQuote={acceptedQuote !== null}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -301,9 +309,9 @@ export default async function SupplierOrderDetailPage({
           <CardContent className="p-0">
             <div className="mt-2 flex flex-col gap-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Order value</span>
-                <span className="font-bold tabular-nums">
-                  {formatRupees(Number(orderRow.subtotal))}
+                <span className="text-muted-foreground">Items subtotal</span>
+                <span className="tabular-nums">
+                  {formatRupees(itemsTotal)}
                 </span>
               </div>
               {Number(orderRow.discount) > 0 ? (
@@ -314,16 +322,16 @@ export default async function SupplierOrderDetailPage({
                   </span>
                 </div>
               ) : null}
-              {acceptedQuote ? (
-                <div className="flex justify-between border-t border-border pt-2">
-                  <span className="font-medium">
-                    Agreed total (quotation v{acceptedQuote.version})
-                  </span>
-                  <span className="font-bold tabular-nums">
-                    {formatRupees(Number(acceptedQuote.total))}
-                  </span>
-                </div>
-              ) : null}
+              <div className="flex justify-between border-t border-border pt-2">
+                <span className="font-medium">
+                  {acceptedQuote
+                    ? `Agreed total (quotation v${acceptedQuote.version})`
+                    : "Total"}
+                </span>
+                <span className="font-bold tabular-nums">
+                  {formatRupees(amountDue)}
+                </span>
+              </div>
               {orderRow.payment_status === "claimed" ? (
                 <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2.5">
                   <p className="text-xs font-semibold text-warning">
@@ -417,7 +425,7 @@ export default async function SupplierOrderDetailPage({
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Items subtotal</span>
                 <span className="tabular-nums">
-                  {formatRupees(Number(orderRow.subtotal))}
+                  {formatRupees(itemsTotal)}
                 </span>
               </div>
               {Number(orderRow.discount) > 0 ? (
@@ -431,9 +439,7 @@ export default async function SupplierOrderDetailPage({
               <div className="flex items-center justify-between border-t border-border pt-2">
                 <span className="font-medium">Total</span>
                 <span className="font-bold tabular-nums">
-                  {formatRupees(
-                    Number(orderRow.subtotal) - Number(orderRow.discount),
-                  )}
+                  {formatRupees(amountDue)}
                 </span>
               </div>
             </>
@@ -514,7 +520,9 @@ export default async function SupplierOrderDetailPage({
                               ? "destructive"
                               : quote.status === "expired"
                                 ? "warning"
-                                : "secondary"
+                                : quote.status === "superseded"
+                                  ? "outline"
+                                  : "secondary"
                         }
                       >
                         {quote.status}

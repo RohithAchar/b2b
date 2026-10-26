@@ -57,15 +57,19 @@ export function OrderActionsPanel({
   orderId,
   status,
   paymentStatus,
+  hasAcceptedQuote = false,
 }: {
   orderId: string
   status: string
   paymentStatus: string
+  hasAcceptedQuote?: boolean
 }) {
   const orderStatus = parseOrderStatus(status)
   const payment = parsePaymentStatus(paymentStatus) ?? "not_requested"
   const actions: readonly SupplierOrderAction[] = orderStatus
-    ? availableSupplierActions(orderStatus)
+    ? availableSupplierActions(orderStatus).filter(
+        (action) => !(hasAcceptedQuote && action === "create_quotation")
+      )
     : []
 
   const [notice, setNotice] = useState<OrderActionResult | null>(null)
@@ -116,9 +120,11 @@ export function OrderActionsPanel({
       title: "Review the order",
       description: reviewDone
         ? "The order has moved on from review."
-        : orderStatus === "quoted"
-          ? "Your quotation is with the buyer — you can also accept or reject now."
-          : "Check the items, then quote a price or confirm the order as placed.",
+        : hasAcceptedQuote
+          ? "The buyer accepted your quotation. Confirm the order when you are ready to fulfil it."
+          : orderStatus === "quoted"
+            ? "Your quotation is with the buyer — you can also accept or reject now."
+            : "Check the items, then quote a price or confirm the order as placed.",
       done: reviewDone,
       body: reviewDone ? null : (
         <>

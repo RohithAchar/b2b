@@ -12,6 +12,7 @@ import {
   ShieldCheckIcon,
   ShoppingCart01Icon,
   Wallet01Icon,
+  Invoice01Icon,
 } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -36,6 +37,7 @@ import { LOGIN_PATH } from "@/lib/auth/paths"
 import { getSupplierContext } from "@/lib/auth/guard"
 import { fetchCustomerPricing } from "@/lib/pricing-data"
 import { formatRupees } from "@/lib/format"
+import { latestAcceptedQuotation } from "@/lib/orders/quotation"
 import {
   DASHBOARD_RANGE_LABELS,
   getDashboardMetrics,
@@ -181,6 +183,15 @@ export default async function SupplierOverviewPage({
 
   const { metrics, error: metricsError } = await metricsSettled
 
+  const { data: recentOrders } = await supabase
+    .from("orders")
+    .select(
+      "id, reference, status, payment_status, subtotal, created_at, delivery, quotations(status, version, total)"
+    )
+    .eq("supplier_id", company.id)
+    .order("created_at", { ascending: false })
+    .limit(6)
+
   const { data: recent } = await supabase
     .from("products")
     .select("id, title, unit, moq, stock_qty, status, created_at")
@@ -241,6 +252,17 @@ export default async function SupplierOverviewPage({
       severity: "warning",
       href: "/supplier/dashboard/orders?payment=claimed",
       actionLabel: "Verify",
+    })
+  }
+
+  if ((metrics?.quoteQueue.count ?? 0) > 0) {
+    attention.push({
+      id: "quotes-waiting",
+      title: `${metrics?.quoteQueue.count} quotation${metrics?.quoteQueue.count === 1 ? "" : "s"} awaiting a buyer response`,
+      description: "Review the quote or contact the buyer if it is urgent.",
+      severity: "info",
+      href: "/supplier/dashboard/orders?status=quoted",
+      actionLabel: "Review",
     })
   }
 
@@ -355,12 +377,12 @@ export default async function SupplierOverviewPage({
         </Alert>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Link href="/supplier/dashboard/orders" className={CARD_LINK_CLASS}>
               <KpiStat
                 label="Total sales"
                 value={formatRupees(metrics.salesTotal)}
-                caption={`${metrics.orderCount} order${metrics.orderCount === 1 ? "" : "s"}`}
+                caption={`${metrics.orderCount} order${metrics.orderCount === 1 ? "" : "s"} · ${DASHBOARD_RANGE_LABELS[range].toLowerCase()}`}
                 icon={Wallet01Icon}
               />
             </Link>
@@ -368,10 +390,13 @@ export default async function SupplierOverviewPage({
               <KpiStat
                 label="Store conversion"
                 value={`${metrics.conversionPct}%`}
-                caption={`${metrics.sessions} session${metrics.sessions === 1 ? "" : "s"}`}
+                caption={`${metrics.sessions} session${metrics.sessions === 1 ? "" : "s"} · orders ÷ visits`}
                 icon={ChartAverageIcon}
               />
             </Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Link
               href="/supplier/dashboard/orders?status=new"
               className={CARD_LINK_CLASS}
@@ -379,19 +404,33 @@ export default async function SupplierOverviewPage({
               <KpiStat
                 label="New orders"
                 value={metrics.newOrders.count}
-                caption={formatRupees(metrics.newOrders.value)}
+                caption={`${formatRupees(metrics.newOrders.value)} to review`}
                 icon={ShoppingCart01Icon}
+                accent="info"
               />
             </Link>
             <Link
-              href="/supplier/dashboard/orders?status=new%2Cconfirmed"
+              href="/supplier/dashboard/orders?status=quoted"
               className={CARD_LINK_CLASS}
             >
               <KpiStat
-                label="To ship"
+                label="Quotes awaiting buyer"
+                value={metrics.quoteQueue.count}
+                caption={formatRupees(metrics.quoteQueue.value)}
+                icon={Invoice01Icon}
+                accent="warning"
+              />
+            </Link>
+            <Link
+              href="/supplier/dashboard/orders?status=confirmed"
+              className={CARD_LINK_CLASS}
+            >
+              <KpiStat
+                label="Ready to ship"
                 value={metrics.shipQueue.count}
                 caption={formatRupees(metrics.shipQueue.value)}
                 icon={DeliveryTruck01Icon}
+                accent="violet"
               />
             </Link>
           </div>
@@ -404,8 +443,7 @@ export default async function SupplierOverviewPage({
               <CardHeader>
                 <CardTitle>Sales</CardTitle>
                 <CardDescription>
-                  Revenue per{" "}
-                  {metrics.salesSeries.length > 31 ? "month" : "day"} ·{" "}
+                  Revenue per {metrics.seriesGranularity} ·{" "}
                   {DASHBOARD_RANGE_LABELS[range].toLowerCase()}
                 </CardDescription>
               </CardHeader>
@@ -498,6 +536,97 @@ export default async function SupplierOverviewPage({
           />
         </div>
       </div>
+
+      <Card className="!gap-0 !pb-0">
+        <CardHeader className="flex w-full flex-row items-center justify-between gap-2 border-b border-border">
+          <div className="grid gap-0.5">
+            <CardTitle>Recent orders</CardTitle>
+            <CardDescription>
+              The latest orders placed with your business.
+            </CardDescription>
+          </div>
+          <Button
+            render={<Link href="/supplier/dashboard/orders" />}
+            nativeButton={false}
+            variant="outline"
+            size="sm"
+            className="[&_svg]:size-3.5"
+          >
+            View all
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              strokeWidth={2}
+              className="size-3.5"
+            />
+          </Button>
+        </CardHeader>
+        <CardContent className="!px-0">
+          {!recentOrders || recentOrders.length === 0 ? (
+            <Empty className="!border-0">
+              <EmptyTitle>No orders yet</EmptyTitle>
+              <EmptyDescription>
+                Orders from your storefront will appear here.
+              </EmptyDescription>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Buyer</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Payment</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentOrders.map((order) => {
+                  const delivery = order.delivery as
+                    | { fullName?: string }
+                    | null
+                  const quotations = order.quotations as
+                    | { status: string; version: number; total: number }[]
+                    | undefined
+                  const amount = Number(
+                    latestAcceptedQuotation(quotations)?.total ?? order.subtotal
+                  )
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <Link
+                          href={`/supplier/dashboard/orders/${order.id}`}
+                          className="font-mono text-xs font-semibold hover:text-primary hover:underline"
+                        >
+                          {order.reference}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="max-w-40 truncate text-sm">
+                        {delivery?.fullName ?? "—"}
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
+                        {formatDate(order.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">
+                        {formatRupees(amount)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status="order" value={order.status} />
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          status="payment"
+                          value={order.payment_status}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="!gap-0 !pb-0">
         <CardHeader className="flex w-full flex-row items-center justify-between gap-2 border-b border-border">

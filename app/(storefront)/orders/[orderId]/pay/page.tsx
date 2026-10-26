@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/server"
 import { getSessionUser } from "@/lib/auth/session"
 import { formatRupees } from "@/lib/format"
+import { orderAmount } from "@/lib/orders/quotation"
 import {
   PAYMENT_STATUS_LABELS,
   canBuyerClaimPayment,
@@ -92,7 +93,7 @@ export default async function PaySupplierPage({
   const [{ data: acceptedQuote }, { data: contact }] = await Promise.all([
     supabase
       .from("quotations")
-      .select("total, version")
+      .select("status, total, version")
       .eq("order_id", orderId)
       .eq("status", "accepted")
       .order("version", { ascending: false })
@@ -105,10 +106,8 @@ export default async function PaySupplierPage({
       .maybeSingle(),
   ])
 
-  const quote = acceptedQuote as { total: number; version: number } | null
-  const amount = Number(
-    quote?.total ?? Number(orderRow.subtotal) - Number(orderRow.discount)
-  )
+  const quote = acceptedQuote as { status: string; total: number; version: number } | null
+  const amount = orderAmount(orderRow.subtotal, quote)
   const status = parseOrderStatus(orderRow.status) ?? "new"
   const payment = parsePaymentStatus(orderRow.payment_status) ?? "not_requested"
   const supplierName =

@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { toDeliverySnapshot, type DeliverySnapshot } from "@/lib/orders/delivery";
 import { queueAndDeliver } from "@/lib/notifications/order-notifications";
+import { logStorefrontEvent } from "@/lib/storefront/events";
 
 // Checkout: converts the buyer's cart into one order per supplier by calling
 // the `create_orders_from_cart` RPC. Nothing about price, supplier or total
@@ -155,6 +157,28 @@ export async function placeOrder(
   if (!payload.duplicate) {
     for (const orderId of orderIds) {
       await queueAndDeliver(supabase, orderId, "new_order_supplier");
+    }
+
+    // Conversion is per session, so one event per order is correct: several
+    // supplier orders in one checkout still count as one ordering session.
+    // Analytics is best-effort and runs after the response is committed.
+    const { data: orderRows } = await supabase
+      .from("orders")
+      .select("id, supplier_id")
+      .in("id", orderIds);
+    const suppliers = (orderRows ?? []) as { id: string; supplier_id: string }[];
+    if (suppliers.length > 0) {
+      after(() =>
+        Promise.all(
+          suppliers.map((order) =>
+            logStorefrontEvent({
+              supplierId: order.supplier_id,
+              event: "order",
+              buyerId: user.id,
+            }),
+          ),
+        ),
+      );
     }
   }
 

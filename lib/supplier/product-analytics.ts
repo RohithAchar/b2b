@@ -3,9 +3,16 @@
 // contribution (labeled on the page); product ranking is units sold.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  DAY_MS,
+  addBucket,
+  bucketLabel,
+  bucketStart,
   resolveRangeBounds,
+  type ChartGranularity,
   type DashboardRange,
 } from "@/lib/supplier/analytics";
+import { latestAcceptedQuotation } from "@/lib/orders/quotation";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export type UnitsPoint = {
   key: string;
@@ -35,46 +42,6 @@ export type ProductAnalytics = {
   topCategories: CategoryShare[];
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const ORDERS_PAGE_SIZE = 5000;
-const ITEMS_PAGE_SIZE = 5000;
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-type Granularity = "hour" | "day" | "month";
-
-function bucketStart(date: Date, granularity: Granularity): Date {
-  if (granularity === "hour") {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours()));
-  }
-  if (granularity === "day") {
-    return startOfUtcDay(date);
-  }
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-}
-
-function bucketLabel(start: Date, granularity: Granularity): string {
-  if (granularity === "hour") {
-    const hour = start.getUTCHours();
-    const suffix = hour < 12 ? "AM" : "PM";
-    const twelve = hour % 12 === 0 ? 12 : hour % 12;
-    return `${twelve} ${suffix}`;
-  }
-  if (granularity === "day") {
-    return start.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
-  }
-  return start.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "UTC" });
-}
-
-function addBucket(start: Date, granularity: Granularity, index: number): Date {
-  const next = new Date(start.getTime());
-  if (granularity === "hour") next.setUTCHours(next.getUTCHours() + index);
-  else if (granularity === "day") next.setUTCDate(next.getUTCDate() + index);
-  else next.setUTCMonth(next.getUTCMonth() + index);
-  return next;
-}
 
 /**
  * Fold dated unit counts into a continuous series — every bucket appears,
@@ -92,7 +59,7 @@ export function buildUnitsSeries(args: {
   const windowStart = args.from ?? (times.length > 0 ? new Date(Math.min(...times)) : to);
 
   const spanMs = Math.max(to.getTime() - windowStart.getTime(), 0);
-  const granularity: Granularity =
+  const granularity: ChartGranularity =
     spanMs <= 2 * DAY_MS ? "hour" : spanMs <= 120 * DAY_MS ? "day" : "month";
 
   const first = bucketStart(windowStart, granularity);
@@ -117,10 +84,30 @@ export function buildUnitsSeries(args: {
   return points;
 }
 
-type WindowOrderRow = { id: string; created_at: string };
+type QuotationLink = {
+  id: string;
+  status: string;
+  version: number;
+  total: number;
+};
+
+type WindowOrderRow = {
+  id: string;
+  created_at: string;
+  quotations?: QuotationLink[];
+};
+
 type ItemRow = {
+  id: string;
+  order_item_id?: string | null;
   order_id: string;
   product_id: string;
+  quantity: number;
+  unit_price: number;
+};
+
+type QuoteLineRow = {
+  order_item_id: string | null;
   quantity: number;
   unit_price: number;
 };
@@ -140,34 +127,78 @@ export async function getProductAnalytics(
 ): Promise<ProductAnalytics> {
   const { from, to } = resolveRangeBounds(range, now);
 
-  let ordersQuery = supabase
-    .from("orders")
-    .select("id, created_at")
-    .eq("supplier_id", supplierId)
-    .lt("created_at", to.toISOString())
-    .order("created_at", { ascending: true })
-    .limit(ORDERS_PAGE_SIZE);
-  if (from) {
-    ordersQuery = ordersQuery.gte("created_at", from.toISOString());
-  }
-  const { data: orderRows, error: ordersError } = await ordersQuery;
-  if (ordersError) throw new Error(`Product analytics orders query failed: ${ordersError.message}`);
-  const orders = (orderRows ?? []) as unknown as WindowOrderRow[];
+  const orders = await fetchAllRows<WindowOrderRow>(
+    "Product analytics orders",
+    (offset, limit) => {
+      let query = supabase
+        .from("orders")
+        .select("id, created_at, quotations(id, status, version, total)")
+        .eq("supplier_id", supplierId)
+        .neq("status", "cancelled")
+        .lt("created_at", to.toISOString())
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, limit);
+      if (from) query = query.gte("created_at", from.toISOString());
+      return query;
+    },
+  );
 
-  let items: ItemRow[] = [];
-  const createdByOrder = new Map(orders.map((o) => [o.id, o.created_at]));
-  if (orders.length > 0) {
-    const { data: itemRows, error: itemsError } = await supabase
-      .from("order_items")
-      .select("order_id, product_id, quantity, unit_price")
-      .in(
-        "order_id",
-        orders.map((o) => o.id),
-      )
-      .limit(ITEMS_PAGE_SIZE);
-    if (itemsError) throw new Error(`Product analytics items query failed: ${itemsError.message}`);
-    items = (itemRows ?? []) as unknown as ItemRow[];
+  const createdByOrder = new Map(orders.map((order) => [order.id, order.created_at]));
+  const acceptedQuoteByOrder = new Map<string, string>();
+  for (const order of orders) {
+    const quote = latestAcceptedQuotation(order.quotations);
+    if (quote) acceptedQuoteByOrder.set(order.id, quote.id);
   }
+
+  let items = await fetchAllRows<ItemRow>(
+    "Product analytics items",
+    (offset, limit) =>
+      supabase
+        .from("order_items")
+        .select("id, order_id, product_id, quantity, unit_price")
+        .in(
+          "order_id",
+          orders.map((order) => order.id),
+        )
+        .order("id", { ascending: true })
+        .range(offset, limit),
+  );
+
+  const acceptedQuoteIds = [...new Set(acceptedQuoteByOrder.values())];
+  const quoteLines = new Map<string, QuoteLineRow>();
+  if (acceptedQuoteIds.length > 0) {
+    const rows = await fetchAllRows<QuoteLineRow & { quotation_id: string }>(
+      "Product analytics agreed quotation lines",
+      (offset, limit) =>
+        supabase
+          .from("quotation_items")
+          .select("quotation_id, order_item_id, quantity, unit_price")
+          .in("quotation_id", acceptedQuoteIds)
+          .order("id", { ascending: true })
+          .range(offset, limit),
+    );
+    for (const row of rows) {
+      if (row.order_item_id) quoteLines.set(row.order_item_id, row);
+    }
+  }
+
+  const effectiveItems: (ItemRow & { quantity: number; unit_price: number })[] = [];
+  for (const item of items) {
+    if (!createdByOrder.has(item.order_id)) continue;
+    if (acceptedQuoteByOrder.has(item.order_id)) {
+      const line = quoteLines.get(item.id);
+      if (!line) continue;
+      effectiveItems.push({
+        ...item,
+        quantity: Number(line.quantity),
+        unit_price: Number(line.unit_price),
+      });
+    } else {
+      effectiveItems.push(item);
+    }
+  }
+  items = effectiveItems;
 
   const byProduct = new Map<string, { units: number; revenue: number }>();
   const datedUnits: { created_at: string; quantity: number }[] = [];
@@ -188,29 +219,39 @@ export async function getProductAnalytics(
   let topProducts: TopProduct[] = [];
   let topCategories: CategoryShare[] = [];
   if (ranked.length > 0 || items.length > 0) {
-    const productIds = [...new Set(items.map((i) => i.product_id))];
-    const { data: products, error: productsError } = await supabase
-      .from("products")
-      .select("id, title, category_id")
-      .in("id", productIds);
-    if (productsError) throw new Error(`Product analytics products query failed: ${productsError.message}`);
-    const productMap = new Map(
-      ((products ?? []) as { id: string; title: string; category_id: string | null }[]).map((p) => [p.id, p]),
+    const productIds = [...new Set(items.map((item) => item.product_id))];
+    const products = await fetchAllRows<{
+      id: string;
+      title: string;
+      category_id: string | null;
+    }>(
+      "Product analytics products",
+      (offset, limit) =>
+        supabase
+          .from("products")
+          .select("id, title, category_id")
+          .in("id", productIds)
+          .order("id", { ascending: true })
+          .range(offset, limit),
     );
+    const productMap = new Map(products.map((product) => [product.id, product]));
 
     const categoryIds = new Set(
       [...productMap.values()].map((p) => p.category_id).filter((id): id is string => !!id),
     );
     const names = new Map<string, string>();
     if (categoryIds.size > 0) {
-      const { data: categories, error: categoriesError } = await supabase
-        .from("categories")
-        .select("id, name")
-        .in("id", [...categoryIds]);
-      if (categoriesError) {
-        throw new Error(`Product analytics categories query failed: ${categoriesError.message}`);
-      }
-      for (const category of (categories ?? []) as { id: string; name: string }[]) {
+      const categories = await fetchAllRows<{ id: string; name: string }>(
+        "Product analytics categories",
+        (offset, limit) =>
+          supabase
+            .from("categories")
+            .select("id, name")
+            .in("id", [...categoryIds])
+            .order("id", { ascending: true })
+            .range(offset, limit),
+      );
+      for (const category of categories) {
         names.set(category.id, category.name);
       }
     }
@@ -218,13 +259,18 @@ export async function getProductAnalytics(
     const imageProductIds = ranked.map(([id]) => id);
     const images = new Map<string, string>();
     if (imageProductIds.length > 0) {
-      const { data: imageRows, error: imagesError } = await supabase
-        .from("product_images")
-        .select("product_id, path, sort")
-        .in("product_id", imageProductIds)
-        .order("sort", { ascending: true });
-      if (imagesError) throw new Error(`Product analytics images query failed: ${imagesError.message}`);
-      for (const row of (imageRows ?? []) as { product_id: string; path: string }[]) {
+      const imageRows = await fetchAllRows<{ product_id: string; path: string }>(
+        "Product analytics images",
+        (offset, limit) =>
+          supabase
+            .from("product_images")
+            .select("product_id, path, sort")
+            .in("product_id", imageProductIds)
+            .order("sort", { ascending: true })
+            .order("id", { ascending: true })
+            .range(offset, limit),
+      );
+      for (const row of imageRows) {
         if (!images.has(row.product_id)) images.set(row.product_id, row.path);
       }
     }
