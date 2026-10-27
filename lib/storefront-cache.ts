@@ -2,6 +2,8 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import {
+  getCatalogueCategories,
+  getCataloguePage,
   getCategoryBySlug,
   getCategoryProductCount,
   getFeaturedSuppliers,
@@ -16,6 +18,10 @@ import {
   getSourceRegions,
   type ProductListParams,
 } from "./storefront";
+import {
+  catalogueFiltersKey,
+  type CatalogueFilters,
+} from "./catalogue";
 
 /**
  * Cookie-less public client for cached catalog reads. `lib/supabase/server.ts`
@@ -120,6 +126,37 @@ export const getCachedRelatedProducts = unstable_cache(
   ["related"],
   { revalidate: 120, tags: ["products"] },
 );
+
+export const getCachedCatalogueCategories = unstable_cache(
+  async () => getCatalogueCategories(makePublicClient() as unknown as AnyClient),
+  ["catalogue-categories"],
+  { revalidate: 600, tags: ["categories", "products", "catalogue"] },
+);
+
+/**
+ * First page of the shared catalogue. Deeper pages are loaded by a server
+ * action (never cached), and image-search candidate sets are unique per upload,
+ * so they bypass the cache entirely.
+ */
+export async function getCachedCataloguePage(filters: CatalogueFilters) {
+  if (filters.imageToken) {
+    return getCataloguePage(
+      makePublicClient() as unknown as AnyClient,
+      filters,
+    );
+  }
+
+  const key = catalogueFiltersKey(filters);
+  const tags = ["products", "prices", "catalogue"];
+  if (filters.categorySlug) tags.push(`category:${filters.categorySlug}`);
+
+  return unstable_cache(
+    async () =>
+      getCataloguePage(makePublicClient() as unknown as AnyClient, filters),
+    ["catalogue", key],
+    { revalidate: 60, tags },
+  )();
+}
 
 export const getCachedCategoryBySlug = cache(
   unstable_cache(

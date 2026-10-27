@@ -53,6 +53,73 @@ export function ProductGridSkeleton({
   )
 }
 
+export function CatalogueSkeleton({ count = 24 }: { count?: number }) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
+      <div className="hidden overflow-hidden rounded-lg border border-border bg-card lg:block">
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <Skeleton className="size-4 rounded-sm" />
+            <Skeleton className="h-4 w-14" />
+          </div>
+          <Skeleton className="h-4 w-8" />
+        </div>
+        <div className="flex flex-col gap-3 p-3">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-5" />
+            </div>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-4 w-28 max-w-full" />
+                  <Skeleton className="h-3 w-4" />
+                </div>
+              ))}
+            </div>
+          </div>
+          {Array.from({ length: 2 }, (_, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              <Skeleton className="h-px w-full" />
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <Skeleton className="mt-3 h-3 w-full rounded-full" />
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {Array.from({ length: 4 }, (_, j) => (
+                    <Skeleton key={j} className="h-7 w-full rounded-sm" />
+                  ))}
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              </div>
+            </div>
+          ))}
+          <Skeleton className="h-9 w-full rounded-md" />
+        </div>
+      </div>
+      <div className="min-w-0">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="h-9 w-44" />
+        </div>
+        <ProductGridSkeleton
+          count={count}
+          className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 min-[1200px]:grid-cols-5 min-[1440px]:grid-cols-6"
+        />
+      </div>
+    </div>
+  )
+}
+
 export function CategoryTileSkeleton() {
   return (
     <Card className="gap-1 overflow-hidden border-border !py-0">

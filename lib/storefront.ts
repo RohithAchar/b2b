@@ -1,5 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CustomerPrices } from "@/lib/pricing";
+import {
+  CATALOGUE_PAGE_SIZE,
+  encodeCatalogueCursor,
+  type CatalogueCursor,
+  type CatalogueFilters,
+} from "@/lib/catalogue";
+import { decodeImageResultToken } from "@/lib/ai/image-result-token";
 
 type StorefrontSupplier = {
   id: string;
@@ -149,6 +156,144 @@ export async function getHomeProducts(supabase: SupabaseClient) {
     supplier: supplierMap.get(p.supplier_id as string) ?? null,
     pricing: priceMap.get(p.id as string) ?? null,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Shared storefront catalogue (homepage + /products)
+// ---------------------------------------------------------------------------
+
+export type CatalogueProduct = {
+  id: string;
+  title: string;
+  unit: string;
+  moq: number;
+  negotiable: boolean;
+  pricing: { customer_price: number } | null;
+  images: { path: string; sort: number }[];
+  supplier: {
+    business_name: string;
+    city: string;
+    state: string;
+    logo_path: string | null;
+  } | null;
+};
+
+export type CataloguePage = {
+  items: CatalogueProduct[];
+  nextCursor: string | null;
+  total: number;
+};
+
+type RawCataloguePage = {
+  items?: CatalogueProduct[];
+  nextCursor?: CatalogueCursor | null;
+  total?: number;
+};
+
+/**
+ * Keyset-paginated catalogue used by the homepage and /products.
+ *
+ * The RPC applies the same approved / not-hidden rule plus supplier
+ * verification, so a signed-out visitor can never page into a draft, hidden
+ * or unverified listing. Price values are customer-facing only.
+ */
+export async function getCataloguePage(
+  supabase: SupabaseClient,
+  filters: CatalogueFilters,
+  cursor: CatalogueCursor | null = null,
+): Promise<CataloguePage> {
+  const candidateIds = decodeImageResultToken(filters.imageToken) ?? null;
+
+  const { data, error } = await supabase.rpc("list_storefront_products", {
+    p_query: filters.query || null,
+    p_category_slug: filters.categorySlug || null,
+    p_sort: filters.sort,
+    p_min_price: filters.minPrice ?? null,
+    p_max_price: filters.maxPrice ?? null,
+    p_min_moq: filters.minMoq ?? null,
+    p_max_moq: filters.maxMoq ?? null,
+    p_in_stock: !!filters.inStock,
+    p_negotiable: !!filters.negotiable,
+    p_sample_available: !!filters.sampleAvailable,
+    p_candidate_ids: candidateIds,
+    p_cursor: cursor,
+    p_limit: CATALOGUE_PAGE_SIZE,
+  });
+
+  if (error) {
+    throw new Error(`Catalogue query failed: ${error.message}`);
+  }
+
+  const page = (data ?? {}) as RawCataloguePage;
+  const nextCursor =
+    page.nextCursor && typeof page.nextCursor.value === "number"
+      ? encodeCatalogueCursor(page.nextCursor)
+      : null;
+
+  return {
+    items: page.items ?? [],
+    nextCursor,
+    total: Number(page.total ?? 0),
+  };
+}
+
+export type CatalogueCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  productCount: number;
+  subcategories: {
+    id: string;
+    name: string;
+    slug: string;
+    productCount: number;
+  }[];
+};
+
+export async function getCatalogueCategories(
+  supabase: SupabaseClient,
+): Promise<CatalogueCategory[]> {
+  const { data } = await supabase
+    .from("categories")
+    .select("id, name, slug, parent_id")
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("name");
+
+  const rows = (data ?? []) as {
+    id: string;
+    name: string;
+    slug: string;
+    parent_id: string | null;
+  }[];
+  const counts = await getCategoryProductCounts(
+    supabase,
+    rows.map((row) => row.id),
+  );
+
+  const parents = new Map<string, CatalogueCategory>();
+  for (const row of rows) {
+    if (row.parent_id) continue;
+    parents.set(row.id, {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      productCount: counts[row.id] ?? 0,
+      subcategories: [],
+    });
+  }
+
+  for (const row of rows) {
+    if (!row.parent_id) continue;
+    parents.get(row.parent_id)?.subcategories.push({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      productCount: counts[row.id] ?? 0,
+    });
+  }
+
+  return [...parents.values()];
 }
 
 // ---------------------------------------------------------------------------

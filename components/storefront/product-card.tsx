@@ -2,7 +2,6 @@ import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Location01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons"
 import { publicTransformedImageUrl } from "@/lib/storage"
-import type { CustomerPrices } from "@/lib/pricing"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { CardAddButton } from "@/components/storefront/card-add-button"
 import { ProductImage } from "@/components/storefront/product-image"
@@ -14,7 +13,7 @@ export type ProductCardData = {
   moq: number
   negotiable?: boolean
   images?: { path: string; sort: number }[] | null
-  pricing: CustomerPrices | null
+  pricing: { customer_price: number } | null
   supplier?: {
     business_name?: string
     city?: string
