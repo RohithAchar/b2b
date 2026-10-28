@@ -16,7 +16,7 @@ import {
 type GridStatus = "idle" | "loading" | "error" | "complete"
 
 const GRID_CLASS =
-  "grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 min-[1200px]:grid-cols-5 min-[1440px]:grid-cols-6"
+  "grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-5 min-[1200px]:grid-cols-6"
 
 export function InfiniteCatalogueGrid({
   initialPage,
@@ -108,7 +108,7 @@ export function InfiniteCatalogueGrid({
             key={product.id}
             product={product as ProductCardData}
             priority={index < 2}
-            sizes="(min-width: 1440px) 13vw, (min-width: 1200px) 15vw, (min-width: 1024px) 18vw, (min-width: 768px) 30vw, 46vw"
+            sizes="(min-width: 1200px) 13vw, (min-width: 1024px) 14vw, (min-width: 768px) 30vw, 46vw"
           />
         ))}
       </div>

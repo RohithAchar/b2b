@@ -113,7 +113,7 @@ export function CatalogueSkeleton({ count = 24 }: { count?: number }) {
         </div>
         <ProductGridSkeleton
           count={count}
-          className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 min-[1200px]:grid-cols-5 min-[1440px]:grid-cols-6"
+          className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-5 min-[1200px]:grid-cols-6"
         />
       </div>
     </div>
