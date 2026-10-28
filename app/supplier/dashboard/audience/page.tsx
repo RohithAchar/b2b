@@ -10,6 +10,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { parseDashboardRange, resolveRangeBounds } from "@/lib/supplier/analytics";
@@ -47,9 +48,7 @@ export default async function SupplierAudiencePage({
   const page = Math.max(1, Math.floor(Number(params.page) || 1));
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     redirect(LOGIN_PATH);
   }

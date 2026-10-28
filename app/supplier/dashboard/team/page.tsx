@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { requireOwnerCompany } from "@/lib/auth/guard";
 import { TeamAddForm } from "./team-add-form";
@@ -46,9 +47,7 @@ function formatDate(value: string): string {
 
 export default async function SupplierTeamPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     redirect(LOGIN_PATH);
   }

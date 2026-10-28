@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { getSupplierContext } from "@/lib/auth/guard";
 
 export const metadata: Metadata = {
@@ -38,9 +39,7 @@ const STATUS_COPY: Record<string, { title: string; body: string }> = {
 
 export default async function SupplierStatusPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect("/auth/login");

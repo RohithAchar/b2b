@@ -5,6 +5,7 @@ import { ArrowRight01Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { requireOwnerCompany } from "@/lib/auth/guard";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -31,9 +32,7 @@ const KYB_HUMS: Record<string, { title: string; body: string }> = {
 
 export default async function SupplierVerificationPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect(LOGIN_PATH);

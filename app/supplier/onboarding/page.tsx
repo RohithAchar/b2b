@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { OnboardingForm } from "./onboarding-form";
 
@@ -12,9 +13,7 @@ export const metadata: Metadata = {
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect("/auth/login");

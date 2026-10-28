@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { formatRupees } from "@/lib/format";
@@ -142,9 +143,7 @@ export default async function SupplierOrderDetailPage({
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     redirect(LOGIN_PATH);
   }
@@ -155,21 +154,22 @@ export default async function SupplierOrderDetailPage({
   }
 
   // Ownership is enforced here (explicit company scope) and again by RLS.
-  // A foreign order id 404s — no data, no confirmation it exists.
-  const { data: order } = await supabase
-    .from("orders")
-    .select(
-      "id, reference, status, payment_status, subtotal, discount, item_count, delivery, buyer_note, supplier_note, rejection_reason, rejected_at, carrier, tracking_ref, shipment_notes, shipped_at, delivered_at, cancelled_at, payment_confirmed_by, payment_confirmed_at, payment_claim_reference, payment_claimed_at, created_at",
-    )
-    .eq("id", orderId)
-    .eq("supplier_id", ctx.companyId)
-    .maybeSingle();
-
-  if (!order) {
-    notFound();
-  }
-
-  const [{ data: items }, { data: events }, { data: quotations }] = await Promise.all([
+  // A foreign order id 404s — no data, no confirmation it exists. The child
+  // reads are independent of the order row, so they run alongside it.
+  const [
+    { data: order },
+    { data: items },
+    { data: events },
+    { data: quotations },
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, reference, status, payment_status, subtotal, discount, item_count, delivery, buyer_note, supplier_note, rejection_reason, rejected_at, carrier, tracking_ref, shipment_notes, shipped_at, delivered_at, cancelled_at, payment_confirmed_by, payment_confirmed_at, payment_claim_reference, payment_claimed_at, created_at",
+      )
+      .eq("id", orderId)
+      .eq("supplier_id", ctx.companyId)
+      .maybeSingle(),
     supabase
       .from("order_items")
       .select("id, product_id, title, variant_label, unit, quantity, unit_price")
@@ -188,6 +188,10 @@ export default async function SupplierOrderDetailPage({
       .eq("order_id", orderId)
       .order("version", { ascending: true }),
   ]);
+
+  if (!order) {
+    notFound();
+  }
 
   const quoteIds = (quotations ?? []).map((q) => q.id as string);
   const orderItemsForImages = (items ?? []) as unknown as ItemRow[];

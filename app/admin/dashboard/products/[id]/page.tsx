@@ -69,25 +69,28 @@ export default async function AdminProductReviewPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: product } = await supabase
-    .from("products")
-    .select(
-      "id, title, description, brand, seller_sku, hsn_code, unit, moq, stock_qty, negotiable, sample_available, lead_time_days, gst_rate, attributes, certifications, packaging_details, warranty_return, youtube_url, youtube_id, status, is_hidden, rejection_note, supplier:supplier_id(business_name, city, state, margin_pct)",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  if (!product) notFound();
 
-  const { data: images } = await supabase
-    .from("product_images")
-    .select("id, path, sort")
-    .eq("product_id", id)
-    .order("sort");
-  const { data: variants } = await supabase
-    .from("product_variants")
-    .select("id, label, attrs, seller_sku, moq, stock_qty")
-    .eq("product_id", id)
-    .order("sort");
+  // The product, its images and variants are independent reads.
+  const [{ data: product }, { data: images }, { data: variants }] = await Promise.all([
+    supabase
+      .from("products")
+      .select(
+        "id, title, description, brand, seller_sku, hsn_code, unit, moq, stock_qty, negotiable, sample_available, lead_time_days, gst_rate, attributes, certifications, packaging_details, warranty_return, youtube_url, youtube_id, status, is_hidden, rejection_note, supplier:supplier_id(business_name, city, state, margin_pct)",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("product_images")
+      .select("id, path, sort")
+      .eq("product_id", id)
+      .order("sort"),
+    supabase
+      .from("product_variants")
+      .select("id, label, attrs, seller_sku, moq, stock_qty")
+      .eq("product_id", id)
+      .order("sort"),
+  ]);
+  if (!product) notFound();
 
   const rawSupplier = product.supplier as
     | { business_name: string; city: string; state: string; margin_pct: number | null }

@@ -77,20 +77,19 @@ export default async function PaySupplierPage({
     redirect(`/auth/login?next=/orders/${orderId}/pay`)
   }
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select(
-      "id, reference, status, payment_status, subtotal, discount, payment_claim_reference, payment_claimed_at"
-    )
-    .eq("id", orderId)
-    .eq("buyer_id", user.id)
-    .maybeSingle()
-  if (!order) {
-    notFound()
-  }
-  const orderRow = order as unknown as OrderRow
-
-  const [{ data: acceptedQuote }, { data: contact }] = await Promise.all([
+  const [
+    { data: order },
+    { data: acceptedQuote },
+    { data: contact },
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, reference, status, payment_status, subtotal, discount, payment_claim_reference, payment_claimed_at"
+      )
+      .eq("id", orderId)
+      .eq("buyer_id", user.id)
+      .maybeSingle(),
     supabase
       .from("quotations")
       .select("status, total, version")
@@ -105,6 +104,10 @@ export default async function PaySupplierPage({
       .eq("order_id", orderId)
       .maybeSingle(),
   ])
+  if (!order) {
+    notFound()
+  }
+  const orderRow = order as unknown as OrderRow
 
   const quote = acceptedQuote as { status: string; total: number; version: number } | null
   const amount = orderAmount(orderRow.subtotal, quote)

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { getSessionUser } from "@/lib/auth/session"
+import { getAuthUser, getSessionUser } from "@/lib/auth/session"
 import { getCartCount } from "@/lib/buyer/cart-actions"
 import {
   getCachedMegaMenuCategories,
@@ -12,13 +12,16 @@ export default async function StorefrontLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createClient()
-  const [sessionUser, navCategories, megaCategories] = await Promise.all([
+  // Validate the session first, then resolve the profile, navigation and cart
+  // badge together. Waiting for the profile before counting the cart used to
+  // add a serial round trip to every storefront page.
+  const authUser = await getAuthUser(supabase)
+  const [sessionUser, navCategories, megaCategories, cartCount] = await Promise.all([
     getSessionUser(supabase),
     getCachedNavigationCategories(),
     getCachedMegaMenuCategories(),
+    authUser ? getCartCount(supabase, authUser.id) : Promise.resolve(0),
   ])
-  const cartCountPromise = sessionUser ? getCartCount(supabase, sessionUser.id) : Promise.resolve(0)
-  const [cartCount] = await Promise.all([cartCountPromise])
 
   return (
     <StorefrontDataProvider categories={navCategories}>

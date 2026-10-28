@@ -215,47 +215,52 @@ export default async function BuyerOrderPage({
   }
 
   // RLS scopes orders to their buyer; the explicit filter keeps intent clear.
-  const { data: order } = await supabase
-    .from("orders")
-    .select(
-      "id, reference, status, payment_status, payment_claim_reference, payment_claimed_at, subtotal, discount, item_count, delivery, buyer_note, rejection_reason, carrier, tracking_ref, shipment_notes, shipped_at, created_at",
-    )
-    .eq("id", orderId)
-    .eq("buyer_id", user.id)
-    .maybeSingle();
+  // The child reads are independent of the order row, so run all five together.
+  const [
+    { data: order },
+    { data: items },
+    { data: quotations },
+    { data: events },
+    { data: contact },
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, reference, status, payment_status, payment_claim_reference, payment_claimed_at, subtotal, discount, item_count, delivery, buyer_note, rejection_reason, carrier, tracking_ref, shipment_notes, shipped_at, created_at",
+      )
+      .eq("id", orderId)
+      .eq("buyer_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("order_items")
+      .select("id, product_id, title, variant_label, unit, quantity, unit_price")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("quotations")
+      .select(
+        "id, version, status, subtotal, delivery_charge, tax_amount, total, note, expires_at, accepted_at, created_at",
+      )
+      .eq("order_id", orderId)
+      .order("version", { ascending: true }),
+    supabase
+      .from("order_events")
+      .select("id, event, data, created_at")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true }),
+    // SECURITY DEFINER view — rows exist only for this buyer's own orders.
+    supabase
+      .from("order_supplier_contact")
+      .select("supplier_name, phone")
+      .eq("order_id", orderId)
+      .maybeSingle(),
+  ]);
   if (!order) {
     notFound();
   }
   const orderRow = order as unknown as OrderRow;
   const status = parseOrderStatus(orderRow.status) ?? "new";
   const delivery = orderRow.delivery;
-
-  const [{ data: items }, { data: quotations }, { data: events }, { data: contact }] =
-    await Promise.all([
-      supabase
-        .from("order_items")
-        .select("id, product_id, title, variant_label, unit, quantity, unit_price")
-        .eq("order_id", orderId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("quotations")
-        .select(
-          "id, version, status, subtotal, delivery_charge, tax_amount, total, note, expires_at, accepted_at, created_at",
-        )
-        .eq("order_id", orderId)
-        .order("version", { ascending: true }),
-      supabase
-        .from("order_events")
-        .select("id, event, data, created_at")
-        .eq("order_id", orderId)
-        .order("created_at", { ascending: true }),
-      // SECURITY DEFINER view — rows exist only for this buyer's own orders.
-      supabase
-        .from("order_supplier_contact")
-        .select("supplier_name, phone")
-        .eq("order_id", orderId)
-        .maybeSingle(),
-    ]);
 
   const orderItems = (items ?? []) as unknown as ItemRow[];
   const quoteRows = (quotations ?? []) as unknown as QuotationRow[];

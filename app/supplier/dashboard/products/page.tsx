@@ -19,6 +19,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { fetchCustomerPricing } from "@/lib/pricing-data";
@@ -96,9 +97,7 @@ export default async function SupplierProductsPage({
   const requestedPage = Number(params.page) > 0 ? Math.floor(Number(params.page)) : 1;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) redirect(LOGIN_PATH);
 
   const ctx = await getSupplierContext(supabase, user.id);
@@ -130,20 +129,6 @@ export default async function SupplierProductsPage({
     rejected: 0,
     draft: 0,
   };
-  const statusCounts = await Promise.all(
-    STATUS_KEYS.map((status) =>
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("supplier_id", company.id)
-        .eq("status", status),
-    ),
-  );
-  STATUS_KEYS.forEach((status, index) => {
-    const count = statusCounts[index]?.count ?? 0;
-    counts[status] = count;
-    counts.all += count;
-  });
 
   let countQuery = supabase
     .from("products")
@@ -151,7 +136,40 @@ export default async function SupplierProductsPage({
     .eq("supplier_id", company.id);
   if (active !== "all") countQuery = countQuery.eq("status", active as StatusKey);
   if (q) countQuery = countQuery.ilike("title", `%${q}%`);
-  const { count: total } = await countQuery;
+
+  // Badges, filtered total and the requested page are independent reads. The
+  // page query uses `requestedPage`; out-of-range pages redirect below before
+  // the rows are used.
+  const sort = SORT_COLUMNS[activeSort];
+  let dataQuery = supabase
+    .from("products")
+    .select(
+      "id, title, unit, moq, stock_qty, status, is_hidden, rejection_note, category:category_id(name)",
+    )
+    .eq("supplier_id", company.id);
+  if (active !== "all") dataQuery = dataQuery.eq("status", active as StatusKey);
+  if (q) dataQuery = dataQuery.ilike("title", `%${q}%`);
+
+  const [statusCounts, { count: total }, { data: products }] = await Promise.all([
+    Promise.all(
+      STATUS_KEYS.map((status) =>
+        supabase
+          .from("products")
+          .select("id", { count: "exact", head: true })
+          .eq("supplier_id", company.id)
+          .eq("status", status),
+      ),
+    ),
+    countQuery,
+    dataQuery
+      .order(sort.column, { ascending: sort.ascending })
+      .range((requestedPage - 1) * PER_PAGE, requestedPage * PER_PAGE - 1),
+  ]);
+  STATUS_KEYS.forEach((status, index) => {
+    const count = statusCounts[index]?.count ?? 0;
+    counts[status] = count;
+    counts.all += count;
+  });
 
   const pageCount = Math.max(1, Math.ceil((total ?? 0) / PER_PAGE));
   const page = Math.min(Math.max(requestedPage, 1), pageCount);
@@ -172,19 +190,6 @@ export default async function SupplierProductsPage({
   };
 
   if (requestedPage !== page) redirect(hrefFor(active, activeSort, page, q));
-
-  const sort = SORT_COLUMNS[activeSort];
-  let dataQuery = supabase
-    .from("products")
-    .select(
-      "id, title, unit, moq, stock_qty, status, is_hidden, rejection_note, category:category_id(name)",
-    )
-    .eq("supplier_id", company.id);
-  if (active !== "all") dataQuery = dataQuery.eq("status", active as StatusKey);
-  if (q) dataQuery = dataQuery.ilike("title", `%${q}%`);
-  const { data: products } = await dataQuery
-    .order(sort.column, { ascending: sort.ascending })
-    .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
   const ids = (products ?? []).map((p) => p.id);
   const [pricing, { data: images }] = await Promise.all([

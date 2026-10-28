@@ -58,25 +58,29 @@ export default async function AdminProductsPage({
   const supabase = await createClient();
 
   const counts: Record<TabKey, number> = { pending: 0, approved: 0, rejected: 0 };
-  const countResults = await Promise.all(
-    TABS.map((t) =>
-      supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("status", t.key),
-    ),
-  );
-  TABS.forEach((t, index) => {
-    counts[t.key] = countResults[index]?.count ?? 0;
-  });
 
+  // Counts and the active tab's rows are independent reads; run them together.
   let query = supabase
     .from("products")
     .select("id, title, unit, moq, status, submitted_at, supplier:supplier_id(business_name, margin_pct)")
     .eq("status", activeTabValue)
     .order("submitted_at", { ascending: true, nullsFirst: true });
   if (q) query = query.ilike("title", `%${q}%`);
-  const { data: products } = await query;
+
+  const [countResults, { data: products }] = await Promise.all([
+    Promise.all(
+      TABS.map((t) =>
+        supabase
+          .from("products")
+          .select("id", { count: "exact", head: true })
+          .eq("status", t.key),
+      ),
+    ),
+    query,
+  ]);
+  TABS.forEach((t, index) => {
+    counts[t.key] = countResults[index]?.count ?? 0;
+  });
 
   const ids = (products ?? []).map((p) => p.id);
   const [pricing, { data: images }] = await Promise.all([

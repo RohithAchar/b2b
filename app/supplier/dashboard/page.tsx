@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { createClient } from "@/lib/supabase/server"
+import { getAuthUser } from "@/lib/auth/session"
 import { LOGIN_PATH } from "@/lib/auth/paths"
 import { getSupplierContext } from "@/lib/auth/guard"
 import { fetchCustomerPricing } from "@/lib/pricing-data"
@@ -83,9 +84,7 @@ export default async function SupplierOverviewPage({
   const range = parseDashboardRange(rawRange)
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) {
     redirect(LOGIN_PATH)
@@ -142,62 +141,68 @@ export default async function SupplierOverviewPage({
     Date.now() - 30 * 24 * 60 * 60 * 1000
   ).toISOString()
 
+  // Counts, recent orders and recent products are independent reads; start
+  // them all together while analytics resolves in the background.
   const [
-    { count: totalCount },
-    { count: liveCount },
-    { count: pendingCount },
-    { count: rejectedCount },
-    { count: monthCount },
-    { count: paymentClaimCount },
+    [
+      { count: totalCount },
+      { count: liveCount },
+      { count: pendingCount },
+      { count: rejectedCount },
+      { count: monthCount },
+      { count: paymentClaimCount },
+    ],
+    { data: recentOrders },
+    { data: recent },
   ] = await Promise.all([
-    supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("supplier_id", company.id),
-    supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("supplier_id", company.id)
-      .eq("status", "approved"),
-    supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("supplier_id", company.id)
-      .eq("status", "pending"),
-    supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("supplier_id", company.id)
-      .eq("status", "rejected"),
-    supabase
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("supplier_id", company.id)
-      .gte("created_at", thirtyDaysAgo),
+    Promise.all([
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id),
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .eq("status", "approved"),
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .eq("status", "pending"),
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .eq("status", "rejected"),
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .gte("created_at", thirtyDaysAgo),
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", company.id)
+        .eq("payment_status", "claimed"),
+    ]),
     supabase
       .from("orders")
-      .select("id", { count: "exact", head: true })
+      .select(
+        "id, reference, status, payment_status, subtotal, created_at, delivery, quotations(status, version, total)"
+      )
       .eq("supplier_id", company.id)
-      .eq("payment_status", "claimed"),
+      .order("created_at", { ascending: false })
+      .limit(6),
+    supabase
+      .from("products")
+      .select("id, title, unit, moq, stock_qty, status, created_at")
+      .eq("supplier_id", company.id)
+      .order("created_at", { ascending: false })
+      .limit(6),
   ])
 
   const { metrics, error: metricsError } = await metricsSettled
-
-  const { data: recentOrders } = await supabase
-    .from("orders")
-    .select(
-      "id, reference, status, payment_status, subtotal, created_at, delivery, quotations(status, version, total)"
-    )
-    .eq("supplier_id", company.id)
-    .order("created_at", { ascending: false })
-    .limit(6)
-
-  const { data: recent } = await supabase
-    .from("products")
-    .select("id, title, unit, moq, stock_qty, status, created_at")
-    .eq("supplier_id", company.id)
-    .order("created_at", { ascending: false })
-    .limit(6)
 
   const recentPricing = await fetchCustomerPricing(
     supabase,

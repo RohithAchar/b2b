@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
@@ -47,11 +48,14 @@ export type SupplierContext = {
  * Single resolver for "my company": the owned company first, then a staffed
  * one. Every downstream query scopes by company id, so only this lookup
  * differs between owners and staff.
+ *
+ * Cached per request: dashboard layouts and their pages both resolve the
+ * same company, and this avoids repeating the owner → membership chain.
  */
-export async function getSupplierContext(
+export const getSupplierContext = cache(async (
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-): Promise<SupplierContext | null> {
+): Promise<SupplierContext | null> => {
   const { data: owned } = await supabase
     .from("companies")
     .select("id, kyb_status")
@@ -81,7 +85,7 @@ export async function getSupplierContext(
     role: "staff",
     verified: company.kyb_status === "verified",
   };
-}
+});
 
 export async function getVerifiedSupplierId(
   supabase: Awaited<ReturnType<typeof createClient>>,

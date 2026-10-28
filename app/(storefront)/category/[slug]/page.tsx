@@ -58,15 +58,13 @@ export async function generateMetadata({
 async function CategoryProductListings({
   slug,
   page,
+  listings,
 }: {
   slug: string
   page: number
+  listings: ReturnType<typeof getCachedProducts>
 }) {
-  const { products, totalPages } = await getCachedProducts({
-    categorySlug: slug,
-    page,
-    perPage: 24,
-  })
+  const { products, totalPages } = await listings
 
   function buildPageUrl(p: number) {
     return `/category/${slug}?page=${p}`
@@ -152,6 +150,14 @@ export default async function CategoryPage({
   const sp = await searchParams
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
 
+  // Listings only need the slug, so start that query before the category row
+  // resolves instead of waiting for it and then streaming.
+  const listings = getCachedProducts({
+    categorySlug: slug,
+    page,
+    perPage: 24,
+  })
+
   const category = await getCachedCategoryBySlug(slug)
   if (!category) notFound()
 
@@ -216,7 +222,7 @@ export default async function CategoryPage({
       )}
 
       <Suspense fallback={<ProductGridSkeleton count={20} />}>
-        <CategoryProductListings slug={slug} page={page} />
+        <CategoryProductListings slug={slug} page={page} listings={listings} />
       </Suspense>
     </div>
   )

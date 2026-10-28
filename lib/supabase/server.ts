@@ -1,11 +1,15 @@
+import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 /**
- * If using Fluid compute: Don't put this client in a global variable. Always create a new client within each
- * function when using it.
+ * One client per request, shared by layouts, pages and server actions.
+ *
+ * `cache` is request-scoped, so this never leaks a client (or its cookie
+ * state) across requests — it only stops layouts and pages from rebuilding
+ * the client and re-reading cookies in the same render pass.
  */
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
   return createServerClient(
@@ -30,4 +34,4 @@ export async function createClient() {
       },
     }
   )
-}
+})

@@ -10,6 +10,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header"
 import { KpiStat } from "@/components/dashboard/kpi-stat"
 import { createClient } from "@/lib/supabase/server"
+import { getAuthUser } from "@/lib/auth/session"
 import { LOGIN_PATH } from "@/lib/auth/paths"
 import { getSupplierContext } from "@/lib/auth/guard"
 import {
@@ -71,9 +72,7 @@ export default async function SupplierOrdersPage({
     )
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) {
     redirect(LOGIN_PATH)
   }
@@ -90,26 +89,6 @@ export default async function SupplierOrdersPage({
       .select("id", { count: "exact", head: true })
       .eq("supplier_id", companyId)
 
-  const [
-    { count: totalCount },
-    { count: awaitingCount },
-    { count: quotedCount },
-    { count: claimCount },
-    { count: processingCount },
-    { count: shippedCount },
-    { count: deliveredCount },
-    { count: cancelledCount },
-  ] = await Promise.all([
-    headCount(),
-    headCount().eq("status", "new"),
-    headCount().eq("status", "quoted"),
-    headCount().eq("payment_status", "claimed"),
-    headCount().eq("status", "processing"),
-    headCount().eq("status", "shipped"),
-    headCount().eq("status", "delivered"),
-    headCount().eq("status", "cancelled"),
-  ])
-
   let countQuery = supabase
     .from("orders")
     .select("id", { count: "exact", head: true })
@@ -122,7 +101,33 @@ export default async function SupplierOrdersPage({
   if (paymentClaimOnly) {
     countQuery = countQuery.eq("payment_status", "claimed")
   }
-  const { count: filteredCount, error: countError } = await countQuery
+
+  // Tab badges and the filtered count are independent aggregates.
+  const [
+    [
+      { count: totalCount },
+      { count: awaitingCount },
+      { count: quotedCount },
+      { count: claimCount },
+      { count: processingCount },
+      { count: shippedCount },
+      { count: deliveredCount },
+      { count: cancelledCount },
+    ],
+    { count: filteredCount, error: countError },
+  ] = await Promise.all([
+    Promise.all([
+      headCount(),
+      headCount().eq("status", "new"),
+      headCount().eq("status", "quoted"),
+      headCount().eq("payment_status", "claimed"),
+      headCount().eq("status", "processing"),
+      headCount().eq("status", "shipped"),
+      headCount().eq("status", "delivered"),
+      headCount().eq("status", "cancelled"),
+    ]),
+    countQuery,
+  ])
   if (countError) {
     throw countError
   }

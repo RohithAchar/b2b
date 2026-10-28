@@ -105,7 +105,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
       {/* Main content: image + transactional sidebar */}
       {/* Gallery track = 64px thumbnail rail + 12px gap + 500px image. */}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8">
         {/* Image gallery */}
         <ProductGallery
           images={images}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
+import { getAuthUser } from "@/lib/auth/session";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
@@ -22,9 +23,7 @@ export default async function SupplierDashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect(LOGIN_PATH);

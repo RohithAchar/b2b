@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getSupplierContext } from "@/lib/auth/guard";
 import { QuotationForm } from "./quotation-form";
@@ -36,9 +37,7 @@ export default async function SupplierQuotationPage({
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     redirect(LOGIN_PATH);
   }
@@ -48,12 +47,19 @@ export default async function SupplierQuotationPage({
     redirect("/supplier/onboarding");
   }
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, reference, status")
-    .eq("id", orderId)
-    .eq("supplier_id", ctx.companyId)
-    .maybeSingle();
+  const [{ data: order }, { data: items }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id, reference, status")
+      .eq("id", orderId)
+      .eq("supplier_id", ctx.companyId)
+      .maybeSingle(),
+    supabase
+      .from("order_items")
+      .select("id, title, variant_label, unit, quantity, unit_price")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true }),
+  ]);
   if (!order) {
     notFound();
   }
@@ -62,12 +68,6 @@ export default async function SupplierQuotationPage({
   if (orderRow.status !== "new" && orderRow.status !== "quoted") {
     redirect(`/supplier/dashboard/orders/${orderId}`);
   }
-
-  const { data: items } = await supabase
-    .from("order_items")
-    .select("id, title, variant_label, unit, quantity, unit_price")
-    .eq("order_id", orderId)
-    .order("created_at", { ascending: true });
 
   const orderItems = (items ?? []) as unknown as ItemRow[];
   if (orderItems.length === 0) {

@@ -19,20 +19,21 @@ export default async function EditCategoryPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: category } = await supabase
-    .from("categories")
-    .select("id, name, parent_id, image_path")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: category }, { data: parents }] = await Promise.all([
+    supabase
+      .from("categories")
+      .select("id, name, parent_id, image_path")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("categories")
+      .select("id, name")
+      .is("parent_id", null)
+      .order("name"),
+  ]);
   if (!category) {
     notFound();
   }
-
-  const { data: parents } = await supabase
-    .from("categories")
-    .select("id, name")
-    .is("parent_id", null)
-    .order("name");
 
   return (
     <div className="mx-auto w-full max-w-xl">

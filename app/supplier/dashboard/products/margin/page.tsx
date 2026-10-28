@@ -6,15 +6,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { requireOwnerCompany } from "@/lib/auth/guard";
 import { MarginForm } from "./margin-form";
 
 export default async function SupplierMarginPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect(LOGIN_PATH);

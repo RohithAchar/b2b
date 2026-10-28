@@ -36,20 +36,7 @@ export default async function AdminQueuePage({ searchParams }: AdminQueuePagePro
 
   const supabase = await createClient();
 
-  const countResults = await Promise.all(
-    (["pending", "verified", "rejected"] as const).map((status) =>
-      supabase
-        .from("companies")
-        .select("id", { count: "exact", head: true })
-        .eq("kyb_status", status),
-    ),
-  );
-  const counts: Record<TabKey, number> = {
-    pending: countResults[0]?.count ?? 0,
-    verified: countResults[1]?.count ?? 0,
-    rejected: countResults[2]?.count ?? 0,
-  };
-
+  // Counts and the active tab's rows are independent reads; run them together.
   let query = supabase
     .from("companies")
     .select("id, business_name, contact_person, city, state, submitted_at")
@@ -58,7 +45,24 @@ export default async function AdminQueuePage({ searchParams }: AdminQueuePagePro
   if (search) {
     query = query.or(`business_name.ilike.%${search}%,contact_person.ilike.%${search}%`);
   }
-  const { data: companies } = await query;
+
+  const [countResults, { data: companies }] = await Promise.all([
+    Promise.all(
+      (["pending", "verified", "rejected"] as const).map((status) =>
+        supabase
+          .from("companies")
+          .select("id", { count: "exact", head: true })
+          .eq("kyb_status", status),
+      ),
+    ),
+    query,
+  ]);
+
+  const counts: Record<TabKey, number> = {
+    pending: countResults[0]?.count ?? 0,
+    verified: countResults[1]?.count ?? 0,
+    rejected: countResults[2]?.count ?? 0,
+  };
 
   return (
     <div className="flex w-full flex-col gap-4">

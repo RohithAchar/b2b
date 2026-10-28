@@ -29,20 +29,17 @@ export default async function AdminLayout({
     redirect(LOGIN_PATH);
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("user_type")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, { count: pendingCount }] = await Promise.all([
+    supabase.from("profiles").select("user_type").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("kyb_status", "pending"),
+  ]);
 
   if (profile?.user_type !== "admin") {
     redirect("/");
   }
-
-  const { count: pendingCount } = await supabase
-    .from("companies")
-    .select("id", { count: "exact", head: true })
-    .eq("kyb_status", "pending");
 
   return (
     <SidebarProvider>

@@ -109,16 +109,20 @@ export default async function AdminReviewPage({ params }: ReviewPageProps) {
     { label: "Business license", path: company.license_path, against: company.business_name },
   ];
 
-  const signedUrls: Record<string, string> = {};
-  for (const doc of docs) {
-    if (doc.path) {
+  // Sign all supplied documents in parallel instead of one round trip each.
+  const signedDocs = await Promise.all(
+    docs.map(async ({ label, path }) => {
+      if (!path) return null;
       const { data } = await supabase.storage
         .from("company_docs")
-        .createSignedUrl(doc.path, 600);
-      if (data?.signedUrl) {
-        signedUrls[doc.label] = data.signedUrl;
-      }
-    }
+        .createSignedUrl(path, 600);
+      return data?.signedUrl ? ([label, data.signedUrl] as const) : null;
+    }),
+  );
+
+  const signedUrls: Record<string, string> = {};
+  for (const entry of signedDocs) {
+    if (entry) signedUrls[entry[0]] = entry[1];
   }
 
   const decidable =

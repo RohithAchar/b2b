@@ -379,14 +379,21 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   }
 
   if (categorySlug) {
+    // Parent categories roll up their active subcategories in
+    // `category_product_counts`, so the listing scope has to match or a parent
+    // page advertises a count with an empty grid.
     const { data: cat } = await supabase
       .from("categories")
-      .select("id")
+      .select("id, children:categories!parent_id(id, is_active)")
       .eq("slug", categorySlug)
       .maybeSingle();
 
     if (cat) {
-      qb = qb.eq("category_id", cat.id);
+      const children = (cat.children ?? []) as { id: string; is_active: boolean }[];
+      qb = qb.in("category_id", [
+        cat.id as string,
+        ...children.filter((child) => child.is_active).map((child) => child.id),
+      ]);
     }
   }
 
