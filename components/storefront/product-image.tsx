@@ -40,7 +40,7 @@ export function ProductImage({
       src={src}
       alt={alt}
       fill
-      priority={priority}
+      loading={priority ? "eager" : undefined}
       sizes={sizes}
       className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
       onError={() => setFailed(true)}

@@ -99,7 +99,7 @@ async function CategoryGrid() {
 
   return (
     <div className={CATEGORY_GRID}>
-      {categories.map((cat) => (
+      {categories.map((cat, index) => (
         <Card
           key={cat.id}
           className="group h-full !gap-0 overflow-hidden border-border !py-0 transition-shadow [--card-spacing:--spacing(3)] hover:shadow-md"
@@ -109,6 +109,7 @@ async function CategoryGrid() {
               <ProductImage
                 src={categoryImageUrl(cat.image_path)}
                 alt=""
+                priority={index < 4}
                 sizes={CATEGORY_IMAGE_SIZES}
               />
             </div>
