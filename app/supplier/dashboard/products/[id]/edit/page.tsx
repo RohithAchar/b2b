@@ -23,6 +23,13 @@ export default async function EditSupplierProductPage({
   if (!ctx.verified) redirect("/supplier/dashboard");
   const companyId = ctx.companyId;
 
+  // Categories do not depend on the product row, so start them alongside it.
+  const categoriesPromise = supabase
+    .from("categories")
+    .select("id, name, parent:parent_id(name)")
+    .eq("is_active", true)
+    .order("sort_order");
+
   const { data: product } = await supabase
     .from("products")
     .select(
@@ -68,11 +75,7 @@ export default async function EditSupplierProductPage({
         .select("product_id, price_per_unit, sample_price, variants")
         .eq("product_id", id)
         .maybeSingle(),
-      supabase
-        .from("categories")
-        .select("id, name, parent:parent_id(name)")
-        .eq("is_active", true)
-        .order("sort_order"),
+      categoriesPromise,
     ]);
 
   // Never fall through to a zero base price here: the form would prefill 0 and

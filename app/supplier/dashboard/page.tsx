@@ -202,15 +202,18 @@ export default async function SupplierOverviewPage({
       .limit(6),
   ])
 
-  const { metrics, error: metricsError } = await metricsSettled
-
-  const recentPricing = await fetchCustomerPricing(
-    supabase,
-    (recent ?? []).map((p) => ({
-      id: p.id as string,
-      margin_pct: company.margin_pct,
-    }))
-  )
+  // Analytics and pricing are independent; pricing only needs the recently
+  // loaded product ids, so it should not queue behind the analytics read.
+  const [{ metrics, error: metricsError }, recentPricing] = await Promise.all([
+    metricsSettled,
+    fetchCustomerPricing(
+      supabase,
+      (recent ?? []).map((p) => ({
+        id: p.id as string,
+        margin_pct: company.margin_pct,
+      }))
+    ),
+  ])
 
   const checklist = profileChecklist(company)
   const missingCount = checklist.items.filter((i) => !i.done).length

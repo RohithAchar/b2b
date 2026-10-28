@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Pagination,
   PaginationContent,
@@ -139,6 +140,17 @@ async function CategoryProductListings({
   )
 }
 
+async function CategoryProductCount({ categoryId }: { categoryId: string }) {
+  const productCount = await getCachedCategoryProductCount(categoryId)
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      {productCount} product{productCount !== 1 ? "s" : ""} from verified
+      suppliers
+    </p>
+  )
+}
+
 export default async function CategoryPage({
   params,
   searchParams,
@@ -160,8 +172,6 @@ export default async function CategoryPage({
 
   const category = await getCachedCategoryBySlug(slug)
   if (!category) notFound()
-
-  const productCount = await getCachedCategoryProductCount(category.id)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -185,6 +195,7 @@ export default async function CategoryPage({
               src={publicImageUrl("category_images", category.image_path)}
               alt={category.name}
               fill
+              priority
               sizes="64px"
               className="object-cover"
             />
@@ -192,10 +203,9 @@ export default async function CategoryPage({
         )}
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{category.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {productCount} product{productCount !== 1 ? "s" : ""} from verified
-            suppliers
-          </p>
+          <Suspense fallback={<Skeleton className="h-5 w-40" />}>
+            <CategoryProductCount categoryId={category.id} />
+          </Suspense>
         </div>
       </div>
       <Separator className="mb-5" />

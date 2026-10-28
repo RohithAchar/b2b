@@ -152,6 +152,37 @@ export function CategoryGridSkeleton({ count = 6 }: { count?: number }) {
   )
 }
 
+/**
+ * `/categories` tile grid. Mirrors the real card (image, name, count, chips)
+ * and the responsive column counts so the loading boundary reserves the same
+ * space the grid will occupy.
+ */
+export function CategoryPageGridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div
+      aria-hidden
+      className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4"
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <Card
+          key={index}
+          className="!gap-0 overflow-hidden border-border !py-0 [--card-spacing:--spacing(3)]"
+        >
+          <Skeleton className="aspect-[4/3] w-full rounded-none" />
+          <div className="flex flex-col gap-1 px-3 pt-2.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+          <div className="mt-auto flex flex-wrap gap-1 px-3 pt-2.5 pb-3">
+            <Skeleton className="h-6 w-20 rounded-sm" />
+            <Skeleton className="h-6 w-24 rounded-sm" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
 export function SupplierCardSkeleton() {
   return (
     <Card className="overflow-hidden border-border">
@@ -365,16 +396,28 @@ export function SearchHeroSkeleton() {
   )
 }
 
-export function OrderListSkeleton({ count = 5 }: { count?: number }) {
+export function OrderListSkeleton({
+  count = 5,
+  header = true,
+}: {
+  count?: number
+  header?: boolean
+}) {
   return (
     <div
       aria-hidden
-      className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5"
+      className={
+        header
+          ? "mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5"
+          : "flex flex-col gap-5"
+      }
     >
-      <div className="flex flex-col gap-1.5">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-4 w-80 max-w-full" />
-      </div>
+      {header ? (
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         {["w-24", "w-28", "w-24", "w-24", "w-20"].map((width, i) => (
           <Skeleton key={i} className={`h-[30px] rounded-full ${width}`} />
@@ -728,6 +771,18 @@ export function AccountSkeleton() {
         />
         <Skeleton className="mx-auto h-9 w-56 rounded-md" />
       </div>
+    </div>
+  )
+}
+
+export function AccountTabSkeleton() {
+  return (
+    <div aria-hidden className="mt-4 flex flex-col gap-4">
+      <Skeleton className="h-4 w-40" />
+      <ProductGridSkeleton
+        count={10}
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+      />
     </div>
   )
 }

@@ -25,6 +25,7 @@ import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProductImage } from "@/components/storefront/product-image"
+import { CategoryPageGridSkeleton } from "@/components/storefront/skeletons"
 
 const CATEGORY_GRID = "grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4"
 
@@ -49,26 +50,16 @@ function categoryImageUrl(path: string | null) {
   return publicTransformedImageUrl("category_images", path, { width: 640 })
 }
 
-function CategoriesSkeleton() {
+async function CategoriesSummary() {
+  const categories = await getCachedMegaMenuCategories()
+  const totalProducts = categories.reduce((sum, c) => sum + c.product_count, 0)
+
   return (
-    <div aria-hidden className={CATEGORY_GRID}>
-      {Array.from({ length: 8 }, (_, index) => (
-        <Card
-          key={index}
-          className="!gap-0 overflow-hidden border-border !py-0 [--card-spacing:--spacing(3)]"
-        >
-          <Skeleton className="aspect-[4/3] w-full rounded-none" />
-          <div className="flex flex-col gap-1 px-3 pt-2.5">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/3" />
-          </div>
-          <div className="mt-auto flex flex-wrap gap-1 px-3 pt-2.5 pb-3">
-            <Skeleton className="h-6 w-20 rounded-sm" />
-            <Skeleton className="h-6 w-24 rounded-sm" />
-          </div>
-        </Card>
-      ))}
-    </div>
+    <p className="mt-1 text-sm text-muted-foreground">
+      {categories.length} categor
+      {categories.length === 1 ? "y" : "ies"} ·{" "}
+      {totalProducts.toLocaleString("en-IN")} products from verified suppliers
+    </p>
   )
 }
 
@@ -155,10 +146,7 @@ async function CategoryGrid() {
   )
 }
 
-export default async function CategoriesPage() {
-  const categories = await getCachedMegaMenuCategories()
-  const totalProducts = categories.reduce((sum, c) => sum + c.product_count, 0)
-
+export default function CategoriesPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
       <Breadcrumb className="mb-4">
@@ -181,12 +169,11 @@ export default async function CategoriesPage() {
           <h1 className="mt-1 text-2xl font-bold tracking-tight">
             Browse categories
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {categories.length} categor
-            {categories.length === 1 ? "y" : "ies"} ·{" "}
-            {totalProducts.toLocaleString("en-IN")} products from verified
-            suppliers
-          </p>
+          {/* Counts need the same category read as the grid, so they stream in
+              with it instead of holding up the heading and controls. */}
+          <Suspense fallback={<Skeleton className="mt-1 h-5 w-80 max-w-full" />}>
+            <CategoriesSummary />
+          </Suspense>
         </div>
 
         <Button
@@ -205,7 +192,7 @@ export default async function CategoriesPage() {
       </div>
       <Separator className="mb-5" />
 
-      <Suspense fallback={<CategoriesSkeleton />}>
+      <Suspense fallback={<CategoryPageGridSkeleton />}>
         <CategoryGrid />
       </Suspense>
     </div>

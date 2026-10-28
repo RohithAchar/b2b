@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import type { Metadata } from "next"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -9,6 +10,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { StatusBadge } from "@/components/dashboard/status-badge"
 import { StatusFilterChip } from "@/components/orders/status-filter-chip"
+import { OrderListSkeleton } from "@/components/storefront/skeletons"
 import { createClient } from "@/lib/supabase/server"
 import { getSessionUser } from "@/lib/auth/session"
 import { getBuyerOrders } from "@/lib/buyer/order-history"
@@ -66,7 +68,33 @@ export default async function BuyerOrdersPage({
   const { status } = await searchParams
   const activeTab: TabKey = status && isTabKey(status) ? status : "all"
 
-  const orders = await getBuyerOrders(supabase, user.id)
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Orders</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Track every order you have placed, newest first.
+        </p>
+      </div>
+
+      {/* Filter counts and the list both need the order rows, so they stream
+          together while the heading above renders immediately. */}
+      <Suspense fallback={<OrderListSkeleton header={false} />}>
+        <BuyerOrdersSection userId={user.id} activeTab={activeTab} />
+      </Suspense>
+    </div>
+  )
+}
+
+async function BuyerOrdersSection({
+  userId,
+  activeTab,
+}: {
+  userId: string
+  activeTab: TabKey
+}) {
+  const supabase = await createClient()
+  const orders = await getBuyerOrders(supabase, userId)
   const shown =
     activeTab === "all"
       ? orders
@@ -79,14 +107,7 @@ export default async function BuyerOrdersPage({
           .length
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">My Orders</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Track every order you have placed, newest first.
-        </p>
-      </div>
-
+    <>
       <nav aria-label="Order status" className="flex flex-wrap gap-2">
         {ORDER_TABS.map((tab) => (
           <StatusFilterChip
@@ -165,6 +186,6 @@ export default async function BuyerOrdersPage({
           ))}
         </ul>
       )}
-    </div>
+    </>
   )
 }

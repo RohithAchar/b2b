@@ -1,15 +1,17 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Building02Icon, ShieldCheckIcon } from "@hugeicons/core-free-icons";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import {
   ProductCard,
   type ProductCardData,
 } from "@/components/storefront/product-card";
+import { ProductGridSkeleton } from "@/components/storefront/skeletons";
 import { createClient } from "@/lib/supabase/server";
 import { fetchCustomerPriceMap } from "@/lib/storefront";
 import { publicTransformedImageUrl } from "@/lib/storage";
@@ -70,31 +72,14 @@ type ProductRow = {
 
 export default async function SupplierStorePage({ params }: StorePageProps) {
   const { companyId } = await params;
-  const supabase = await createClient();
 
-  // Public, verified-only projection — no PAN/GSTIN/bank columns exposed. The
-  // product query keys off `companyId` too, so both run together.
-  const [store, { data: products }] = await Promise.all([
-    getStorefrontSupplier(companyId),
-    supabase
-      .from("products")
-      .select("id, title, unit, moq, negotiable, images:product_images(path, sort)")
-      .eq("supplier_id", companyId)
-      .eq("status", "approved")
-      .eq("is_hidden", false)
-      .order("created_at", { ascending: false })
-      .limit(48),
-  ]);
+  // Only the store header blocks the page. The catalogue (products + prices)
+  // streams behind Suspense so the supplier identity is visible immediately.
+  const store = await getStorefrontSupplier(companyId);
 
   if (!store) {
     notFound();
   }
-
-  const rows = (products ?? []) as ProductRow[];
-  const priceMap = await fetchCustomerPriceMap(
-    supabase,
-    rows.map((p) => p.id),
-  );
 
   const location = [store.city, store.state].filter(Boolean).join(", ");
 
@@ -135,6 +120,45 @@ export default async function SupplierStorePage({ params }: StorePageProps) {
         </div>
       </div>
 
+      <Suspense
+        fallback={
+          <div aria-hidden className="mt-6 flex flex-col gap-3">
+            <Skeleton className="h-5 w-40" />
+            <ProductGridSkeleton />
+          </div>
+        }
+      >
+        <StoreProducts companyId={companyId} store={store} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function StoreProducts({
+  companyId,
+  store,
+}: {
+  companyId: string;
+  store: SupplierRow;
+}) {
+  const supabase = await createClient();
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, title, unit, moq, negotiable, images:product_images(path, sort)")
+    .eq("supplier_id", companyId)
+    .eq("status", "approved")
+    .eq("is_hidden", false)
+    .order("created_at", { ascending: false })
+    .limit(48);
+
+  const rows = (products ?? []) as ProductRow[];
+  const priceMap = await fetchCustomerPriceMap(
+    supabase,
+    rows.map((p) => p.id),
+  );
+
+  return (
+    <>
       <h2 className="mt-6 mb-3 text-base font-bold tracking-tight">
         All products
         <span className="ml-2 font-normal text-muted-foreground tabular-nums">
@@ -175,6 +199,6 @@ export default async function SupplierStorePage({ params }: StorePageProps) {
           })}
         </div>
       )}
-    </div>
+    </>
   );
 }

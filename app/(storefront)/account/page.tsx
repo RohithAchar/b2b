@@ -4,7 +4,10 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { getBuyerAddresses } from "@/lib/buyer/address-queries";
-import { AddressListSkeleton } from "@/components/storefront/skeletons";
+import {
+  AccountTabSkeleton,
+  AddressListSkeleton,
+} from "@/components/storefront/skeletons";
 import { AccountTabs } from "./account-tabs";
 import { SavedTab } from "./saved-tab";
 import { RecentTab } from "./recent-tab";
@@ -32,11 +35,6 @@ export default async function AccountPage({
   const { tab } = await searchParams;
   const activeTab = tab ?? "saved";
 
-  // Addresses are only needed for their tab; the localStorage phone is a
-  // convenience prefill, never a trusted or persisted source on its own.
-  const addresses =
-    activeTab === "addresses" ? await getBuyerAddresses(supabase, user.id) : [];
-
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
       <h1 className="text-xl font-bold tracking-tight md:text-2xl">My Account</h1>
@@ -46,20 +44,32 @@ export default async function AccountPage({
       <AccountTabs activeTab={activeTab}>
         {activeTab === "saved" ? (
           <TabsContent value="saved">
-            <SavedTab />
+            {/* The tab's products stream in; the account header never waits
+                for buyer-specific reads. */}
+            <Suspense fallback={<AccountTabSkeleton />}>
+              <SavedTab />
+            </Suspense>
           </TabsContent>
         ) : activeTab === "addresses" ? (
           <TabsContent value="addresses">
             <Suspense fallback={<AddressListSkeleton />}>
-              <AddressesTab addresses={addresses} />
+              <AddressesSection userId={user.id} />
             </Suspense>
           </TabsContent>
         ) : (
           <TabsContent value="recent">
-            <RecentTab />
+            <Suspense fallback={<AccountTabSkeleton />}>
+              <RecentTab />
+            </Suspense>
           </TabsContent>
         )}
       </AccountTabs>
     </div>
   );
+}
+
+async function AddressesSection({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const addresses = await getBuyerAddresses(supabase, userId);
+  return <AddressesTab addresses={addresses} />;
 }
