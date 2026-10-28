@@ -184,6 +184,22 @@ Commands/tests run and their results.
 ### Remaining
 Only unresolved issues or explicit assumptions.
 
+## 14. Runtime verification
+
+After any change under `app/`, `components/`, `lib/`, or `proxy.ts`, load and
+follow the `next-dev-loop` skill before declaring the task complete:
+
+1. Confirm `next dev` is running (`.next/dev/lock` holds the PID and port); start
+   it if it is not.
+2. Check the framework view through the `next-devtools` MCP tools
+   (`get_errors`, `get_compilation_issues`, `compile_route`).
+3. Check the browser view with `agent-browser` for the changed route: rendered
+   output, console errors, and layout at desktop and mobile widths.
+4. Report what was verified. If the route cannot be exercised, say so instead of
+   claiming success.
+
+Do not run a second `next dev` when one is already serving the project.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
