@@ -1,7 +1,8 @@
 import { Suspense } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import type { Metadata } from "next"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { getCachedMegaMenuCategories } from "@/lib/storefront-cache"
 import { publicTransformedImageUrl } from "@/lib/storage"
 import {
@@ -12,11 +13,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -25,6 +24,12 @@ import {
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ProductImage } from "@/components/storefront/product-image"
+
+const CATEGORY_GRID = "grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4"
+
+const CATEGORY_IMAGE_SIZES =
+  "(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
 
 export const metadata: Metadata = {
   title: "Browse Categories",
@@ -39,27 +44,28 @@ export const metadata: Metadata = {
   },
 }
 
+function categoryImageUrl(path: string | null) {
+  if (!path) return null
+  return publicTransformedImageUrl("category_images", path, { width: 640 })
+}
+
 function CategoriesSkeleton() {
   return (
-    <div aria-hidden className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {Array.from({ length: 6 }, (_, i) => (
-        <Card key={i} className="border-border">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-12 shrink-0 rounded-md" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-3 w-1/3" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-1.5">
-              <Skeleton className="h-7 w-20 rounded-sm" />
-              <Skeleton className="h-7 w-24 rounded-sm" />
-              <Skeleton className="h-7 w-16 rounded-sm" />
-            </div>
-          </CardContent>
+    <div aria-hidden className={CATEGORY_GRID}>
+      {Array.from({ length: 8 }, (_, index) => (
+        <Card
+          key={index}
+          className="!gap-0 overflow-hidden border-border !py-0 [--card-spacing:--spacing(3)]"
+        >
+          <Skeleton className="aspect-[4/3] w-full rounded-none" />
+          <div className="flex flex-col gap-1 px-3 pt-2.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+          <div className="mt-auto flex flex-wrap gap-1 px-3 pt-2.5 pb-3">
+            <Skeleton className="h-6 w-20 rounded-sm" />
+            <Skeleton className="h-6 w-24 rounded-sm" />
+          </div>
         </Card>
       ))}
     </div>
@@ -92,60 +98,49 @@ async function CategoryGrid() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div className={CATEGORY_GRID}>
       {categories.map((cat) => (
-        <Card key={cat.id} className="border-border">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              {cat.image_path ? (
-                <div className="relative size-12 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                  <Image
-                    src={publicTransformedImageUrl(
-                      "category_images",
-                      cat.image_path,
-                      { width: 200 },
-                    )}
-                    alt={cat.name}
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
-                </div>
-              ) : null}
-              <div className="min-w-0 flex-1">
-                <CardTitle className="truncate">{cat.name}</CardTitle>
-                <CardDescription>
-                  <Badge variant="secondary" className="mt-1">
-                    {cat.product_count} product
-                    {cat.product_count === 1 ? "" : "s"}
-                  </Badge>
-                </CardDescription>
-              </div>
+        <Card
+          key={cat.id}
+          className="group h-full !gap-0 overflow-hidden border-border !py-0 transition-shadow [--card-spacing:--spacing(3)] hover:shadow-md"
+        >
+          <Link href={`/category/${cat.slug}`} className="block press">
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+              <ProductImage
+                src={categoryImageUrl(cat.image_path)}
+                alt=""
+                sizes={CATEGORY_IMAGE_SIZES}
+              />
             </div>
-            <CardAction>
-              <Button
-                variant="link"
-                size="sm"
-                nativeButton={false}
-                render={<Link href={`/category/${cat.slug}`} />}
-                className="h-7 text-sm font-semibold text-primary"
-              >
-                View all
-                <span aria-hidden>→</span>
-              </Button>
-            </CardAction>
-          </CardHeader>
+
+            <CardHeader className="gap-1 pt-2.5">
+              <CardTitle className="flex items-start justify-between gap-2 text-sm leading-snug font-semibold tracking-tight">
+                <span className="line-clamp-2">{cat.name}</span>
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"
+                />
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {cat.product_count} product
+                {cat.product_count === 1 ? "" : "s"}
+              </CardDescription>
+            </CardHeader>
+          </Link>
+
           {cat.subcategories.length > 0 ? (
-            <CardContent>
-              <div className="flex flex-wrap gap-1.5">
+            <CardContent className="mt-auto pt-2.5 pb-3">
+              <div className="flex flex-wrap gap-1">
                 {cat.subcategories.map((sub) => (
                   <Button
                     key={sub.id}
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     nativeButton={false}
                     render={<Link href={`/category/${sub.slug}`} />}
-                    className="h-7 rounded-sm text-xs"
+                    className="rounded-sm px-2 text-[11px] text-muted-foreground hover:text-foreground"
                   >
                     {sub.name}
                   </Button>
@@ -161,10 +156,7 @@ async function CategoryGrid() {
 
 export default async function CategoriesPage() {
   const categories = await getCachedMegaMenuCategories()
-  const totalProducts = categories.reduce(
-    (sum, c) => sum + c.product_count,
-    0,
-  )
+  const totalProducts = categories.reduce((sum, c) => sum + c.product_count, 0)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-5">
@@ -180,15 +172,35 @@ export default async function CategoriesPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="mb-5 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Browse Categories
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {categories.length} categor{categories.length === 1 ? "y" : "ies"} ·{" "}
-          {totalProducts.toLocaleString("en-IN")} products from verified
-          suppliers
-        </p>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3 pb-4">
+        <div>
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Marketplace
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">
+            Browse categories
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {categories.length} categor
+            {categories.length === 1 ? "y" : "ies"} ·{" "}
+            {totalProducts.toLocaleString("en-IN")} products from verified
+            suppliers
+          </p>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link href="/products" />}
+        >
+          All products
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            strokeWidth={2}
+            data-icon="inline-end"
+          />
+        </Button>
       </div>
       <Separator className="mb-5" />
 
