@@ -7,6 +7,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { publicImageUrl } from "@/lib/storage";
+import { stockLabel } from "@/lib/format";
 import { getCachedRelatedProducts } from "@/lib/storefront-cache";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
@@ -201,14 +202,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
           {/* Quick specs */}
           <div className="grid grid-cols-2 gap-2">
-            <SpecItem
-              label="Stock"
-              value={
-                product.stock_qty > 0
-                  ? `${product.stock_qty} in stock`
-                  : "Made to order"
-              }
-            />
+            <SpecItem label="Stock" value={stockLabel(product.stock_qty)} />
             <SpecItem label="Lead time" value={`${product.lead_time_days} days`} />
             <SpecItem
               label="GST rate"
@@ -346,7 +340,7 @@ export function ProductDetail({ product }: { product: Product }) {
                                   : "—"}
                               </TableCell>
                               <TableCell>{v.moq ?? product.moq}+</TableCell>
-                              <TableCell>{v.stock_qty}</TableCell>
+                              <TableCell>{stockLabel(v.stock_qty)}</TableCell>
                               <TableCell className="text-muted-foreground">{v.seller_sku}</TableCell>
                             </TableRow>
                           ))}

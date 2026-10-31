@@ -225,7 +225,6 @@ function FilterPanel({
         maxPrice: undefined,
         minMoq: undefined,
         maxMoq: undefined,
-        inStock: undefined,
         negotiable: undefined,
         sampleAvailable: undefined,
         imageToken: undefined,
@@ -573,13 +572,6 @@ export function Catalogue({
           overrides: { maxMoq: undefined },
         }
       : null,
-    filters.inStock
-      ? {
-          key: "inStock",
-          label: "In stock",
-          overrides: { inStock: undefined },
-        }
-      : null,
     filters.negotiable
       ? {
           key: "negotiable",
@@ -605,8 +597,7 @@ export function Catalogue({
           maxPrice: undefined,
           minMoq: undefined,
           maxMoq: undefined,
-          inStock: undefined,
-          negotiable: undefined,
+            negotiable: undefined,
           sampleAvailable: undefined,
           imageToken: undefined,
           sort: hasImageSearch ? "newest" : filters.sort,

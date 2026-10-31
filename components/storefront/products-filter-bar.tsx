@@ -49,7 +49,6 @@ export function ProductsFilterBar() {
   const maxPrice = searchParams.get("maxPrice") ?? undefined
   const minMoq = searchParams.get("minMoq") ?? undefined
   const maxMoq = searchParams.get("maxMoq") ?? undefined
-  const inStock = searchParams.get("inStock") === "true"
   const negotiable = searchParams.get("negotiable") === "true"
   const sampleAvailable = searchParams.get("sampleAvailable") === "true"
   const imageToken = searchParams.get("img") ?? ""
@@ -68,7 +67,6 @@ export function ProductsFilterBar() {
     maxPrice,
     minMoq,
     maxMoq,
-    inStock ? "inStock" : "",
     negotiable ? "negotiable" : "",
     sampleAvailable ? "sampleAvailable" : "",
   ].filter(Boolean).length
@@ -87,8 +85,6 @@ export function ProductsFilterBar() {
     if (finalMinMoq) sp.set("minMoq", finalMinMoq)
     const finalMaxMoq = overrides.maxMoq ?? maxMoq
     if (finalMaxMoq) sp.set("maxMoq", finalMaxMoq)
-    const finalInStock = overrides.inStock ?? (inStock ? "true" : undefined)
-    if (finalInStock === "true") sp.set("inStock", "true")
     const finalNegotiable =
       overrides.negotiable ?? (negotiable ? "true" : undefined)
     if (finalNegotiable === "true") sp.set("negotiable", "true")
@@ -328,19 +324,6 @@ export function ProductsFilterBar() {
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={inStock}
-                onChange={(e) => {
-                  navigate(
-                    buildUrl({ inStock: e.target.checked ? "true" : undefined })
-                  )
-                }}
-                className="size-5 rounded-sm border-border"
-              />
-              In stock only
-            </label>
             <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"

@@ -37,7 +37,7 @@ import { getAuthUser } from "@/lib/auth/session"
 import { LOGIN_PATH } from "@/lib/auth/paths"
 import { getSupplierContext } from "@/lib/auth/guard"
 import { fetchCustomerPricing } from "@/lib/pricing-data"
-import { formatRupees } from "@/lib/format"
+import { formatRupees, stockLabel } from "@/lib/format"
 import { latestAcceptedQuotation } from "@/lib/orders/quotation"
 import {
   DASHBOARD_RANGE_LABELS,
@@ -711,8 +711,8 @@ export default async function SupplierOverviewPage({
                     <TableCell className="hidden tabular-nums md:table-cell">
                       {p.moq}
                     </TableCell>
-                    <TableCell className="hidden tabular-nums md:table-cell">
-                      {p.stock_qty}
+                    <TableCell className="hidden md:table-cell">
+                      {stockLabel(p.stock_qty)}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status="product" value={p.status} />

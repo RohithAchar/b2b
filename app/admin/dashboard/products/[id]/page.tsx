@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { stripHtml } from "@/lib/supplier/rich-text";
+import { stockLabel } from "@/lib/format";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
   Breadcrumb,
@@ -162,7 +163,7 @@ export default async function AdminProductReviewPage({
               <Fact label="Seller SKU" value={product.seller_sku || "—"} />
               <Fact label="HSN code" value={product.hsn_code || "—"} />
               <Fact label="Brand" value={product.brand ?? "—"} />
-              <Fact label="Stock" value={String(product.stock_qty)} />
+              <Fact label="Stock" value={stockLabel(product.stock_qty)} />
               <Fact
                 label="Lead time"
                 value={`${product.lead_time_days ?? "—"} days`}

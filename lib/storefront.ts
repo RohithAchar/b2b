@@ -210,7 +210,6 @@ export async function getCataloguePage(
     p_max_price: filters.maxPrice ?? null,
     p_min_moq: filters.minMoq ?? null,
     p_max_moq: filters.maxMoq ?? null,
-    p_in_stock: !!filters.inStock,
     p_negotiable: !!filters.negotiable,
     p_sample_available: !!filters.sampleAvailable,
     p_candidate_ids: candidateIds,
@@ -289,7 +288,6 @@ export type ProductListParams = {
   maxPrice?: number;
   minMoq?: number;
   maxMoq?: number;
-  inStock?: boolean;
   negotiable?: boolean;
   sampleAvailable?: boolean;
   page?: number;
@@ -312,7 +310,6 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     maxPrice,
     minMoq,
     maxMoq,
-    inStock,
     negotiable,
     sampleAvailable,
     page = 1,
@@ -370,9 +367,6 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   }
   if (maxMoq != null) {
     qb = qb.lte("moq", maxMoq);
-  }
-  if (inStock) {
-    qb = qb.gt("stock_qty", 0);
   }
   if (negotiable) {
     qb = qb.eq("negotiable", true);

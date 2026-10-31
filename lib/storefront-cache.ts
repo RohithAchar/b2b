@@ -47,7 +47,6 @@ function normalizeProductParams(params: ProductListParams): ProductListParams {
     maxPrice: params.maxPrice,
     minMoq: params.minMoq,
     maxMoq: params.maxMoq,
-    inStock: params.inStock,
     negotiable: params.negotiable,
     sampleAvailable: params.sampleAvailable,
     page: params.page ?? 1,

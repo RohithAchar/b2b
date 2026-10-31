@@ -20,7 +20,6 @@ export type CatalogueFilters = {
   maxPrice?: number
   minMoq?: number
   maxMoq?: number
-  inStock?: boolean
   negotiable?: boolean
   sampleAvailable?: boolean
   imageToken?: string
@@ -92,7 +91,6 @@ export function parseCatalogueFilters(
     maxPrice: parseCatalogueNumber(first(searchParams.maxPrice)),
     minMoq: parseCatalogueInteger(first(searchParams.minMoq)),
     maxMoq: parseCatalogueInteger(first(searchParams.maxMoq)),
-    inStock: first(searchParams.inStock) === "true",
     negotiable: first(searchParams.negotiable) === "true",
     sampleAvailable: first(searchParams.sampleAvailable) === "true",
     imageToken: imageIds ? imageToken : undefined,
@@ -119,7 +117,6 @@ export function buildCatalogueUrl(
   if (next.maxPrice != null) sp.set("maxPrice", String(next.maxPrice))
   if (next.minMoq != null) sp.set("minMoq", String(next.minMoq))
   if (next.maxMoq != null) sp.set("maxMoq", String(next.maxMoq))
-  if (next.inStock) sp.set("inStock", "true")
   if (next.negotiable) sp.set("negotiable", "true")
   if (next.sampleAvailable) sp.set("sampleAvailable", "true")
   if (next.imageToken) sp.set("img", next.imageToken)
@@ -137,7 +134,6 @@ export function catalogueFiltersKey(filters: CatalogueFilters): string {
     maxPrice: filters.maxPrice ?? null,
     minMoq: filters.minMoq ?? null,
     maxMoq: filters.maxMoq ?? null,
-    inStock: !!filters.inStock,
     negotiable: !!filters.negotiable,
     sampleAvailable: !!filters.sampleAvailable,
     imageToken: filters.imageToken ?? null,
@@ -151,7 +147,6 @@ export function countCatalogueFilters(filters: CatalogueFilters): number {
     filters.maxPrice != null,
     filters.minMoq != null,
     filters.maxMoq != null,
-    filters.inStock,
     filters.negotiable,
     filters.sampleAvailable,
   ].filter(Boolean).length

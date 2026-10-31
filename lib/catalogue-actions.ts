@@ -13,7 +13,6 @@ const filtersSchema = z.object({
   maxPrice: z.number().finite().nonnegative().optional(),
   minMoq: z.number().int().nonnegative().optional(),
   maxMoq: z.number().int().nonnegative().optional(),
-  inStock: z.boolean().optional(),
   negotiable: z.boolean().optional(),
   sampleAvailable: z.boolean().optional(),
   imageToken: z.string().max(4096).optional(),

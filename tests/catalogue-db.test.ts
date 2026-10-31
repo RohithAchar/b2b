@@ -297,7 +297,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     expect(page.total).toBe(3);
   });
 
-  it("applies price, MOQ, stock and flag filters", async () => {
+  it("applies price, MOQ and flag filters", async () => {
     const byPrice = await getCataloguePage(
       buyer,
       filters({ minPrice: 200, maxPrice: 350 }),
@@ -310,9 +310,6 @@ describe.skipIf(!available)("storefront catalogue", () => {
     expect(byMoq.items.map((item) => item.id).sort()).toEqual(
       [betaId, gammaId, otherId].sort(),
     );
-
-    const inStock = await getCataloguePage(buyer, filters({ inStock: true }));
-    expect(inStock.items.map((item) => item.id)).not.toContain(betaId);
 
     const flagged = await getCataloguePage(
       buyer,
