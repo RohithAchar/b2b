@@ -61,7 +61,7 @@ export function ProductCard({
 
           <div className="flex items-center justify-between gap-2">
             {product.pricing ? (
-              <p className="min-w-0 truncate text-sm font-bold tracking-tight text-foreground tabular-nums">
+              <p className="min-w-0 truncate text-lg font-bold tracking-tight text-foreground tabular-nums">
                 {formatPrice(product.pricing.customer_price)}
                 <span className="ml-1 text-xs font-normal text-muted-foreground">
                   / {product.unit}
