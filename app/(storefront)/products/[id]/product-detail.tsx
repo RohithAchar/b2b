@@ -162,7 +162,7 @@ export function ProductDetail({ product }: { product: Product }) {
               </p>
             )}
             <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-3xl font-bold tracking-tight text-destructive tabular-nums">
+              <span className="text-3xl font-bold tracking-tight text-primary tabular-nums">
                 {pricing ? formatRupees(pricing.customer_price) : "Price on request"}
               </span>
               <span className="text-sm text-muted-foreground">/ {product.unit}</span>

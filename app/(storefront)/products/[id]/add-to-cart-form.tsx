@@ -98,7 +98,7 @@ export function AddToCartForm({
             form={formId}
             size="lg"
             disabled={pending}
-            className="h-11 flex-[1.6] bg-destructive text-base font-semibold text-white hover:bg-destructive/90"
+            className="h-11 flex-[1.6] text-base font-semibold"
           >
             <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
             {pending ? "Adding..." : "Add to Cart"}
@@ -106,7 +106,7 @@ export function AddToCartForm({
         ) : (
           <Button
             size="lg"
-            className="h-11 flex-[1.6] bg-destructive text-base font-semibold text-white hover:bg-destructive/90"
+            className="h-11 flex-[1.6] text-base font-semibold"
             nativeButton={false}
             render={<Link href={loginHref} />}
           >
@@ -207,7 +207,7 @@ export function AddToCartForm({
             type="submit"
             size="lg"
             disabled={pending}
-            className="hidden h-11 flex-1 bg-destructive text-base font-semibold text-white hover:bg-destructive/90 lg:inline-flex"
+            className="hidden h-11 flex-1 text-base font-semibold lg:inline-flex"
           >
             <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
             {pending ? "Adding..." : "Add to Cart"}

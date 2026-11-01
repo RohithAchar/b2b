@@ -322,7 +322,7 @@ page owns only the clearance for its own mobile buy bar.
   variants) and Return Policy (`warranty_return`, or a neutral "not provided"
   message — never invented policy copy).
 - Sticky mobile actions: `AddToCartForm` renders a fixed View Cart (outline) +
-  Add to Cart (destructive red) bar above the bottom nav
+  Add to Cart (brand orange `default` button) bar above the bottom nav
   (`bottom-(--bottom-nav-offset)`, `lg:hidden`). The Add button submits the same
   in-flow form via its `form` attribute, so variant/quantity state is shared;
   signed-out clicks go to login. The page adds a 64px spacer only for this bar.
