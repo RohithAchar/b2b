@@ -26,20 +26,22 @@ export default async function ProductsPage({
   const sp = await searchParams
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5">
-      <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, { label: "Products" }]}
-      />
-
-      <Suspense fallback={<CatalogueSkeleton />}>
-        <CatalogueSection
-          searchParams={sp}
-          basePath="/products"
-          title="All products"
-          description="Live wholesale pricing and MOQs from verified suppliers."
-          headingLevel="h1"
+    <div className="min-h-full bg-white">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-5">
+        <Breadcrumbs
+          items={[{ label: "Home", href: "/" }, { label: "Products" }]}
         />
-      </Suspense>
+
+        <Suspense fallback={<CatalogueSkeleton />}>
+          <CatalogueSection
+            searchParams={sp}
+            basePath="/products"
+            title="All products"
+            description="Live wholesale pricing and MOQs from verified suppliers."
+            headingLevel="h1"
+          />
+        </Suspense>
+      </div>
     </div>
   )
 }
