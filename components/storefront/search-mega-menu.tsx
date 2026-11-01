@@ -16,29 +16,12 @@ import { addRecentSearch, clearRecentSearches } from "@/lib/recent-searches"
 import { normalizeSuggestQuery, SUGGEST_MIN_CHARS } from "@/lib/search-suggest"
 import { publicTransformedImageUrl } from "@/lib/storage"
 
-export type MegaMenuSubcategory = {
-  id: string
-  name: string
-  slug: string
-  /**
-   * Storage path in the `category_images` bucket. Resolved via
-   * `publicTransformedImageUrl` when set.
-   */
-  image_path?: string | null
-  /**
-   * Direct display URL override (used by Storybook mocks so thumbnails
-   * render without a storage bucket). Takes precedence over `image_path`.
-   */
-  imageUrl?: string | null
-}
-
 export type MegaMenuCategory = {
   id: string
   name: string
   slug: string
   image_path: string | null
   product_count: number
-  subcategories: MegaMenuSubcategory[]
 }
 
 export type MegaMenuSuggestion = {
@@ -48,49 +31,13 @@ export type MegaMenuSuggestion = {
 }
 
 /**
- * Small square subcategory thumbnail (visual only). Shows the image when a
- * URL or storage path is provided, otherwise a monogram fallback tile.
- */
-function SubThumb({ sub }: { sub: MegaMenuSubcategory }) {
-  const src =
-    sub.imageUrl ??
-    (sub.image_path
-      ? publicTransformedImageUrl("category_images", sub.image_path, {
-          width: 100,
-        })
-      : null)
-  if (!src) {
-    return (
-      <span
-        aria-hidden
-        className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-sm font-bold text-primary"
-      >
-        {sub.name.charAt(0).toUpperCase()}
-      </span>
-    )
-  }
-  return (
-    <span className="relative block size-10 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
-      <Image
-        src={src}
-        alt=""
-        aria-hidden
-        fill
-        sizes="40px"
-        className="object-cover"
-      />
-    </span>
-  )
-}
-
-/**
  * Alibaba-style large search menu.
  *
  * Client component with one piece of state: the highlighted category.
- * Hovering (or focusing) a left-list row swaps the right panel; the search
- * bar itself is a native GET form (same `/products?q=` + `page=1` contract
- * as `StorefrontSearchForm`), image search reuses `ImageSearchButton`, and
- * every category/trending entry links to a real route.
+ * Hovering (or focusing) a list row highlights it; the search bar itself is
+ * a native GET form (same `/products?q=` + `page=1` contract as
+ * `StorefrontSearchForm`), image search reuses `ImageSearchButton`, and every
+ * category/trending entry links to a real route.
  */
 export function SearchMegaMenu({
   categories,
@@ -136,7 +83,6 @@ export function SearchMegaMenu({
     normalizeSuggestQuery(value).length === 0 &&
     !showLiveDropdown &&
     !showFallbackDropdown
-  const active = categories.find((c) => c.slug === activeSlugState) ?? initial
   const visible = categories.slice(0, visibleCount)
   const hasMore = categories.length > visible.length
 
@@ -323,25 +269,20 @@ export function SearchMegaMenu({
           )}
         </div>
 
-        {/* Category browse: desktop-only hover grid (mobile uses bottom-nav Categories) */}
+        {/* Category browse: desktop-only list (mobile uses bottom-nav Categories) */}
         <nav
           aria-label="Browse categories"
-          className="mt-4 hidden overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:grid lg:grid-cols-[260px_1fr]"
+          className="mt-4 hidden overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:block"
         >
           <div className="border-b border-border bg-muted/40 px-4 py-2.5">
             <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
               All Categories
             </p>
           </div>
-          <div className="border-b border-border bg-muted/40 px-4 py-2.5">
-            <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
-              {active ? active.name : "Sub-categories"}
-            </p>
-          </div>
 
           <ul className="flex flex-col">
             {visible.map((cat) => {
-              const isActive = active?.slug === cat.slug
+              const isActive = activeSlugState === cat.slug
               return (
                 <li
                   key={cat.id}
@@ -386,53 +327,6 @@ export function SearchMegaMenu({
               </li>
             )}
           </ul>
-
-          <div className="bg-card px-4 py-4 sm:px-5 lg:border-l lg:border-border">
-            {active ? (
-              <div className="flex flex-col gap-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-base font-bold tracking-tight">
-                    {active.name}
-                  </p>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {active.product_count} product
-                    {active.product_count === 1 ? "" : "s"}
-                  </span>
-                </div>
-                {active.subcategories.length > 0 ? (
-                  <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                    {active.subcategories.map((sub) => (
-                      <li key={sub.id}>
-                        <Link
-                          href={`/category/${sub.slug}`}
-                          className="flex press items-center gap-2.5 rounded-sm border border-border bg-card px-2 py-1.5 text-sm font-medium text-foreground/80 hover:border-primary/40"
-                        >
-                          <SubThumb sub={sub} />
-                          <span className="min-w-0 truncate hover:text-primary hover:underline">
-                            {sub.name}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    No sub-categories yet — suppliers haven&apos;t listed here.
-                  </p>
-                )}
-                <Link
-                  href={`/category/${active.slug}`}
-                  className="text-sm font-semibold text-primary"
-                >
-                  View all {active.name} →
-                </Link>
-              </div>
-            ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No categories yet
-              </p>
-            )}
-          </div>
         </nav>
       </div>
     </div>

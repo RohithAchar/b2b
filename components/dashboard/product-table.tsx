@@ -341,7 +341,7 @@ export function ProductTable({
                 {p.stock > 0 ? (
                   p.stock
                 ) : (
-                  <span className="text-destructive">Out of stock</span>
+                  <span className="text-muted-foreground">Made to order</span>
                 )}
               </TableCell>
               <TableCell>

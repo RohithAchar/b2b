@@ -16,18 +16,14 @@ export default async function NewSupplierProductPage() {
 
   const { data: categories } = await supabase
     .from("categories")
-    .select("id, name, parent:parent_id(name)")
+    .select("id, name")
     .eq("is_active", true)
     .order("sort_order");
 
-  const options = (categories ?? []).map((c) => {
-    const parent = c.parent as { name: string } | { name: string }[] | null;
-    return {
-      id: c.id as string,
-      name: c.name as string,
-      parentName: Array.isArray(parent) ? (parent[0]?.name ?? null) : (parent?.name ?? null),
-    };
-  });
+  const options = (categories ?? []).map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+  }));
 
   return (
     <ProductForm

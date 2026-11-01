@@ -26,14 +26,14 @@ export default async function EditSupplierProductPage({
   // Categories do not depend on the product row, so start them alongside it.
   const categoriesPromise = supabase
     .from("categories")
-    .select("id, name, parent:parent_id(name)")
+    .select("id, name")
     .eq("is_active", true)
     .order("sort_order");
 
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, category_id, brand, seller_sku, hsn_code, description, unit, moq, stock_qty, negotiable, sample_available, lead_time_days, gst_rate, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
+      "id, title, category_id, seller_sku, hsn_code, gst_rate, carton_units, carton_dimensions, carton_weight_kg, description, unit, negotiable, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
     )
     .eq("id", id)
     .eq("supplier_id", companyId)
@@ -100,19 +100,17 @@ export default async function EditSupplierProductPage({
     id: product.id,
     title: product.title,
     category_id: product.category_id,
-    brand: product.brand,
     seller_sku: product.seller_sku,
     hsn_code: product.hsn_code,
+    gst_rate: product.gst_rate != null ? Number(product.gst_rate) : null,
+    carton_units: product.carton_units,
+    carton_dimensions: product.carton_dimensions,
+    carton_weight_kg:
+      product.carton_weight_kg != null ? Number(product.carton_weight_kg) : null,
     description: product.description,
     unit: product.unit,
     price_per_unit: Number(basePrices?.price_per_unit ?? 0),
-    moq: product.moq,
-    stock_qty: product.stock_qty,
     negotiable: product.negotiable,
-    sample_available: product.sample_available,
-    sample_price: basePrices?.sample_price != null ? Number(basePrices.sample_price) : null,
-    lead_time_days: product.lead_time_days,
-    gst_rate: product.gst_rate != null ? Number(product.gst_rate) : null,
     packaging_details: product.packaging_details,
     warranty_return: product.warranty_return,
     youtube_url: product.youtube_url,
@@ -141,14 +139,10 @@ export default async function EditSupplierProductPage({
     <ProductForm
       mode="edit"
       product={existing}
-      categories={(categories ?? []).map((c) => {
-        const parent = c.parent as { name: string } | { name: string }[] | null;
-        return {
-          id: c.id as string,
-          name: c.name as string,
-          parentName: Array.isArray(parent) ? (parent[0]?.name ?? null) : (parent?.name ?? null),
-        };
-      })}
+      categories={(categories ?? []).map((c) => ({
+        id: c.id as string,
+        name: c.name as string,
+      }))}
       title="Edit product"
       description={
         product.status === "approved"

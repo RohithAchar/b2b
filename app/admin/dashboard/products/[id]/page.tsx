@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { stripHtml } from "@/lib/supplier/rich-text";
+import { stockLabel } from "@/lib/format";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
   Breadcrumb,
@@ -50,8 +51,6 @@ import { ProductDecisionForm } from "./decision-form";
 function imageUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product_images/${path}`;
 }
-
-import { stockLabel } from "@/lib/format";
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (

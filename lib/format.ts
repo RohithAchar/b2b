@@ -11,12 +11,14 @@ export function formatIndianNumber(value: number): string {
   return value.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
 
-/** Stock level label. If tracked and > 0, returns "{n} in stock". Otherwise returns "Made to order". */
+/**
+ * Availability copy for a stock count. The supplier product form no longer
+ * collects stock, so zero (or null) means "not specified" and reads as made to
+ * order rather than out of stock.
+ */
 export function stockLabel(stock: number | null | undefined): string {
-  if (stock != null && stock > 0) {
-    return `${stock} in stock`
-  }
-  return "Made to order"
+  const qty = stock ?? 0;
+  return qty > 0 ? `${formatIndianNumber(qty)} in stock` : "Made to order";
 }
 
 /** "12 Oct 2026" style date used across dashboards. */

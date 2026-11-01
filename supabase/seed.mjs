@@ -47,22 +47,16 @@ async function mapLimit(items, limit, fn) {
   return results;
 }
 
-async function ensureCategory({ name, slug, parentId, sortOrder, imagePath }) {
-  let qb = admin
+async function ensureCategory({ name, slug, sortOrder, imagePath }) {
+  const { data: existing } = await admin
     .from("categories")
     .select("id")
     .eq("slug", slug)
-    .eq("sort_order", sortOrder);
-  if (parentId === null) {
-    qb = qb.is("parent_id", null);
-  } else {
-    qb = qb.eq("parent_id", parentId);
-  }
-  const { data: existing } = await qb.maybeSingle();
+    .maybeSingle();
   if (existing) return existing.id;
   const { data, error } = await admin
     .from("categories")
-    .insert({ name, slug, parent_id: parentId, sort_order: sortOrder, image_path: imagePath })
+    .insert({ name, slug, sort_order: sortOrder, image_path: imagePath })
     .select("id")
     .single();
   if (error) throw error;
@@ -172,40 +166,14 @@ async function ensureProduct(companyId, categoryId, product) {
 }
 
 const CATEGORIES = [
-  { name: "Textiles & Apparel", slug: "textiles-apparel", subs: [
-    { name: "Cotton Fabric", slug: "cotton-fabric" },
-    { name: "Synthetic Fabric", slug: "synthetic-fabric" },
-    { name: "Readymade Garments", slug: "readymade-garments" },
-  ] },
-  { name: "Electronics & Electricals", slug: "electronics-electricals", subs: [
-    { name: "LED Lighting", slug: "led-lighting" },
-    { name: "Switches & Sockets", slug: "switches-sockets" },
-    { name: "Wires & Cables", slug: "wires-cables" },
-  ] },
-  { name: "Chemicals & Dyes", slug: "chemicals-dyes", subs: [
-    { name: "Industrial Chemicals", slug: "industrial-chemicals" },
-    { name: "Dyes & Pigments", slug: "dyes-pigments" },
-  ] },
-  { name: "Packaging Materials", slug: "packaging-materials", subs: [
-    { name: "Corrugated Boxes", slug: "corrugated-boxes" },
-    { name: "Plastic Packaging", slug: "plastic-packaging" },
-  ] },
-  { name: "Industrial Machinery", slug: "industrial-machinery", subs: [
-    { name: "Textile Machines", slug: "textile-machines" },
-    { name: "Food Processing", slug: "food-processing" },
-  ] },
-  { name: "Automotive Parts", slug: "automotive-parts", subs: [
-    { name: "Brake Pads", slug: "brake-pads" },
-    { name: "Engine Components", slug: "engine-components" },
-  ] },
-  { name: "Agriculture & Farming", slug: "agriculture-farming", subs: [
-    { name: "Seeds & Fertilizers", slug: "seeds-fertilizers" },
-    { name: "Irrigation Equipment", slug: "irrigation-equipment" },
-  ] },
-  { name: "Furniture & Fixtures", slug: "furniture-fixtures", subs: [
-    { name: "Office Furniture", slug: "office-furniture" },
-    { name: "Industrial Racks", slug: "industrial-racks" },
-  ] },
+  { name: "Textiles & Apparel", slug: "textiles-apparel" },
+  { name: "Electronics & Electricals", slug: "electronics-electricals" },
+  { name: "Chemicals & Dyes", slug: "chemicals-dyes" },
+  { name: "Packaging Materials", slug: "packaging-materials" },
+  { name: "Industrial Machinery", slug: "industrial-machinery" },
+  { name: "Automotive Parts", slug: "automotive-parts" },
+  { name: "Agriculture & Farming", slug: "agriculture-farming" },
+  { name: "Furniture & Fixtures", slug: "furniture-fixtures" },
 ];
 
 const SUPPLIERS = [
@@ -221,7 +189,7 @@ const SUPPLIERS = [
 
 const PRODUCTS = [
   {
-    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "cotton-fabric",
+    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "textiles-apparel",
     title: "40s Combed Cotton Knit Fabric 160 GSM",
     description: "Single-jersey combed cotton fabric spun at 40s count with a 160 GSM weight. Pre-shrunk, bio-washed and azo-free. Ideal for t-shirts, innerwear and kids wear.",
     brand: "Texport", seller_sku: "TXT-COT-160", hsn_code: "5208", unit: "mtr",
@@ -240,7 +208,7 @@ const PRODUCTS = [
     ],
   },
   {
-    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "cotton-fabric",
+    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "textiles-apparel",
     title: "Organic Cotton Woven Fabric 60s",
     description: "GOTS-certified organic cotton woven fabric at 60s count, 120 GSM. Soft finish with high tensile strength. Suitable for dress shirts, skirts and home textiles.",
     brand: "Texport", seller_sku: "TXT-ORG-60", hsn_code: "5208", unit: "mtr",
@@ -249,7 +217,7 @@ const PRODUCTS = [
     attributes: { "GSM": "120", "Count": "60s", "Width": "58 inch", "Weave": "Plain" },
   },
   {
-    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "synthetic-fabric",
+    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "textiles-apparel",
     title: "Polyester Dope-Dyed Fabric 220 GSM",
     description: "Dope-dyed polyester fabric with colourfast properties, 220 GSM. Colour stays uniform even after repeated washes. Great for sportswear, bags and upholstery.",
     brand: "Texport", seller_sku: "SYN-POLY-220", hsn_code: "5407", unit: "mtr",
@@ -257,14 +225,14 @@ const PRODUCTS = [
     attributes: { "GSM": "220", "Fibre": "100% Polyester", "Width": "60 inch", "Dye": "Dope-dyed" },
   },
   {
-    status: "draft", supplier: "rajesh.textiles@seed.b2b", category: "cotton-fabric",
+    status: "draft", supplier: "rajesh.textiles@seed.b2b", category: "textiles-apparel",
     title: "Cotton Terry Towel Fabric 480 GSM",
     description: "Ring-spun cotton terry fabric at 480 GSM with low-lint, high absorbency loops. Configurable with stripe or jacquard weaves for towels and bath robes.",
     brand: "Texport", seller_sku: "TXT-TRW-480", hsn_code: "5802", unit: "mtr",
     price: 210, moq: 300, stock: 9000, lead: 14, gst: 5, images: 0,
   },
   {
-    status: "approved", supplier: "brightled@seed.b2b", category: "led-lighting",
+    status: "approved", supplier: "brightled@seed.b2b", category: "electronics-electricals",
     title: "Smart LED Bulb 9W B22/E27",
     description: "9W smart LED bulb with dimming and schedule control, 806 lumens, 100-240V AC. Energy rating A+. Compatible with Alexa and Google Home.",
     brand: "BrightLED", seller_sku: "ELX-LED-9W", hsn_code: "8539", unit: "pcs",
@@ -279,7 +247,7 @@ const PRODUCTS = [
     ],
   },
   {
-    status: "approved", supplier: "brightled@seed.b2b", category: "led-lighting",
+    status: "approved", supplier: "brightled@seed.b2b", category: "electronics-electricals",
     title: "LED High Bay Light 100W",
     description: "IP65 LED high bay with 12000 lumens for warehouses and factories. Aluminium die-cast body with 50,000 hr lifespan and 5-year warranty.",
     brand: "BrightLED", seller_sku: "ELX-HB-100", hsn_code: "9405", unit: "pcs",
@@ -287,7 +255,7 @@ const PRODUCTS = [
     attributes: { "Power": "100W", "Lumens": "12000 lm", "IP Rating": "IP65", "Warranty": "5 years" },
   },
   {
-    status: "approved", supplier: "brightled@seed.b2b", category: "switches-sockets",
+    status: "approved", supplier: "brightled@seed.b2b", category: "electronics-electricals",
     title: "Modular Switch 6A One Way",
     description: "6A one-way modular switch with fire-retardant polycarbonate body from the Crystal series. Wall-mounting included, pack of 10.",
     brand: "BrightLED", seller_sku: "ELX-SW-6A", hsn_code: "8536", unit: "pcs",
@@ -296,7 +264,7 @@ const PRODUCTS = [
     certifications: ["BIS"],
   },
   {
-    status: "approved", supplier: "brightled@seed.b2b", category: "wires-cables",
+    status: "approved", supplier: "brightled@seed.b2b", category: "electronics-electricals",
     title: "BIS-Certified Copper Wire 2.5 sq mm (90m)",
     description: "FR-LSH insulated 2.5 sq mm copper wire coil of 90 metres. One of a kind for household and commercial wiring with 0.0025 mm tolerance.",
     brand: "BrightLED", seller_sku: "ELX-WIRE-25", hsn_code: "8544", unit: "pcs",
@@ -305,7 +273,7 @@ const PRODUCTS = [
     certifications: ["BIS"],
   },
   {
-    status: "approved", supplier: "chemsolutions@seed.b2b", category: "industrial-chemicals",
+    status: "approved", supplier: "chemsolutions@seed.b2b", category: "chemicals-dyes",
     title: "Caustic Soda Flakes 99%",
     description: "Textile-grade caustic soda flakes at 99% purity in 50 kg HDPE bags. Used for mercerisation, effluent treatment and soap manufacturing. ISI certified.",
     brand: "ChemLab", seller_sku: "CHM-CAUSTIC-99", hsn_code: "2815", unit: "kg",
@@ -313,7 +281,7 @@ const PRODUCTS = [
     attributes: { "Purity": "99%", "Form": "Flakes", "Packaging": "50 kg HDPE bag" },
   },
   {
-    status: "approved", supplier: "chemsolutions@seed.b2b", category: "industrial-chemicals",
+    status: "approved", supplier: "chemsolutions@seed.b2b", category: "chemicals-dyes",
     title: "Citric Acid Anhydrous Food Grade",
     description: "Food-grade citric acid anhydrous in 25 kg bags with high solubility. Widely used in beverages, confectionery and cleaning products. FSSAI approved.",
     brand: "ChemLab", seller_sku: "CHM-CITRIC-AN", hsn_code: "2918", unit: "kg",
@@ -322,7 +290,7 @@ const PRODUCTS = [
     certifications: ["FSSAI", "ISO 9001"],
   },
   {
-    status: "approved", supplier: "chemsolutions@seed.b2b", category: "dyes-pigments",
+    status: "approved", supplier: "chemsolutions@seed.b2b", category: "chemicals-dyes",
     title: "Reactive Red Dye 150%",
     description: "High-uptake reactive red dye at 150% strength for cotton and viscose. Excellent wash, light and perspiration fastness. Supplied in 10 kg bales.",
     brand: "ChemLab", seller_sku: "CHM-DYE-RE", hsn_code: "3204", unit: "kg",
@@ -330,7 +298,7 @@ const PRODUCTS = [
     attributes: { "Strength": "150%", "Class": "Reactive", "Fastness": "Excellent", "Packaging": "10 kg bale" },
   },
   {
-    status: "approved", supplier: "packright@seed.b2b", category: "corrugated-boxes",
+    status: "approved", supplier: "packright@seed.b2b", category: "packaging-materials",
     title: "3-Ply Corrugated Box 18x12x12",
     description: "Eco-friendly 3-ply corrugated shipping box with brown kraft finish, bursting strength 12 kg/cm2. Custom printing with 48-hour dispatch available.",
     brand: "PackRight", seller_sku: "PKG-3PLY-1812", hsn_code: "4819", unit: "pcs",
@@ -347,7 +315,7 @@ const PRODUCTS = [
     ],
   },
   {
-    status: "approved", supplier: "packright@seed.b2b", category: "corrugated-boxes",
+    status: "approved", supplier: "packright@seed.b2b", category: "packaging-materials",
     title: "5-Ply Heavy Duty Carton 30x20x20",
     description: "5-ply export-quality carton with 18 kg/cm2 bursting strength, reinforced corners, and lamination option for high-value and export shipments.",
     brand: "PackRight", seller_sku: "PKG-5PLY-3020", hsn_code: "4819", unit: "pcs",
@@ -355,7 +323,7 @@ const PRODUCTS = [
     attributes: { "Ply": "5", "Size": "30x20x20 inch", "Burst strength": "18 kg/cm2", "Use": "Export / heavy duty" },
   },
   {
-    status: "approved", supplier: "packright@seed.b2b", category: "plastic-packaging",
+    status: "approved", supplier: "packright@seed.b2b", category: "packaging-materials",
     title: "LDPE Film Roll 50 Micron",
     description: "Low-density polyethylene film roll at 50 micron, 100% virgin material. Uniform gauge for high-speed packaging machines. Custom width and core sizes available.",
     brand: "PackRight", seller_sku: "PKG-LDPE-50", hsn_code: "3920", unit: "kg",
@@ -363,7 +331,7 @@ const PRODUCTS = [
     attributes: { "Material": "LDPE", "Micron": "50", "Resin": "100% virgin", "Printing": "Available" },
   },
   {
-    status: "approved", supplier: "khalsa.engineering@seed.b2b", category: "textile-machines",
+    status: "approved", supplier: "khalsa.engineering@seed.b2b", category: "industrial-machinery",
     title: "Automatic Power Loom (6 Shuttle)",
     description: "Cast-iron automatic power loom with 6 shuttles, 200 rpm, cam shedding. Suitable for grey cotton and synthetic weaving with low power consumption.",
     brand: "Khalsa", seller_sku: "MCH-PL-6SH", hsn_code: "8446", unit: "pcs",
@@ -371,7 +339,7 @@ const PRODUCTS = [
     attributes: { "Shuttles": "6", "Speed": "200 rpm", "Shedding": "Cam", "Power": "1.5 HP" },
   },
   {
-    status: "approved", supplier: "khalsa.engineering@seed.b2b", category: "food-processing",
+    status: "approved", supplier: "khalsa.engineering@seed.b2b", category: "industrial-machinery",
     title: "Automatic Chapati Making Machine",
     description: "Fully automatic chapati machine producing 90 chapatis per hour with dough sheeting and baking. Stainless steel body with thermo-stat control.",
     brand: "Khalsa", seller_sku: "MCH-CHPT-90", hsn_code: "8438", unit: "pcs",
@@ -379,7 +347,7 @@ const PRODUCTS = [
     attributes: { "Capacity": "90 pcs/hr", "Material": "SS 304", "Dough": "Atta / maida", "Voltage": "220V" },
   },
   {
-    status: "approved", supplier: "autoparts.hub@seed.b2b", category: "brake-pads",
+    status: "approved", supplier: "autoparts.hub@seed.b2b", category: "automotive-parts",
     title: "Ceramic Disc Brake Pad Set",
     description: "Low-dust ceramic brake pad set for compact sedans. Disc and drum wear minimised with a stable friction coefficient across temperatures.",
     brand: "Apada", seller_sku: "AUTO-BRK-CER", hsn_code: "8708", unit: "pcs",
@@ -387,7 +355,7 @@ const PRODUCTS = [
     attributes: { "Material": "Ceramic", "Type": "Disc set", "Friction": "EE grade", "Warranty": "12 months" },
   },
   {
-    status: "approved", supplier: "autoparts.hub@seed.b2b", category: "engine-components",
+    status: "approved", supplier: "autoparts.hub@seed.b2b", category: "automotive-parts",
     title: "Engine Piston Ring Set (Standard)",
     description: "Chrome-faced piston ring set, standard bore size, matching OEM dimensions. High wear resistance for petrol and diesel engines.",
     brand: "Apada", seller_sku: "AUTO-PST-STD", hsn_code: "8409", unit: "pcs",
@@ -395,7 +363,7 @@ const PRODUCTS = [
     attributes: { "Type": "Chrome face", "Bore": "Standard", "Fitment": "Petrol / Diesel" },
   },
   {
-    status: "approved", supplier: "agritech.equipment@seed.b2b", category: "seeds-fertilizers",
+    status: "approved", supplier: "agritech.equipment@seed.b2b", category: "agriculture-farming",
     title: "Hybrid Cotton Seeds (5 kg)",
     description: "High-yield Bt cotton hybrid seeds in vacuum-packed 5 kg bags. Tolerant to cotton leaf curl, need 35-40% less irrigation than local varieties.",
     brand: "AgriOne", seller_sku: "AGR-SEED-COT", hsn_code: "1207", unit: "box",
@@ -403,7 +371,7 @@ const PRODUCTS = [
     attributes: { "Pack": "5 kg", "Type": "Bt cotton hybrid", "Germination": "92%+", "Boll maturity": "150-160 days" },
   },
   {
-    status: "approved", supplier: "agritech.equipment@seed.b2b", category: "irrigation-equipment",
+    status: "approved", supplier: "agritech.equipment@seed.b2b", category: "agriculture-farming",
     title: "Drip Irrigation Kit (1 Acre)",
     description: "Complete drip irrigation kit for 1 acre covering inline laterals, micro-tubes, drippers and screen filter. Reduces water usage by up to 60%.",
     brand: "AgriOne", seller_sku: "AGR-DRIP-1A", hsn_code: "8424", unit: "box",
@@ -416,7 +384,7 @@ const PRODUCTS = [
     attributes: { "Coverage": "1 acre", "Emitter spacing": "30 cm", "Discharge": "4 LPH", "Filter": "Screen" },
   },
   {
-    status: "pending", supplier: "agritech.equipment@seed.b2b", category: "irrigation-equipment",
+    status: "pending", supplier: "agritech.equipment@seed.b2b", category: "agriculture-farming",
     title: "Sprinkler Irrigation Set (1 Acre)",
     description: "Popup sprinkler irrigation kit for 1 acre with GI risers, brass nozzles and PU couplings. Uniform coverage with low operating pressure.",
     brand: "AgriOne", seller_sku: "AGR-SPR-1A", hsn_code: "8424", unit: "box",
@@ -424,7 +392,7 @@ const PRODUCTS = [
     attributes: { "Coverage": "1 acre", "Riser": "GI 1 m", "Nozzle": "Brass", "Pressure": "2-3 bar" },
   },
   {
-    status: "approved", supplier: "urbanfit@seed.b2b", category: "office-furniture",
+    status: "approved", supplier: "urbanfit@seed.b2b", category: "furniture-fixtures",
     title: "Ergonomic Mesh Office Chair",
     description: "Breathable mesh back ergonomic office chair with adjustable lumbar support, 360-degree swivel and recline lock. Tested for 120 kg load capacity.",
     brand: "UrbanFit", seller_sku: "FUR-CHR-MESH", hsn_code: "9401", unit: "pcs",
@@ -432,7 +400,7 @@ const PRODUCTS = [
     attributes: { "Seat": "Mesh", "Recline": "Yes", "Load": "120 kg", "Warranty": "2 years" },
   },
   {
-    status: "approved", supplier: "urbanfit@seed.b2b", category: "office-furniture",
+    status: "approved", supplier: "urbanfit@seed.b2b", category: "furniture-fixtures",
     title: "Laminated Workstation Desk 120 cm",
     description: "Laminated MDF office workstation desk with cable management ports, steel legs and scratch-resistant surface. Assembly within 30 minutes.",
     brand: "UrbanFit", seller_sku: "FUR-DSK-120", hsn_code: "9403", unit: "pcs",
@@ -440,7 +408,7 @@ const PRODUCTS = [
     attributes: { "Size": "120x60x75 cm", "Material": "MDF laminated", "Legs": "Steel", "Finish": "Walnut / Grey" },
   },
   {
-    status: "approved", supplier: "urbanfit@seed.b2b", category: "industrial-racks",
+    status: "approved", supplier: "urbanfit@seed.b2b", category: "furniture-fixtures",
     title: "Heavy Duty Storage Rack 500 kg/shelf",
     description: "Cold-rolled steel industrial storage rack rated at 500 kg per shelf with adjustable levels. Hot-dip galvanised for corrosion resistance in warehouses.",
     brand: "UrbanFit", seller_sku: "FUR-RACK-IND", hsn_code: "9403", unit: "pcs",
@@ -448,7 +416,7 @@ const PRODUCTS = [
     attributes: { "Capacity": "500 kg/shelf", "Material": "Cold-rolled steel", "Finish": "Galvanised", "Levels": "4 adjustable" },
   },
   {
-    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "readymade-garments",
+    status: "approved", supplier: "rajesh.textiles@seed.b2b", category: "textiles-apparel",
     title: "100% Cotton Casual Full Sleeve Shirts",
     description: "Regular-fit casual shirts in 140 GSM combed cotton with full sleeves and button-down collar. Colourfast and ironable; sizes M to XXL.",
     brand: "Texport", seller_sku: "TXT-RTG-FSC", hsn_code: "6205", unit: "pcs",
@@ -900,25 +868,14 @@ async function main() {
   const ordersOnly = process.env.SEED_ONLY === "orders";
 
   const idBySlug = {};
-  for (const [pi, parent] of CATEGORIES.entries()) {
-    const parentId = await ensureCategory({
-      name: parent.name,
-      slug: parent.slug,
-      parentId: null,
-      sortOrder: pi,
-      imagePath: `seed/${parent.slug}.jpg`,
+  for (const [index, category] of CATEGORIES.entries()) {
+    const categoryId = await ensureCategory({
+      name: category.name,
+      slug: category.slug,
+      sortOrder: index,
+      imagePath: `seed/${category.slug}.jpg`,
     });
-    idBySlug[parent.slug] = parentId;
-    for (const [si, sub] of parent.subs.entries()) {
-      const subId = await ensureCategory({
-        name: sub.name,
-        slug: sub.slug,
-        parentId,
-        sortOrder: si,
-        imagePath: `seed/${sub.slug}.jpg`,
-      });
-      idBySlug[sub.slug] = subId;
-    }
+    idBySlug[category.slug] = categoryId;
   }
   log("categories", Object.keys(idBySlug).length + " ensured");
 
@@ -935,13 +892,10 @@ async function main() {
     companyIdByEmail[spec.email] = companyId;
   }
 
-  const allCategories = [];
-  for (const parent of CATEGORIES) {
-    allCategories.push({ slug: parent.slug, path: `seed/${parent.slug}.jpg` });
-    for (const sub of parent.subs) {
-      allCategories.push({ slug: sub.slug, path: `seed/${sub.slug}.jpg` });
-    }
-  }
+  const allCategories = CATEGORIES.map((category) => ({
+    slug: category.slug,
+    path: `seed/${category.slug}.jpg`,
+  }));
   await mapLimit(allCategories, CONCURRENCY, async (c) => {
     if (ordersOnly) return;
     await uploadImage("category_images", c.path, `${IMAGE_BASE}cat-${c.slug}/600/600`);

@@ -15,15 +15,6 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const baseSchema = z.object({
   name: z.string().trim().min(2, "Give it a name of at least 2 characters."),
-  parent_id: z
-    .string()
-    .trim()
-    .regex(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      "Pick a valid parent category.",
-    )
-    .optional()
-    .or(z.literal("")),
   is_active: z.string().optional(),
 });
 
@@ -54,7 +45,6 @@ async function validateImage(file: File | null, required: boolean): Promise<stri
 async function uniqueSlug(
   supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
   name: string,
-  parentId: string | null,
   ignoreId?: string,
 ): Promise<string> {
   const base = slugify(name);
@@ -64,9 +54,6 @@ async function uniqueSlug(
       .from("categories")
       .select("id", { head: true })
       .eq("slug", slug);
-    query = parentId
-      ? query.eq("parent_id", parentId)
-      : query.is("parent_id", null);
     if (ignoreId) {
       query = query.neq("id", ignoreId);
     }
@@ -101,7 +88,6 @@ export async function createCategory(
   const { supabase } = await requireAdmin();
   const parsed = baseSchema.safeParse({
     name: formData.get("name"),
-    parent_id: formData.get("parent_id") ?? "",
     is_active: formData.get("is_active") ?? undefined,
   });
   if (!parsed.success) {
@@ -118,26 +104,13 @@ export async function createCategory(
     return { ok: false, message: fileError ?? "An image is required." };
   }
 
-  const parentId = parsed.data.parent_id ? parsed.data.parent_id : null;
-  if (parentId) {
-    const { data: parent } = await supabase
-      .from("categories")
-      .select("id, parent_id")
-      .eq("id", parentId)
-      .maybeSingle();
-    if (!parent || parent.parent_id) {
-      return { ok: false, message: "Pick a valid parent category." };
-    }
-  }
-
-  const slug = await uniqueSlug(supabase, parsed.data.name, parentId);
+  const slug = await uniqueSlug(supabase, parsed.data.name);
 
   const { data: row, error: insertError } = await supabase
     .from("categories")
     .insert({
       name: parsed.data.name.trim(),
       slug,
-      parent_id: parentId,
       image_path: "pending",
       is_active: parsed.data.is_active !== "off",
     })
@@ -222,17 +195,6 @@ export async function deleteCategory(
     return { ok: false, message: "Invalid category." };
   }
 
-  const { count: children } = await supabase
-    .from("categories")
-    .select("id", { count: "exact", head: true })
-    .eq("parent_id", parsed.data.id);
-  if (children && children > 0) {
-    return {
-      ok: false,
-      message: "Remove its subcategories first, then delete this category.",
-    };
-  }
-
   const { data: row } = await supabase
     .from("categories")
     .select("id, image_path")
@@ -269,7 +231,6 @@ export async function updateCategory(
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
     name: formData.get("name"),
-    parent_id: formData.get("parent_id") ?? "",
     is_active: formData.get("is_active") ?? undefined,
   });
   if (!parsed.success) {
@@ -288,41 +249,14 @@ export async function updateCategory(
 
   const { data: row } = await supabase
     .from("categories")
-    .select("id, parent_id, image_path")
+    .select("id, image_path")
     .eq("id", parsed.data.id)
     .maybeSingle();
   if (!row) {
     return { ok: false, message: "Category not found." };
   }
 
-  // Parent can only change between top-level and one valid parent;
-  // a category with children must stay top-level.
-  const parentId = parsed.data.parent_id ? parsed.data.parent_id : null;
-  if (parentId === row.id) {
-    return { ok: false, message: "A category cannot be its own parent." };
-  }
-  if (parentId) {
-    const { data: parent } = await supabase
-      .from("categories")
-      .select("id, parent_id")
-      .eq("id", parentId)
-      .maybeSingle();
-    if (!parent || parent.parent_id) {
-      return { ok: false, message: "Pick a valid parent category." };
-    }
-    const { count: children } = await supabase
-      .from("categories")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_id", row.id);
-    if (children && children > 0) {
-      return {
-        ok: false,
-        message: "Move its subcategories elsewhere first.",
-      };
-    }
-  }
-
-  const slug = await uniqueSlug(supabase, parsed.data.name, parentId, row.id);
+  const slug = await uniqueSlug(supabase, parsed.data.name, row.id);
 
   let imagePath = row.image_path;
   if (file) {
@@ -339,7 +273,6 @@ export async function updateCategory(
     .update({
       name: parsed.data.name.trim(),
       slug,
-      parent_id: parentId,
       image_path: imagePath,
       is_active: parsed.data.is_active !== "off",
     })

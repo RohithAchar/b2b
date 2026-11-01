@@ -711,7 +711,7 @@ export default async function SupplierOverviewPage({
                     <TableCell className="hidden tabular-nums md:table-cell">
                       {p.moq}
                     </TableCell>
-                    <TableCell className="hidden tabular-nums md:table-cell">
+                    <TableCell className="hidden md:table-cell">
                       {stockLabel(p.stock_qty)}
                     </TableCell>
                     <TableCell>

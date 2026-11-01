@@ -97,7 +97,6 @@ export async function getNavigationCategories(supabase: SupabaseClient) {
     .from("categories")
     .select("id, name, slug")
     .eq("is_active", true)
-    .is("parent_id", null)
     .order("sort_order")
     .order("name");
   return (data ?? []) as { id: string; name: string; slug: string }[];
@@ -112,13 +111,12 @@ export async function getHomeCategories(supabase: SupabaseClient) {
     .from("categories")
     .select("id, name, slug, image_path")
     .eq("is_active", true)
-    .is("parent_id", null)
     .order("sort_order")
     .order("name");
 
   const categories = (data ?? []) as { id: string; name: string; slug: string; image_path: string | null }[];
 
-  // Product counts per category (approved, subcategories rolled into parents).
+  // Product counts per category.
   const counts = await getCategoryProductCounts(
     supabase,
     categories.map((c) => c.id),
@@ -241,12 +239,6 @@ export type CatalogueCategory = {
   name: string;
   slug: string;
   productCount: number;
-  subcategories: {
-    id: string;
-    name: string;
-    slug: string;
-    productCount: number;
-  }[];
 };
 
 export async function getCatalogueCategories(
@@ -254,7 +246,7 @@ export async function getCatalogueCategories(
 ): Promise<CatalogueCategory[]> {
   const { data } = await supabase
     .from("categories")
-    .select("id, name, slug, parent_id")
+    .select("id, name, slug")
     .eq("is_active", true)
     .order("sort_order")
     .order("name");
@@ -263,36 +255,18 @@ export async function getCatalogueCategories(
     id: string;
     name: string;
     slug: string;
-    parent_id: string | null;
   }[];
   const counts = await getCategoryProductCounts(
     supabase,
     rows.map((row) => row.id),
   );
 
-  const parents = new Map<string, CatalogueCategory>();
-  for (const row of rows) {
-    if (row.parent_id) continue;
-    parents.set(row.id, {
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      productCount: counts[row.id] ?? 0,
-      subcategories: [],
-    });
-  }
-
-  for (const row of rows) {
-    if (!row.parent_id) continue;
-    parents.get(row.parent_id)?.subcategories.push({
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      productCount: counts[row.id] ?? 0,
-    });
-  }
-
-  return [...parents.values()];
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    productCount: counts[row.id] ?? 0,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -376,21 +350,15 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
   }
 
   if (categorySlug) {
-    // Parent categories roll up their active subcategories in
-    // `category_product_counts`, so the listing scope has to match or a parent
-    // page advertises a count with an empty grid.
     const { data: cat } = await supabase
       .from("categories")
-      .select("id, children:categories!parent_id(id, is_active)")
+      .select("id")
       .eq("slug", categorySlug)
+      .eq("is_active", true)
       .maybeSingle();
 
     if (cat) {
-      const children = (cat.children ?? []) as { id: string; is_active: boolean }[];
-      qb = qb.in("category_id", [
-        cat.id as string,
-        ...children.filter((child) => child.is_active).map((child) => child.id),
-      ]);
+      qb = qb.eq("category_id", cat.id as string);
     }
   }
 
@@ -653,27 +621,16 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
 export async function getCategoryBySlug(supabase: SupabaseClient, slug: string) {
   const { data: category } = await supabase
     .from("categories")
-    .select("id, name, slug, image_path, parent_id")
+    .select("id, name, slug, image_path")
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (!category) return null;
-
-  const { data: subcategories } = await supabase
-    .from("categories")
-    .select("id, name, slug, image_path")
-    .eq("parent_id", category.id)
-    .eq("is_active", true)
-    .order("sort_order")
-    .order("name");
-
-  return { ...category, subcategories: subcategories ?? [] };
+  return category ?? null;
 }
 
 // ---------------------------------------------------------------------------
-// Mega-menu categories: top-level parents with images + counts plus their
-// subcategories in two queries (avoids N+1 getCategoryBySlug calls).
+// Mega-menu categories: active categories with images + product counts.
 // ---------------------------------------------------------------------------
 
 export type MegaMenuCategoryData = {
@@ -682,63 +639,35 @@ export type MegaMenuCategoryData = {
   slug: string;
   image_path: string | null;
   product_count: number;
-  subcategories: {
-    id: string;
-    name: string;
-    slug: string;
-    image_path: string | null;
-  }[];
 };
 
 export async function getMegaMenuCategories(
   supabase: SupabaseClient,
 ): Promise<MegaMenuCategoryData[]> {
-  const { data: parents } = await supabase
+  const { data: categories } = await supabase
     .from("categories")
     .select("id, name, slug, image_path")
     .eq("is_active", true)
-    .is("parent_id", null)
     .order("sort_order")
     .order("name");
 
-  const parentRows =
-    (parents ?? []) as {
+  const rows =
+    (categories ?? []) as {
       id: string;
       name: string;
       slug: string;
       image_path: string | null;
     }[];
-  if (parentRows.length === 0) return [];
+  if (rows.length === 0) return [];
 
-  const parentIds = parentRows.map((p) => p.id);
-  const [{ data: subs }, counts] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id, name, slug, image_path, parent_id")
-      .in("parent_id", parentIds)
-      .eq("is_active", true)
-      .order("sort_order")
-      .order("name"),
-    getCategoryProductCounts(supabase, parentIds),
-  ]);
+  const counts = await getCategoryProductCounts(
+    supabase,
+    rows.map((category) => category.id),
+  );
 
-  const subsByParent = new Map<string, MegaMenuCategoryData["subcategories"]>();
-  for (const s of (subs ?? []) as {
-    id: string;
-    name: string;
-    slug: string;
-    image_path: string | null;
-    parent_id: string;
-  }[]) {
-    const list = subsByParent.get(s.parent_id) ?? [];
-    list.push({ id: s.id, name: s.name, slug: s.slug, image_path: s.image_path });
-    subsByParent.set(s.parent_id, list);
-  }
-
-  return parentRows.map((p) => ({
-    ...p,
-    product_count: counts[p.id] ?? 0,
-    subcategories: subsByParent.get(p.id) ?? [],
+  return rows.map((category) => ({
+    ...category,
+    product_count: counts[category.id] ?? 0,
   }));
 }
 

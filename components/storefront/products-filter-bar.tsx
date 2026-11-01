@@ -323,7 +323,8 @@ export function ProductsFilterBar() {
               />
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2"><label className="flex min-h-11 items-center gap-2 text-sm">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={negotiable}

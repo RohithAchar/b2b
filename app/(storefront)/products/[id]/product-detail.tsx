@@ -7,6 +7,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { publicImageUrl } from "@/lib/storage";
+import { stockLabel } from "@/lib/format";
 import { getCachedRelatedProducts } from "@/lib/storefront-cache";
 import type { CustomerPrices } from "@/lib/pricing";
 import { Card } from "@/components/ui/card";
@@ -30,8 +31,6 @@ import { ProductActionsIsland } from "./product-actions-island";
 function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
-
-import { stockLabel } from "@/lib/format";
 
 type Product = {
   id: string;
@@ -202,9 +201,8 @@ export function ProductDetail({ product }: { product: Product }) {
           )}
 
           {/* Quick specs */}
-          <div className="grid grid-cols-2 gap-2"><SpecItem
-    label="Stock"
-    value={stockLabel(product.stock_qty)} />
+          <div className="grid grid-cols-2 gap-2">
+            <SpecItem label="Stock" value={stockLabel(product.stock_qty)} />
             <SpecItem label="Lead time" value={`${product.lead_time_days} days`} />
             <SpecItem
               label="GST rate"

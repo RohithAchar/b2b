@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  ArrowRight01Icon,
   FilterIcon,
   Search01Icon,
 } from "@hugeicons/core-free-icons"
@@ -63,12 +62,7 @@ const SORT_OPTIONS = [
 const IMAGE_SORT_OPTION = { value: "relevance", label: "Best match" } as const
 
 function findCategory(categories: CatalogueCategory[], slug: string) {
-  for (const category of categories) {
-    if (category.slug === slug) return category
-    const child = category.subcategories.find((sub) => sub.slug === slug)
-    if (child) return child
-  }
-  return null
+  return categories.find((category) => category.slug === slug) ?? null
 }
 
 const PRICE_SLIDER_MAX = 100_000
@@ -284,83 +278,32 @@ function FilterPanel({
           </div>
           <div className="mt-2 flex max-h-56 scrollbar-thin scrollbar-gutter-stable flex-col gap-0.5 overflow-y-auto">
             {categories.map((category) => {
-              const parentActive = filters.categorySlug === category.slug
-              const childActive = category.subcategories.some(
-                (sub) => sub.slug === filters.categorySlug,
-              )
-              const expanded =
-                (parentActive || childActive) &&
-                category.subcategories.length > 0
+              const active = filters.categorySlug === category.slug
               return (
-                <div key={category.id}>
-                  <Link
-                    href={buildCatalogueUrl(basePath, filters, {
-                      categorySlug: category.slug,
-                    })}
-                    onClick={onNavigate}
-                    aria-current={parentActive ? "page" : undefined}
+                <Link
+                  key={category.id}
+                  href={buildCatalogueUrl(basePath, filters, {
+                    categorySlug: category.slug,
+                  })}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                    active
+                      ? "bg-primary/10 font-semibold text-primary"
+                      : "font-medium text-foreground/80 hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span className="truncate">{category.name}</span>
+                  <span
                     className={cn(
-                      "flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors",
-                      parentActive || childActive
-                        ? "bg-primary/10 font-semibold text-primary"
-                        : "font-medium text-foreground/80 hover:bg-muted hover:text-foreground",
+                      "shrink-0 text-[11px] font-normal tabular-nums",
+                      active ? "text-primary/70" : "text-muted-foreground",
                     )}
                   >
-                    <span className="truncate">{category.name}</span>
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "text-[11px] font-normal tabular-nums",
-                          parentActive || childActive
-                            ? "text-primary/70"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {category.productCount}
-                      </span>
-                      {category.subcategories.length > 0 ? (
-                        <HugeiconsIcon
-                          icon={ArrowRight01Icon}
-                          strokeWidth={2}
-                          aria-hidden="true"
-                          className={cn(
-                            "size-3 text-muted-foreground transition-transform",
-                            expanded && "rotate-90 text-primary",
-                          )}
-                        />
-                      ) : null}
-                    </span>
-                  </Link>
-                  {expanded ? (
-                    <div className="mt-0.5 ml-2 flex flex-col gap-0.5 rounded-md border border-border/70 bg-muted/35 p-1">
-                      {category.subcategories.map((sub) => (
-                        <Link
-                          key={sub.id}
-                          href={buildCatalogueUrl(basePath, filters, {
-                            categorySlug: sub.slug,
-                          })}
-                          onClick={onNavigate}
-                          aria-current={
-                            filters.categorySlug === sub.slug
-                              ? "page"
-                              : undefined
-                          }
-                          className={cn(
-                            "flex items-center justify-between gap-2 rounded-sm px-2 py-1 text-[13px] transition-colors",
-                            filters.categorySlug === sub.slug
-                              ? "bg-card font-semibold text-primary shadow-xs"
-                              : "text-muted-foreground hover:bg-card hover:text-foreground",
-                          )}
-                        >
-                          <span className="truncate">{sub.name}</span>
-                          <span className="shrink-0 text-[11px] tabular-nums">
-                            {sub.productCount}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+                    {category.productCount}
+                  </span>
+                </Link>
               )
             })}
           </div>

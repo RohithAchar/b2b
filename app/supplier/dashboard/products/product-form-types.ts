@@ -1,12 +1,6 @@
 export type CategoryOption = {
   id: string;
   name: string;
-  parentName: string | null;
-};
-
-export type CategoryGroup = {
-  parent: CategoryOption;
-  children: CategoryOption[];
 };
 
 export type ExistingVariant = {
@@ -26,19 +20,16 @@ export type ExistingProduct = {
   id: string;
   title: string;
   category_id: string;
-  brand: string | null;
   seller_sku: string;
   hsn_code: string;
+  gst_rate: number | null;
+  carton_units: number | null;
+  carton_dimensions: string | null;
+  carton_weight_kg: number | null;
   description: string;
   unit: string;
   price_per_unit: number;
-  moq: number;
-  stock_qty: number;
   negotiable: boolean;
-  sample_available: boolean;
-  sample_price: number | null;
-  lead_time_days: number;
-  gst_rate: number | null;
   packaging_details: string | null;
   warranty_return: string | null;
   youtube_url: string | null;

@@ -32,7 +32,6 @@ export function ProductReadiness({
   const sku = value("seller_sku").trim();
   const hsn = value("hsn_code").trim();
   const price = Number(value("price_per_unit"));
-  const moq = Number(value("moq"));
   const gst = value("gst_rate").trim();
 
   const checks: Check[] = [
@@ -41,7 +40,7 @@ export function ProductReadiness({
     { ok: totalImages >= MIN_PRODUCT_IMAGES, label: `Gallery — ${MIN_PRODUCT_IMAGES}+ images (${Math.min(totalImages, MAX_PRODUCT_IMAGES)}/${MAX_PRODUCT_IMAGES})` },
     { ok: /^[A-Za-z0-9-_]{3,30}$/.test(sku), label: "SKU — unique 3–30 character code" },
     { ok: /^\d{4,8}$/.test(hsn), label: "HSN — 4–8 digit GST code" },
-    { ok: price > 0 && moq >= 1, label: "Price and MOQ set" },
+    { ok: price > 0, label: "Price set" },
     { ok: gst !== "", label: "GST rate selected" },
   ];
   const done = checks.filter((c) => c.ok).length;

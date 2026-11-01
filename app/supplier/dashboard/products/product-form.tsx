@@ -39,14 +39,13 @@ import {
 import { ProductInformationSection } from "./product-information-section";
 import { ProductMediaSection } from "./product-media-section";
 import { PricingSection } from "./pricing-section";
-import { InventorySection } from "./inventory-section";
 import { ShippingTaxSection } from "./shipping-tax-section";
 import { VariantsSection } from "./variants-section";
 import { ProductSeoSection } from "./product-seo-section";
 import { ProductReadiness } from "./product-readiness";
 import { ProductFormActions, ProductFormStickyActions } from "./product-form-actions";
 import { ProductFormSectionNav, ProductFormSectionTabs } from "./product-form-navigation";
-import type { CategoryGroup, CategoryOption, ExistingProduct, ExistingVariant } from "./product-form-types";
+import type { CategoryOption, ExistingProduct, ExistingVariant } from "./product-form-types";
 
 const initialState: ProductActionState = { ok: false, message: "" };
 
@@ -131,7 +130,6 @@ export function ProductForm({
   const autoSubmitRef = useRef(false);
 
   const [negotiable, setNegotiable] = useState(product?.negotiable ?? false);
-  const [sampleAvailable, setSampleAvailable] = useState(product?.sample_available ?? false);
   const [hasVariants, setHasVariants] = useState((product?.variants?.length ?? 0) > 0);
   const [variants, setVariants] = useState<ExistingVariant[]>(product?.variants ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -163,16 +161,15 @@ export function ProductForm({
       };
       set("title", product.title);
       set("category_id", product.category_id);
-      set("brand", product.brand);
       set("seller_sku", product.seller_sku);
       set("hsn_code", product.hsn_code);
+      set("gst_rate", product.gst_rate);
+      set("carton_units", product.carton_units);
+      set("carton_dimensions", product.carton_dimensions);
+      set("carton_weight_kg", product.carton_weight_kg);
       set("description", product.description);
       set("unit", product.unit);
       set("price_per_unit", product.price_per_unit);
-      set("moq", product.moq);
-      set("stock_qty", product.stock_qty);
-      set("lead_time_days", product.lead_time_days);
-      set("gst_rate", product.gst_rate);
       set("packaging_details", product.packaging_details);
       set("warranty_return", product.warranty_return);
       set("youtube_url", product.youtube_url);
@@ -232,14 +229,6 @@ export function ProductForm({
     () => (hasVariants ? variants.filter((v) => v.label.trim() !== "") : []),
     [hasVariants, variants],
   );
-
-  const grouped = useMemo<CategoryGroup[]>(() => {
-    const parents = categories.filter((c) => !c.parentName);
-    return parents.map((parent) => ({
-      parent,
-      children: categories.filter((c) => c.parentName === parent.name),
-    }));
-  }, [categories]);
 
   function setFormValue(key: string, value: string) {
     setFormValues((prev) => {
@@ -609,7 +598,7 @@ export function ProductForm({
 
           <div className="flex min-w-0 flex-col gap-4">
             <ProductInformationSection
-              grouped={grouped}
+              categories={categories}
               invalidFor={invalidFor}
               errorFor={errorFor}
               formValues={formValues}
@@ -645,17 +634,7 @@ export function ProductForm({
               negotiable={negotiable}
               onNegotiableChange={setNegotiable}
             />
-            <InventorySection
-              invalidFor={invalidFor}
-              errorFor={errorFor}
-              formValues={formValues}
-              onValueChange={setFormValue}
-              sampleAvailable={sampleAvailable}
-              onSampleAvailableChange={setSampleAvailable}
-            />
             <ShippingTaxSection
-              invalidFor={invalidFor}
-              errorFor={errorFor}
               formValues={formValues}
               onValueChange={setFormValue}
             />

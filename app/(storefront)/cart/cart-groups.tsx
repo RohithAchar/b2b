@@ -134,7 +134,7 @@ export function CartGroups({
                         {formatRupees(line.unitPrice)} / {line.unit} · MOQ:{" "}
                         {line.moq}
                       </p>
-                      {line.quantity > line.stockQty && (
+                      {line.stockQty > 0 && line.quantity > line.stockQty && (
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           Only {line.stockQty} in stock
                         </p>
