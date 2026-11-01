@@ -1,5 +1,4 @@
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
@@ -62,17 +61,6 @@ export function PricingSection({
             <Switch id="negotiable-switch" checked={negotiable} onCheckedChange={onNegotiableChange} />
             <FieldLabel htmlFor="negotiable-switch">Price negotiable</FieldLabel>
             <input type="hidden" name="negotiable" value={negotiable ? "1" : ""} />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-      <FieldSet>
-        <FieldLegend>Order quantity</FieldLegend>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="moq">Minimum order quantity</FieldLabel>
-            <Input id="moq" name="moq" required type="number" min={1} step="1" aria-invalid={invalidFor("moq")} value={v("moq")} onChange={(e) => onValueChange("moq", e.target.value)} />
-            <FieldDescription>MOQ filters out small-quantity orders.</FieldDescription>
-            {errorFor("moq")}
           </Field>
         </FieldGroup>
       </FieldSet>

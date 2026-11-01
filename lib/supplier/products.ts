@@ -116,10 +116,19 @@ export const productVariantSchema = z.object({
   stock_qty: z.coerce.number().int().min(0).default(0),
 });
 
+/** Treat blank form values as "not provided" before numeric coercion. */
+const emptyToNull = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
+const optionalPositiveInt = (message: string) =>
+  z.preprocess(emptyToNull, z.coerce.number().int().min(1, message).nullable());
+
+const optionalPositiveNumber = (message: string) =>
+  z.preprocess(emptyToNull, z.coerce.number().positive(message).nullable());
+
 export const productSchema = z.object({
   title: z.string().trim().min(10, "Title needs at least 10 characters.").max(140),
   category_id: z.string().uuid("Pick a category."),
-  brand: z.string().trim().max(60).optional().default(""),
   seller_sku: z
     .string()
     .trim()
@@ -128,6 +137,17 @@ export const productSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{4,8}$/, "HSN must be 4-8 digits."),
+  gst_rate: z.coerce
+    .number()
+    .refine((v) => (PRODUCT_GST_RATES as readonly number[]).includes(v), "Pick a valid GST rate."),
+  carton_units: optionalPositiveInt("Units per carton must be at least 1."),
+  carton_dimensions: z
+    .string()
+    .trim()
+    .max(100, "Carton dimensions must be 100 characters or fewer.")
+    .optional()
+    .default(""),
+  carton_weight_kg: optionalPositiveNumber("Carton weight must be positive."),
   description: z
     .string()
     .trim()
@@ -139,15 +159,7 @@ export const productSchema = z.object({
     ),
   unit: z.enum(PRODUCT_UNITS),
   price_per_unit: z.coerce.number().positive("Price must be positive."),
-  moq: z.coerce.number().int().min(1, "MOQ must be at least 1."),
-  stock_qty: z.coerce.number().int().min(0).default(0),
   negotiable: z.coerce.boolean().default(false),
-  sample_available: z.coerce.boolean().default(false),
-  sample_price: z.coerce.number().positive().optional().nullable(),
-  lead_time_days: z.coerce.number().int().min(1).max(90),
-  gst_rate: z.coerce
-    .number()
-    .refine((v) => (PRODUCT_GST_RATES as readonly number[]).includes(v), "Pick a valid GST rate."),
   packaging_details: z.string().trim().max(1000).optional().default(""),
   warranty_return: z.string().trim().max(1000).optional().default(""),
   youtube_url: z
@@ -169,8 +181,8 @@ export type ProductValues = z.output<typeof productSchema>;
 export type ProductVariantValues = z.output<typeof productVariantSchema>;
 
 export const PRODUCT_STEP_FIELDS = [
-  ["title", "category_id", "brand", "seller_sku", "hsn_code", "description"],
-  ["unit", "price_per_unit", "moq", "stock_qty", "negotiable", "sample_available", "sample_price", "lead_time_days", "gst_rate"],
+  ["title", "category_id", "seller_sku", "hsn_code", "gst_rate", "carton_units", "carton_dimensions", "carton_weight_kg", "description"],
+  ["unit", "price_per_unit", "negotiable"],
   ["packaging_details", "warranty_return", "youtube_url"],
 ] as const;
 
@@ -178,21 +190,18 @@ export const productStepSchemas = [
   productSchema.pick({
     title: true,
     category_id: true,
-    brand: true,
     seller_sku: true,
     hsn_code: true,
+    gst_rate: true,
+    carton_units: true,
+    carton_dimensions: true,
+    carton_weight_kg: true,
     description: true,
   }),
   productSchema.pick({
     unit: true,
     price_per_unit: true,
-    moq: true,
-    stock_qty: true,
     negotiable: true,
-    sample_available: true,
-    sample_price: true,
-    lead_time_days: true,
-    gst_rate: true,
   }),
   productSchema.pick({ packaging_details: true, warranty_return: true, youtube_url: true }),
 ] as const;

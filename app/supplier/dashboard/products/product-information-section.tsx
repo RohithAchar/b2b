@@ -18,6 +18,7 @@ import {
   DESCRIPTION_MIN_TEXT_CHARS,
   plainTextLength,
 } from "@/lib/supplier/rich-text";
+import { PRODUCT_GST_RATES } from "@/lib/supplier/products";
 import type { CategoryOption, FieldErrorHelpers } from "./product-form-types";
 
 const RichTextEditor = dynamic(
@@ -72,20 +73,50 @@ export function ProductInformationSection({
         <FieldLegend>Identification</FieldLegend>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="brand">Brand (optional)</FieldLabel>
-            <Input id="brand" name="brand" maxLength={60} value={v("brand")} onChange={(e) => onValueChange("brand", e.target.value)} />
-          </Field>
-          <Field>
             <FieldLabel htmlFor="seller_sku">Your SKU</FieldLabel>
             <Input id="seller_sku" name="seller_sku" required pattern="[A-Za-z0-9-_]{3,30}" aria-invalid={invalidFor("seller_sku")} value={v("seller_sku")} onChange={(e) => onValueChange("seller_sku", e.target.value)} placeholder="SCK-ANK-001" />
             <FieldDescription>Unique per product. Variants use their own SKUs.</FieldDescription>
             {errorFor("seller_sku")}
           </Field>
+          <FieldGroup className="grid gap-7 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="hsn_code">HSN code</FieldLabel>
+              <Input id="hsn_code" name="hsn_code" required pattern="\d{4,8}" inputMode="numeric" aria-invalid={invalidFor("hsn_code")} value={v("hsn_code")} onChange={(e) => onValueChange("hsn_code", e.target.value)} placeholder="6115" />
+              <FieldDescription>4–8 digits, as printed on your GST invoice.</FieldDescription>
+              {errorFor("hsn_code")}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="gst_rate">GST rate (%)</FieldLabel>
+              <NativeSelect id="gst_rate" name="gst_rate" required aria-invalid={invalidFor("gst_rate")} value={v("gst_rate")} onChange={(e) => onValueChange("gst_rate", e.target.value)}>
+                <NativeSelectOption value="" disabled>Select rate</NativeSelectOption>
+                {PRODUCT_GST_RATES.map((r) => (
+                  <NativeSelectOption key={r} value={String(r)}>{r}%</NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldDescription>Applied on top of the base price.</FieldDescription>
+              {errorFor("gst_rate")}
+            </Field>
+          </FieldGroup>
+        </FieldGroup>
+      </FieldSet>
+      <FieldSet>
+        <FieldLegend>Packaging &amp; dispatch</FieldLegend>
+        <FieldGroup className="grid gap-7 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="hsn_code">HSN code</FieldLabel>
-            <Input id="hsn_code" name="hsn_code" required pattern="\d{4,8}" inputMode="numeric" aria-invalid={invalidFor("hsn_code")} value={v("hsn_code")} onChange={(e) => onValueChange("hsn_code", e.target.value)} placeholder="6115" />
-            <FieldDescription>4–8 digits, as printed on your GST invoice.</FieldDescription>
-            {errorFor("hsn_code")}
+            <FieldLabel htmlFor="carton_units">Units per carton</FieldLabel>
+            <Input id="carton_units" name="carton_units" type="number" min={1} step="1" aria-invalid={invalidFor("carton_units")} value={v("carton_units")} onChange={(e) => onValueChange("carton_units", e.target.value)} placeholder="24" />
+            {errorFor("carton_units")}
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="carton_weight_kg">Carton weight (kg)</FieldLabel>
+            <Input id="carton_weight_kg" name="carton_weight_kg" type="number" min={0.001} step="0.001" aria-invalid={invalidFor("carton_weight_kg")} value={v("carton_weight_kg")} onChange={(e) => onValueChange("carton_weight_kg", e.target.value)} placeholder="12.5" />
+            {errorFor("carton_weight_kg")}
+          </Field>
+          <Field className="sm:col-span-2">
+            <FieldLabel htmlFor="carton_dimensions">Carton dimensions</FieldLabel>
+            <Input id="carton_dimensions" name="carton_dimensions" maxLength={100} aria-invalid={invalidFor("carton_dimensions")} value={v("carton_dimensions")} onChange={(e) => onValueChange("carton_dimensions", e.target.value)} placeholder="40 × 30 × 25 cm" />
+            <FieldDescription>Optional — length × width × height.</FieldDescription>
+            {errorFor("carton_dimensions")}
           </Field>
         </FieldGroup>
       </FieldSet>
