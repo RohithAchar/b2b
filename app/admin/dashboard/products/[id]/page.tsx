@@ -232,7 +232,7 @@ export default async function AdminProductReviewPage({
                       <TableCell>{v.seller_sku}</TableCell>
                       <TableCell>{pricing?.variant_prices.get(v.id) ?? 0}</TableCell>
                       <TableCell>{v.moq ?? "base"}</TableCell>
-                      <TableCell>{v.stock_qty}</TableCell>
+                      <TableCell>{stockLabel(v.stock_qty)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

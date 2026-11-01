@@ -10,12 +10,12 @@ const filtersSchema = z.object({
   categorySlug: z.string().max(120).default(""),
   sort: z.enum(["relevance", "newest", "price_asc", "price_desc", "moq_asc"]),
   minPrice: z.number().finite().nonnegative().optional(),
-  maxPrice: z.number().finite().nonnegative().optional(),
-  minMoq: z.number().int().nonnegative().optional(),
+  maxPrice: z.number().finite().nonnegative().optional(),  minMoq: z.number().int().nonnegative().optional(),
   maxMoq: z.number().int().nonnegative().optional(),
   negotiable: z.boolean().optional(),
   sampleAvailable: z.boolean().optional(),
-  imageToken: z.string().max(4096).optional(),
+  imageToken: z.string().max(4096).optional()
+,
 })
 
 export type CatalogueLoadResult =

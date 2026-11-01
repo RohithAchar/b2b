@@ -597,7 +597,7 @@ export function Catalogue({
           maxPrice: undefined,
           minMoq: undefined,
           maxMoq: undefined,
-            negotiable: undefined,
+          negotiable: undefined,
           sampleAvailable: undefined,
           imageToken: undefined,
           sort: hasImageSearch ? "newest" : filters.sort,

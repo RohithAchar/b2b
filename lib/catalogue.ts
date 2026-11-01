@@ -25,6 +25,7 @@ export type CatalogueFilters = {
   imageToken?: string
 }
 
+
 export type CatalogueSearchParams = Record<
   string,
   string | string[] | undefined

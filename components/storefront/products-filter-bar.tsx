@@ -336,8 +336,7 @@ export function ProductsFilterBar() {
                   )
                 }}
                 className="size-5 rounded-sm border-border"
-              />
-              Price negotiable
+/> Price negotiable
             </label>
             <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
@@ -351,8 +350,7 @@ export function ProductsFilterBar() {
                   )
                 }}
                 className="size-5 rounded-sm border-border"
-              />
-              Sample available
+/> Sample available
             </label>
           </div>
         </div>
