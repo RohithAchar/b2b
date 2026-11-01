@@ -34,12 +34,12 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
       <input type="hidden" name="quantity" value={Math.max(1, moq)} />
       <Button
         type="submit"
-        variant="default"
+        variant="outline"
         disabled={pending}
         aria-label="Add to cart"
         aria-busy={pending}
         title="Add to cart"
-        className="size-11"
+        className="size-11 border-primary/40 bg-primary/5 text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
       >
         {pending ? (
           <Spinner className="size-4" />
