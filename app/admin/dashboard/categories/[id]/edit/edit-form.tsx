@@ -11,10 +11,6 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
-import {
   updateCategory,
   type CategoryActionState,
 } from "@/lib/admin/categories";
@@ -24,15 +20,11 @@ const initialState: CategoryActionState = { ok: false, message: "" };
 export function EditCategoryForm({
   id,
   name,
-  parentId,
   imageKept,
-  parents,
 }: {
   id: string;
   name: string;
-  parentId: string | null;
   imageKept: boolean;
-  parents: { id: string; name: string }[];
 }) {
   const [state, action, pending] = useActionState(updateCategory, initialState);
 
@@ -40,27 +32,6 @@ export function EditCategoryForm({
     <form action={action}>
       <FieldGroup>
         <input type="hidden" name="id" value={id} />
-        <Field>
-          <FieldLabel htmlFor="parent_id">
-            Parent (leave empty for a top-level category)
-          </FieldLabel>
-          <NativeSelect
-            id="parent_id"
-            name="parent_id"
-            defaultValue={parentId ?? ""}
-          >
-            <NativeSelectOption value="">
-              No parent — top-level category
-            </NativeSelectOption>
-            {parents
-              .filter((p) => p.id !== id)
-              .map((p) => (
-                <NativeSelectOption key={p.id} value={p.id}>
-                  {p.name}
-                </NativeSelectOption>
-              ))}
-          </NativeSelect>
-        </Field>
         <Field>
           <FieldLabel htmlFor="name">Name</FieldLabel>
           <Input

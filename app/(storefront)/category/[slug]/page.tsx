@@ -210,27 +210,6 @@ export default async function CategoryPage({
       </div>
       <Separator className="mb-5" />
 
-      {/* Subcategories */}
-      {category.subcategories.length > 0 && (
-        <div className="mb-5 flex flex-wrap gap-1.5">
-          <span className="mr-1 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Sub-categories:
-          </span>
-          {category.subcategories.map((sub) => (
-            <Button
-              key={sub.id}
-              variant="outline"
-              size="sm"
-              nativeButton={false}
-              render={<Link href={`/category/${sub.slug}`} />}
-              className="h-7 rounded-sm text-xs"
-            >
-              {sub.name}
-            </Button>
-          ))}
-        </div>
-      )}
-
       <Suspense fallback={<ProductGridSkeleton count={20} />}>
         <CategoryProductListings slug={slug} page={page} listings={listings} />
       </Suspense>

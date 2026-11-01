@@ -26,7 +26,7 @@ export default async function EditSupplierProductPage({
   // Categories do not depend on the product row, so start them alongside it.
   const categoriesPromise = supabase
     .from("categories")
-    .select("id, name, parent:parent_id(name)")
+    .select("id, name")
     .eq("is_active", true)
     .order("sort_order");
 
@@ -141,14 +141,10 @@ export default async function EditSupplierProductPage({
     <ProductForm
       mode="edit"
       product={existing}
-      categories={(categories ?? []).map((c) => {
-        const parent = c.parent as { name: string } | { name: string }[] | null;
-        return {
-          id: c.id as string,
-          name: c.name as string,
-          parentName: Array.isArray(parent) ? (parent[0]?.name ?? null) : (parent?.name ?? null),
-        };
-      })}
+      categories={(categories ?? []).map((c) => ({
+        id: c.id as string,
+        name: c.name as string,
+      }))}
       title="Edit product"
       description={
         product.status === "approved"

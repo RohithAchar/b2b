@@ -16,29 +16,12 @@ import { addRecentSearch, clearRecentSearches } from "@/lib/recent-searches"
 import { normalizeSuggestQuery, SUGGEST_MIN_CHARS } from "@/lib/search-suggest"
 import { publicTransformedImageUrl } from "@/lib/storage"
 
-export type MegaMenuSubcategory = {
-  id: string
-  name: string
-  slug: string
-  /**
-   * Storage path in the `category_images` bucket. Resolved via
-   * `publicTransformedImageUrl` when set.
-   */
-  image_path?: string | null
-  /**
-   * Direct display URL override (used by Storybook mocks so thumbnails
-   * render without a storage bucket). Takes precedence over `image_path`.
-   */
-  imageUrl?: string | null
-}
-
 export type MegaMenuCategory = {
   id: string
   name: string
   slug: string
   image_path: string | null
   product_count: number
-  subcategories: MegaMenuSubcategory[]
 }
 
 export type MegaMenuSuggestion = {
@@ -48,35 +31,33 @@ export type MegaMenuSuggestion = {
 }
 
 /**
- * Small square subcategory thumbnail (visual only). Shows the image when a
- * URL or storage path is provided, otherwise a monogram fallback tile.
+ * Square category thumbnail (visual only). Shows the image when a storage
+ * path is provided, otherwise a monogram fallback tile.
  */
-function SubThumb({ sub }: { sub: MegaMenuSubcategory }) {
-  const src =
-    sub.imageUrl ??
-    (sub.image_path
-      ? publicTransformedImageUrl("category_images", sub.image_path, {
-          width: 100,
-        })
-      : null)
+function CategoryThumb({ category }: { category: MegaMenuCategory }) {
+  const src = category.image_path
+    ? publicTransformedImageUrl("category_images", category.image_path, {
+        width: 160,
+      })
+    : null
   if (!src) {
     return (
       <span
         aria-hidden
-        className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-sm font-bold text-primary"
+        className="flex size-16 shrink-0 items-center justify-center rounded-md bg-primary/10 text-lg font-bold text-primary"
       >
-        {sub.name.charAt(0).toUpperCase()}
+        {category.name.charAt(0).toUpperCase()}
       </span>
     )
   }
   return (
-    <span className="relative block size-10 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
+    <span className="relative block size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
       <Image
         src={src}
         alt=""
         aria-hidden
         fill
-        sizes="40px"
+        sizes="64px"
         className="object-cover"
       />
     </span>
@@ -399,32 +380,25 @@ export function SearchMegaMenu({
                     {active.product_count === 1 ? "" : "s"}
                   </span>
                 </div>
-                {active.subcategories.length > 0 ? (
-                  <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                    {active.subcategories.map((sub) => (
-                      <li key={sub.id}>
-                        <Link
-                          href={`/category/${sub.slug}`}
-                          className="flex press items-center gap-2.5 rounded-sm border border-border bg-card px-2 py-1.5 text-sm font-medium text-foreground/80 hover:border-primary/40"
-                        >
-                          <SubThumb sub={sub} />
-                          <span className="min-w-0 truncate hover:text-primary hover:underline">
-                            {sub.name}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    No sub-categories yet — suppliers haven&apos;t listed here.
-                  </p>
-                )}
                 <Link
                   href={`/category/${active.slug}`}
-                  className="text-sm font-semibold text-primary"
+                  className="flex press items-center gap-3 rounded-md border border-border bg-card p-2.5 hover:border-primary/40"
                 >
-                  View all {active.name} →
+                  <CategoryThumb category={active} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-foreground">
+                      Browse {active.name}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      View products
+                    </span>
+                  </span>
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
                 </Link>
               </div>
             ) : (

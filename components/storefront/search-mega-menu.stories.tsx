@@ -12,26 +12,6 @@ const categories: MegaMenuCategory[] = [
     slug: "textiles-apparel",
     image_path: null,
     product_count: 124,
-    subcategories: [
-      {
-        id: "1a",
-        name: "Cotton Fabric",
-        slug: "cotton-fabric",
-        imageUrl: "https://picsum.photos/seed/cotton-fabric/100",
-      },
-      {
-        id: "1b",
-        name: "Synthetic Fabric",
-        slug: "synthetic-fabric",
-        imageUrl: "https://picsum.photos/seed/synthetic-fabric/100",
-      },
-      {
-        id: "1c",
-        name: "Readymade Garments",
-        slug: "readymade-garments",
-        imageUrl: "https://picsum.photos/seed/garments/100",
-      },
-    ],
   },
   {
     id: "2",
@@ -39,16 +19,6 @@ const categories: MegaMenuCategory[] = [
     slug: "electronics-electricals",
     image_path: null,
     product_count: 86,
-    subcategories: [
-      {
-        id: "2a",
-        name: "LED Lighting",
-        slug: "led-lighting",
-        imageUrl: "https://picsum.photos/seed/led-lighting/100",
-      },
-      { id: "2b", name: "Switches & Sockets", slug: "switches-sockets" },
-      { id: "2c", name: "Wires & Cables", slug: "wires-cables" },
-    ],
   },
   {
     id: "3",
@@ -56,10 +26,6 @@ const categories: MegaMenuCategory[] = [
     slug: "industrial-machinery",
     image_path: null,
     product_count: 42,
-    subcategories: [
-      { id: "3a", name: "Packaging Machines", slug: "packaging-machines" },
-      { id: "3b", name: "Textile Machinery", slug: "textile-machinery" },
-    ],
   },
   {
     id: "4",
@@ -67,7 +33,6 @@ const categories: MegaMenuCategory[] = [
     slug: "packaging-materials",
     image_path: null,
     product_count: 0,
-    subcategories: [],
   },
   {
     id: "5",
@@ -75,10 +40,6 @@ const categories: MegaMenuCategory[] = [
     slug: "home-furniture",
     image_path: null,
     product_count: 63,
-    subcategories: [
-      { id: "5a", name: "Wooden Furniture", slug: "wooden-furniture" },
-      { id: "5b", name: "Home Decor", slug: "home-decor" },
-    ],
   },
   {
     id: "6",
@@ -86,10 +47,6 @@ const categories: MegaMenuCategory[] = [
     slug: "agriculture-food",
     image_path: null,
     product_count: 91,
-    subcategories: [
-      { id: "6a", name: "Spices", slug: "spices" },
-      { id: "6b", name: "Grains & Pulses", slug: "grains-pulses" },
-    ],
   },
   {
     id: "7",
@@ -97,9 +54,6 @@ const categories: MegaMenuCategory[] = [
     slug: "beauty-personal-care",
     image_path: null,
     product_count: 38,
-    subcategories: [
-      { id: "7a", name: "Ayurvedic Products", slug: "ayurvedic-products" },
-    ],
   },
   {
     id: "8",
@@ -107,9 +61,6 @@ const categories: MegaMenuCategory[] = [
     slug: "automotive-parts",
     image_path: null,
     product_count: 27,
-    subcategories: [
-      { id: "8a", name: "Two-Wheeler Spares", slug: "two-wheeler-spares" },
-    ],
   },
 ];
 

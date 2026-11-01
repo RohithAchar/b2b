@@ -27,7 +27,7 @@ describe("fieldIdForMessage", () => {
       ["Description is required.", "description"],
       ["Description needs at least 50 characters of text.", "description"],
       ["Product description must be at least 50 characters", "description"],
-      ["Pick a subcategory.", "category_id"],
+      ["Pick a category.", "category_id"],
       ["Category is not active", "category_id"],
       ["HSN must be 4-8 digits.", "hsn_code"],
       ["HSN code must be 4-8 digits", "hsn_code"],

@@ -9,7 +9,6 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   NativeSelect,
-  NativeSelectOptGroup,
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { FormSection } from "@/components/dashboard/form-section";
@@ -19,7 +18,7 @@ import {
   DESCRIPTION_MIN_TEXT_CHARS,
   plainTextLength,
 } from "@/lib/supplier/rich-text";
-import type { CategoryGroup, FieldErrorHelpers } from "./product-form-types";
+import type { CategoryOption, FieldErrorHelpers } from "./product-form-types";
 
 const RichTextEditor = dynamic(
   () => import("./rich-text-editor").then((m) => m.RichTextEditor),
@@ -27,13 +26,13 @@ const RichTextEditor = dynamic(
 );
 
 export function ProductInformationSection({
-  grouped,
+  categories,
   invalidFor,
   errorFor,
   formValues,
   onValueChange,
 }: {
-  grouped: CategoryGroup[];
+  categories: CategoryOption[];
   invalidFor: FieldErrorHelpers["invalidFor"];
   errorFor: FieldErrorHelpers["errorFor"];
   formValues: Map<string, string>;
@@ -58,15 +57,11 @@ export function ProductInformationSection({
             {errorFor("title")}
           </Field>
           <Field>
-            <FieldLabel htmlFor="category_id">Subcategory</FieldLabel>
+            <FieldLabel htmlFor="category_id">Category</FieldLabel>
             <NativeSelect id="category_id" name="category_id" required aria-invalid={invalidFor("category_id")} value={v("category_id")} onChange={(e) => onValueChange("category_id", e.target.value)}>
-              <NativeSelectOption value="" disabled>Pick a subcategory</NativeSelectOption>
-              {grouped.map((g) => (
-                <NativeSelectOptGroup key={g.parent.id} label={g.parent.name}>
-                  {g.children.map((c) => (
-                    <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>
-                  ))}
-                </NativeSelectOptGroup>
+              <NativeSelectOption value="" disabled>Pick a category</NativeSelectOption>
+              {categories.map((c) => (
+                <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>
               ))}
             </NativeSelect>
             {errorFor("category_id")}

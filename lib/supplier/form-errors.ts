@@ -18,7 +18,7 @@ const FIELD_RULES: FieldRule[] = [
   { match: "description is required", field: "description" },
   { match: "description needs at least", field: "description" },
   { match: "product description must be", field: "description" },
-  { match: "pick a subcategory", field: "category_id" },
+  { match: "pick a category", field: "category_id" },
   { match: "category is not active", field: "category_id" },
   { match: "hsn must be", field: "hsn_code" },
   { match: "hsn code must be", field: "hsn_code" },

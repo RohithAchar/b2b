@@ -46,7 +46,7 @@ import { ProductSeoSection } from "./product-seo-section";
 import { ProductReadiness } from "./product-readiness";
 import { ProductFormActions, ProductFormStickyActions } from "./product-form-actions";
 import { ProductFormSectionNav, ProductFormSectionTabs } from "./product-form-navigation";
-import type { CategoryGroup, CategoryOption, ExistingProduct, ExistingVariant } from "./product-form-types";
+import type { CategoryOption, ExistingProduct, ExistingVariant } from "./product-form-types";
 
 const initialState: ProductActionState = { ok: false, message: "" };
 
@@ -232,14 +232,6 @@ export function ProductForm({
     () => (hasVariants ? variants.filter((v) => v.label.trim() !== "") : []),
     [hasVariants, variants],
   );
-
-  const grouped = useMemo<CategoryGroup[]>(() => {
-    const parents = categories.filter((c) => !c.parentName);
-    return parents.map((parent) => ({
-      parent,
-      children: categories.filter((c) => c.parentName === parent.name),
-    }));
-  }, [categories]);
 
   function setFormValue(key: string, value: string) {
     setFormValues((prev) => {
@@ -609,7 +601,7 @@ export function ProductForm({
 
           <div className="flex min-w-0 flex-col gap-4">
             <ProductInformationSection
-              grouped={grouped}
+              categories={categories}
               invalidFor={invalidFor}
               errorFor={errorFor}
               formValues={formValues}

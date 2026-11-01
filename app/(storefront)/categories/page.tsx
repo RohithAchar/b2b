@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -121,25 +120,6 @@ async function CategoryGrid() {
               </CardDescription>
             </CardHeader>
           </Link>
-
-          {cat.subcategories.length > 0 ? (
-            <CardContent className="mt-auto pt-2.5 pb-3">
-              <div className="flex flex-wrap gap-1">
-                {cat.subcategories.map((sub) => (
-                  <Button
-                    key={sub.id}
-                    variant="outline"
-                    size="xs"
-                    nativeButton={false}
-                    render={<Link href={`/category/${sub.slug}`} />}
-                    className="rounded-sm px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                  >
-                    {sub.name}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          ) : null}
         </Card>
       ))}
     </div>

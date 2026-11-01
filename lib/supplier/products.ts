@@ -118,7 +118,7 @@ export const productVariantSchema = z.object({
 
 export const productSchema = z.object({
   title: z.string().trim().min(10, "Title needs at least 10 characters.").max(140),
-  category_id: z.string().uuid("Pick a subcategory."),
+  category_id: z.string().uuid("Pick a category."),
   brand: z.string().trim().max(60).optional().default(""),
   seller_sku: z
     .string()

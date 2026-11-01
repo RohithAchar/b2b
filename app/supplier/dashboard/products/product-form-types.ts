@@ -1,12 +1,6 @@
 export type CategoryOption = {
   id: string;
   name: string;
-  parentName: string | null;
-};
-
-export type CategoryGroup = {
-  parent: CategoryOption;
-  children: CategoryOption[];
 };
 
 export type ExistingVariant = {

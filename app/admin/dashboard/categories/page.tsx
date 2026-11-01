@@ -1,13 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import {
   Item,
@@ -33,13 +26,11 @@ export default async function CategoriesPage() {
   const supabase = await createClient();
   const { data: rows } = await supabase
     .from("categories")
-    .select("id, name, slug, parent_id, image_path, is_active, sort_order")
+    .select("id, name, slug, image_path, is_active, sort_order")
     .order("sort_order")
     .order("name");
 
-  const parents = (rows ?? []).filter((r) => !r.parent_id);
-  const childrenOf = (parentId: string) =>
-    (rows ?? []).filter((r) => r.parent_id === parentId);
+  const categories = rows ?? [];
 
   return (
     <div className="mx-auto flex w-full flex-col gap-4">
@@ -59,7 +50,7 @@ export default async function CategoriesPage() {
         </Button>
       </div>
 
-      {parents.length === 0 ? (
+      {categories.length === 0 ? (
         <Card>
           <CardContent>
             <Empty>
@@ -71,44 +62,36 @@ export default async function CategoriesPage() {
           </CardContent>
         </Card>
       ) : (
-        parents.map((parent) => (
-          <Card key={parent.id}>
-            <CardHeader>
-              <CardTitle>{parent.name}</CardTitle>
-              <CardDescription>
-                {parent.is_active ? "Visible" : "Hidden"}
-              </CardDescription>
-              <CardAction>
-                <StatusBadge
-                  status="visibility"
-                  value={parent.is_active ? "active" : "inactive"}
-                />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <ItemGroup>
-                <Item variant="outline" size="sm">
-                  {parent.image_path && parent.image_path !== "pending" ? (
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            <ItemGroup>
+              {categories.map((category) => (
+                <Item key={category.id} variant="outline" size="sm">
+                  {category.image_path && category.image_path !== "pending" ? (
                     <ItemMedia variant="image">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageUrl(parent.image_path)} alt="" loading="lazy" decoding="async" />
+                      <img src={imageUrl(category.image_path)} alt="" loading="lazy" decoding="async" />
                     </ItemMedia>
                   ) : null}
                   <ItemContent>
-                    <ItemTitle>{parent.name}</ItemTitle>
+                    <ItemTitle>{category.name}</ItemTitle>
                     <ItemDescription>
-                      Top-level category
+                      {category.is_active ? "Visible" : "Hidden"}
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
+                    <StatusBadge
+                      status="visibility"
+                      value={category.is_active ? "active" : "inactive"}
+                    />
                     <ToggleVisibilityButton
-                      id={parent.id}
-                      isActive={parent.is_active}
+                      id={category.id}
+                      isActive={category.is_active}
                     />
                     <Button
                       render={
                         <Link
-                          href={`/admin/dashboard/categories/${parent.id}/edit`}
+                          href={`/admin/dashboard/categories/${category.id}/edit`}
                         />
                       }
                       nativeButton={false}
@@ -117,59 +100,13 @@ export default async function CategoriesPage() {
                     >
                       Edit
                     </Button>
-                    <DeleteCategoryButton id={parent.id} />
+                    <DeleteCategoryButton id={category.id} />
                   </ItemActions>
                 </Item>
-                {childrenOf(parent.id).map((child) => (
-                  <Item key={child.id} variant="outline" size="sm">
-                    {child.image_path && child.image_path !== "pending" ? (
-                      <ItemMedia variant="image">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imageUrl(child.image_path)} alt="" loading="lazy" decoding="async" />
-                      </ItemMedia>
-                    ) : null}
-                    <ItemContent>
-                      <ItemTitle>{child.name}</ItemTitle>
-                      <ItemDescription>
-                        {child.is_active ? "Visible" : "Hidden"}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <ToggleVisibilityButton
-                        id={child.id}
-                        isActive={child.is_active}
-                      />
-                      <Button
-                        render={
-                          <Link
-                            href={`/admin/dashboard/categories/${child.id}/edit`}
-                          />
-                        }
-                        nativeButton={false}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Edit
-                      </Button>
-                      <DeleteCategoryButton id={child.id} />
-                    </ItemActions>
-                  </Item>
-                ))}
-              </ItemGroup>
-              <Button
-                render={
-                  <Link
-                    href={`/admin/dashboard/categories/new?parent=${parent.id}`}
-                  />
-                }
-                nativeButton={false}
-                variant="outline"
-              >
-                Add subcategory
-              </Button>
-            </CardContent>
-          </Card>
-        ))
+              ))}
+            </ItemGroup>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

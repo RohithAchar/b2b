@@ -19,18 +19,11 @@ export default async function EditCategoryPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: category }, { data: parents }] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id, name, parent_id, image_path")
-      .eq("id", id)
-      .maybeSingle(),
-    supabase
-      .from("categories")
-      .select("id, name")
-      .is("parent_id", null)
-      .order("name"),
-  ]);
+  const { data: category } = await supabase
+    .from("categories")
+    .select("id, name, image_path")
+    .eq("id", id)
+    .maybeSingle();
   if (!category) {
     notFound();
   }
@@ -40,17 +33,13 @@ export default async function EditCategoryPage({
       <Card>
         <CardHeader>
           <CardTitle>Edit category</CardTitle>
-          <CardDescription>
-            Rename, move under a parent, or replace the image.
-          </CardDescription>
+          <CardDescription>Rename the category or replace its image.</CardDescription>
         </CardHeader>
         <CardContent>
           <EditCategoryForm
             id={category.id}
             name={category.name}
-            parentId={category.parent_id}
             imageKept={Boolean(category.image_path)}
-            parents={parents ?? []}
           />
         </CardContent>
       </Card>

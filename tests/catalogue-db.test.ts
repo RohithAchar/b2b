@@ -50,9 +50,8 @@ describe.skipIf(!available)("storefront catalogue", () => {
   const createdCategories: string[] = [];
 
   let parentSlug = "";
-  let childSlug = "";
   let otherSlug = "";
-  let childId = "";
+  let parentId = "";
 
   let alphaId = "";
   let betaId = "";
@@ -155,7 +154,6 @@ describe.skipIf(!available)("storefront catalogue", () => {
     const unverifiedSupplier = await createSupplier(suffix, "draft");
 
     parentSlug = `catalogue-parent-${suffix}`;
-    childSlug = `catalogue-child-${suffix}`;
     otherSlug = `catalogue-other-${suffix}`;
 
     const { data: parent, error: parentError } = await service
@@ -169,22 +167,8 @@ describe.skipIf(!available)("storefront catalogue", () => {
       .select("id")
       .single();
     if (parentError) throw parentError;
-    createdCategories.push(parent.id as string);
-
-    const { data: child, error: childError } = await service
-      .from("categories")
-      .insert({
-        name: `Catalogue Child ${suffix}`,
-        slug: childSlug,
-        parent_id: parent.id,
-        image_path: "seed/catalogue.jpg",
-        sort_order: 1,
-      })
-      .select("id")
-      .single();
-    if (childError) throw childError;
-    childId = child.id as string;
-    createdCategories.push(childId);
+    parentId = parent.id as string;
+    createdCategories.push(parentId);
 
     const { data: other, error: otherError } = await service
       .from("categories")
@@ -201,7 +185,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
 
     alphaId = await createProduct({
       supplierId: verifiedSupplier,
-      categoryId: childId,
+      categoryId: parentId,
       title: `Catalogue Alpha ${suffix}`,
       price: 100,
       moq: 10,
@@ -212,7 +196,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     });
     betaId = await createProduct({
       supplierId: verifiedSupplier,
-      categoryId: parent.id as string,
+      categoryId: parentId,
       title: `Catalogue Beta ${suffix}`,
       price: 200,
       moq: 20,
@@ -221,7 +205,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     });
     gammaId = await createProduct({
       supplierId: verifiedSupplier,
-      categoryId: childId,
+      categoryId: parentId,
       title: `Catalogue Gamma ${suffix}`,
       price: 300,
       moq: 30,
@@ -239,7 +223,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     });
     hiddenId = await createProduct({
       supplierId: verifiedSupplier,
-      categoryId: childId,
+      categoryId: parentId,
       title: `Catalogue Hidden ${suffix}`,
       price: 50,
       moq: 1,
@@ -249,7 +233,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     });
     draftId = await createProduct({
       supplierId: verifiedSupplier,
-      categoryId: childId,
+      categoryId: parentId,
       title: `Catalogue Draft ${suffix}`,
       price: 50,
       moq: 1,
@@ -259,7 +243,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     });
     unverifiedId = await createProduct({
       supplierId: unverifiedSupplier,
-      categoryId: childId,
+      categoryId: parentId,
       title: `Catalogue Unverified ${suffix}`,
       price: 50,
       moq: 1,
@@ -301,7 +285,7 @@ describe.skipIf(!available)("storefront catalogue", () => {
     expect(page.total).toBe(4);
   });
 
-  it("includes child-category products when filtering by a parent", async () => {
+  it("filters products by category", async () => {
     const page = await getCataloguePage(
       buyer,
       filters({ categorySlug: parentSlug }),
@@ -406,9 +390,8 @@ describe.skipIf(!available)("storefront catalogue", () => {
       ]),
     );
 
-    const parentId = createdCategories[0];
     expect(counts.get(parentId)).toBe(3);
-    expect(counts.get(childId)).toBe(2);
+    expect(counts.get(createdCategories[1])).toBe(1);
   });
 
   it("never exposes supplier base prices through the catalogue", async () => {
