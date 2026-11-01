@@ -51,6 +51,8 @@ function imageUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product_images/${path}`;
 }
 
+import { stockLabel } from "@/lib/format";
+
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <Item variant="outline" size="sm">
@@ -162,7 +164,7 @@ export default async function AdminProductReviewPage({
               <Fact label="Seller SKU" value={product.seller_sku || "—"} />
               <Fact label="HSN code" value={product.hsn_code || "—"} />
               <Fact label="Brand" value={product.brand ?? "—"} />
-              <Fact label="Stock" value={String(product.stock_qty)} />
+              <Fact label="Stock" value={stockLabel(product.stock_qty)} />
               <Fact
                 label="Lead time"
                 value={`${product.lead_time_days ?? "—"} days`}
@@ -231,7 +233,7 @@ export default async function AdminProductReviewPage({
                       <TableCell>{v.seller_sku}</TableCell>
                       <TableCell>{pricing?.variant_prices.get(v.id) ?? 0}</TableCell>
                       <TableCell>{v.moq ?? "base"}</TableCell>
-                      <TableCell>{v.stock_qty}</TableCell>
+                      <TableCell>{stockLabel(v.stock_qty)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

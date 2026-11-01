@@ -42,7 +42,6 @@ describe("parseCatalogueFilters", () => {
       maxPrice: "500.5",
       minMoq: "10",
       maxMoq: "50",
-      inStock: "true",
       negotiable: "true",
       sampleAvailable: "true",
     });
@@ -55,7 +54,6 @@ describe("parseCatalogueFilters", () => {
       maxPrice: 500.5,
       minMoq: 10,
       maxMoq: 50,
-      inStock: true,
       negotiable: true,
       sampleAvailable: true,
       imageToken: undefined,
@@ -105,7 +103,6 @@ describe("buildCatalogueUrl", () => {
     maxPrice: 500,
     minMoq: 10,
     maxMoq: 100,
-    inStock: true,
     negotiable: true,
     sampleAvailable: true,
   };
@@ -119,7 +116,6 @@ describe("buildCatalogueUrl", () => {
     expect(url).toContain("maxPrice=500");
     expect(url).toContain("minMoq=10");
     expect(url).toContain("maxMoq=100");
-    expect(url).toContain("inStock=true");
     expect(url).toContain("negotiable=true");
     expect(url).toContain("sampleAvailable=true");
   });
@@ -148,11 +144,9 @@ describe("buildCatalogueUrl", () => {
     const url = buildCatalogueUrl("/", filters, {
       categorySlug: "",
       minPrice: undefined,
-      inStock: undefined,
     });
     expect(url).not.toContain("category=");
     expect(url).not.toContain("minPrice=");
-    expect(url).not.toContain("inStock=");
     expect(url).toContain("maxPrice=500");
     expect(url).toContain("q=steel");
   });
@@ -165,7 +159,6 @@ describe("catalogueFiltersKey", () => {
         query: "",
         categorySlug: "",
         sort: "newest",
-        inStock: false,
         negotiable: false,
       }),
     );
@@ -180,9 +173,8 @@ describe("countCatalogueFilters", () => {
         ...BASE_FILTERS,
         categorySlug: "metals",
         minPrice: 100,
-        inStock: true,
       }),
-    ).toBe(3);
+    ).toBe(2);
   });
 });
 

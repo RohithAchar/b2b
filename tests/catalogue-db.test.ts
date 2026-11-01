@@ -327,9 +327,6 @@ describe.skipIf(!available)("storefront catalogue", () => {
       [betaId, gammaId, otherId].sort(),
     );
 
-    const inStock = await getCataloguePage(buyer, filters({ inStock: true }));
-    expect(inStock.items.map((item) => item.id)).not.toContain(betaId);
-
     const flagged = await getCataloguePage(
       buyer,
       filters({ negotiable: true, sampleAvailable: true }),

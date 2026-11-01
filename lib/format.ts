@@ -11,6 +11,14 @@ export function formatIndianNumber(value: number): string {
   return value.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
 
+/** Stock level label. If tracked and > 0, returns "{n} in stock". Otherwise returns "Made to order". */
+export function stockLabel(stock: number | null | undefined): string {
+  if (stock != null && stock > 0) {
+    return `${stock} in stock`
+  }
+  return "Made to order"
+}
+
 /** "12 Oct 2026" style date used across dashboards. */
 export function formatDateMed(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value);

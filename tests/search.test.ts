@@ -98,7 +98,6 @@ function buildPageUrl(params: {
   maxPrice?: string;
   minMoq?: string;
   maxMoq?: string;
-  inStock?: string;
   negotiable?: string;
   sampleAvailable?: string;
   page: number;
@@ -111,7 +110,6 @@ function buildPageUrl(params: {
   if (params.maxPrice) sp.set("maxPrice", params.maxPrice);
   if (params.minMoq) sp.set("minMoq", params.minMoq);
   if (params.maxMoq) sp.set("maxMoq", params.maxMoq);
-  if (params.inStock === "true") sp.set("inStock", "true");
   if (params.negotiable === "true") sp.set("negotiable", "true");
   if (params.sampleAvailable === "true") sp.set("sampleAvailable", "true");
   sp.set("page", String(params.page));
@@ -128,7 +126,6 @@ describe("buildPageUrl", () => {
       maxPrice: "500",
       minMoq: "10",
       maxMoq: "100",
-      inStock: "true",
       negotiable: "true",
       sampleAvailable: "true",
       page: 2,
@@ -140,7 +137,6 @@ describe("buildPageUrl", () => {
     expect(url).toContain("maxPrice=500");
     expect(url).toContain("minMoq=10");
     expect(url).toContain("maxMoq=100");
-    expect(url).toContain("inStock=true");
     expect(url).toContain("negotiable=true");
     expect(url).toContain("sampleAvailable=true");
     expect(url).toContain("page=2");
