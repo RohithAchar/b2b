@@ -80,7 +80,7 @@ export function AddToCartForm({
   }, [state.ok, router]);
 
   const stickyBar = (
-    <div className="fixed inset-x-0 bottom-(--bottom-nav-offset) z-30 border-t border-border bg-card/95 backdrop-blur lg:hidden">
+    <div className="fixed inset-x-0 bottom-(--bottom-nav-offset) z-30 border-t border-border bg-card lg:hidden">
       <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-2.5">
         <Button
           variant="outline"
