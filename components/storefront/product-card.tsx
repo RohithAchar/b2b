@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { publicTransformedImageUrl } from "@/lib/storage"
 import { Card, CardContent } from "@/components/ui/card"
+import { CardAddButton } from "@/components/storefront/card-add-button"
 import { ProductImage } from "@/components/storefront/product-image"
 
 export type ProductCardData = {
@@ -58,18 +59,21 @@ export function ProductCard({
             {product.title}
           </p>
 
-          {product.pricing ? (
-            <p className="min-w-0 truncate text-sm font-bold tracking-tight text-foreground tabular-nums">
-              {formatPrice(product.pricing.customer_price)}
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                / {product.unit}
-              </span>
-            </p>
-          ) : (
-            <p className="min-w-0 truncate text-sm font-medium text-muted-foreground">
-              Price on request
-            </p>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            {product.pricing ? (
+              <p className="min-w-0 truncate text-sm font-bold tracking-tight text-foreground tabular-nums">
+                {formatPrice(product.pricing.customer_price)}
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  / {product.unit}
+                </span>
+              </p>
+            ) : (
+              <p className="min-w-0 truncate text-sm font-medium text-muted-foreground">
+                Price on request
+              </p>
+            )}
+            <CardAddButton productId={product.id} moq={product.moq} />
+          </div>
         </CardContent>
       </Link>
     </Card>
