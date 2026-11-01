@@ -148,7 +148,7 @@
   --bottom-nav-height: 3.5rem;
   /* 1px buffer absorbs subpixel rounding at maximum scroll. */
   --bottom-nav-offset: calc(
-    var(--bottom-nav-height) + var(--safe-area-bottom) + 1px
+    var(--bottom-nav-height) + var(--safe-area-bottom)
   );
   --sidebar: oklch(0.9722 -0.0013 359.58);
   --sidebar-foreground: oklch(0.2345 -0.0012 352.13);
