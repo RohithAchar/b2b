@@ -29,7 +29,7 @@ export default async function HomePage({
   const sp = await searchParams
 
   return (
-    <>
+    <div className="min-h-full bg-white">
       <h1 className="sr-only">
         Wholesale marketplace — source directly from verified Indian suppliers
       </h1>
@@ -48,6 +48,6 @@ export default async function HomePage({
       >
         <AllProductsSection searchParams={sp} />
       </Suspense>
-    </>
+    </div>
   )
 }
