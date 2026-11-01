@@ -31,47 +31,13 @@ export type MegaMenuSuggestion = {
 }
 
 /**
- * Square category thumbnail (visual only). Shows the image when a storage
- * path is provided, otherwise a monogram fallback tile.
- */
-function CategoryThumb({ category }: { category: MegaMenuCategory }) {
-  const src = category.image_path
-    ? publicTransformedImageUrl("category_images", category.image_path, {
-        width: 160,
-      })
-    : null
-  if (!src) {
-    return (
-      <span
-        aria-hidden
-        className="flex size-16 shrink-0 items-center justify-center rounded-md bg-primary/10 text-lg font-bold text-primary"
-      >
-        {category.name.charAt(0).toUpperCase()}
-      </span>
-    )
-  }
-  return (
-    <span className="relative block size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-      <Image
-        src={src}
-        alt=""
-        aria-hidden
-        fill
-        sizes="64px"
-        className="object-cover"
-      />
-    </span>
-  )
-}
-
-/**
  * Alibaba-style large search menu.
  *
  * Client component with one piece of state: the highlighted category.
- * Hovering (or focusing) a left-list row swaps the right panel; the search
- * bar itself is a native GET form (same `/products?q=` + `page=1` contract
- * as `StorefrontSearchForm`), image search reuses `ImageSearchButton`, and
- * every category/trending entry links to a real route.
+ * Hovering (or focusing) a list row highlights it; the search bar itself is
+ * a native GET form (same `/products?q=` + `page=1` contract as
+ * `StorefrontSearchForm`), image search reuses `ImageSearchButton`, and every
+ * category/trending entry links to a real route.
  */
 export function SearchMegaMenu({
   categories,
@@ -117,7 +83,6 @@ export function SearchMegaMenu({
     normalizeSuggestQuery(value).length === 0 &&
     !showLiveDropdown &&
     !showFallbackDropdown
-  const active = categories.find((c) => c.slug === activeSlugState) ?? initial
   const visible = categories.slice(0, visibleCount)
   const hasMore = categories.length > visible.length
 
@@ -304,25 +269,20 @@ export function SearchMegaMenu({
           )}
         </div>
 
-        {/* Category browse: desktop-only hover grid (mobile uses bottom-nav Categories) */}
+        {/* Category browse: desktop-only list (mobile uses bottom-nav Categories) */}
         <nav
           aria-label="Browse categories"
-          className="mt-4 hidden overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:grid lg:grid-cols-[260px_1fr]"
+          className="mt-4 hidden overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:block"
         >
           <div className="border-b border-border bg-muted/40 px-4 py-2.5">
             <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
               All Categories
             </p>
           </div>
-          <div className="border-b border-border bg-muted/40 px-4 py-2.5">
-            <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
-              {active ? active.name : "Sub-categories"}
-            </p>
-          </div>
 
           <ul className="flex flex-col">
             {visible.map((cat) => {
-              const isActive = active?.slug === cat.slug
+              const isActive = activeSlugState === cat.slug
               return (
                 <li
                   key={cat.id}
@@ -367,46 +327,6 @@ export function SearchMegaMenu({
               </li>
             )}
           </ul>
-
-          <div className="bg-card px-4 py-4 sm:px-5 lg:border-l lg:border-border">
-            {active ? (
-              <div className="flex flex-col gap-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-base font-bold tracking-tight">
-                    {active.name}
-                  </p>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {active.product_count} product
-                    {active.product_count === 1 ? "" : "s"}
-                  </span>
-                </div>
-                <Link
-                  href={`/category/${active.slug}`}
-                  className="flex press items-center gap-3 rounded-md border border-border bg-card p-2.5 hover:border-primary/40"
-                >
-                  <CategoryThumb category={active} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-foreground">
-                      Browse {active.name}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      View products
-                    </span>
-                  </span>
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    strokeWidth={2}
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-muted-foreground"
-                  />
-                </Link>
-              </div>
-            ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No categories yet
-              </p>
-            )}
-          </div>
         </nav>
       </div>
     </div>
