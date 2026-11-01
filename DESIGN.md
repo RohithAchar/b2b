@@ -298,13 +298,35 @@ navigation and discovery, not analytics. Rendered in a dense responsive grid
 
 ### Product detail (`app/products/[id]/product-detail.tsx`)
 
-2-column grid `lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8`:
+Mobile-first, PDF-aligned hierarchy. The shell owns bottom-nav clearance; the
+page owns only the clearance for its own mobile buy bar.
 
-- Left: **bounded** gallery — 64px thumbnail rail + 12px gap + a 500px square `bg-muted`
-  `object-contain` inspection area. The image is never cropped and never grows with the
-  viewport, and it scrolls away with the page (no sticky positioning).
-- Right: title → price/MOQ card → quantity pricing → quick specs → supplier card →
-  actions → **Description/Specifications/Variants tabs** (right column only).
+- Layout: one column below `md` (full-bleed square image → title/price →
+  Highlights table → Store information → Service & Delivery → purchase form);
+  two columns from `md` (`minmax(0,1fr)` gallery + `minmax(340px,420px)` info),
+  widening the right column at `lg`. Description/Highlights/Return Policy tabs
+  span the full width below both columns.
+- Gallery: bounded square (`object-contain`, 640px max on desktop); edge-to-edge
+  on mobile with the 64px thumbnail strip below.
+- Highlights: two-column spec table (HSN Code, GST Rate, Carton Qty, Weight)
+  with thin `foreground` rules. Values come from `getProduct`; missing values
+  render `—`, never invented.
+- Store card: real `storefront_suppliers` data only (name, verified badge,
+  location) and a "View More Information" link to `/store/[companyId]`. There
+  are no rating/review columns, so no rating or review count is shown.
+- Service strip: FBD, DDP and Fast Delivery are display-only tiles (no invented
+  semantics); WhatsApp Now is a real `wa.me` share link.
+- Description: `ExpandableRichText` measures the clamped (6-line) content and
+  offers View More/View Less only when it actually overflows.
+- Tabs: Description (sanitized rich text), Highlights (attributes, packaging,
+  variants) and Return Policy (`warranty_return`, or a neutral "not provided"
+  message — never invented policy copy).
+- Sticky mobile actions: `AddToCartForm` renders a fixed View Cart (outline) +
+  Add to Cart (destructive red) bar above the bottom nav
+  (`bottom-(--bottom-nav-offset)`, `lg:hidden`). The Add button submits the same
+  in-flow form via its `form` attribute, so variant/quantity state is shared;
+  signed-out clicks go to login. The page adds a 64px spacer only for this bar.
+- Desktop keeps the in-flow buy box instead of the fixed bar.
 
 ### Product gallery (`components/storefront/product-gallery.tsx`)
 

@@ -262,12 +262,12 @@ export function ProductDetailSkeleton() {
         <Skeleton className="size-3" />
         <Skeleton className="h-4 w-32" />
       </div>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,576px)_minmax(380px,440px)] lg:gap-8">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-          <div className="relative mx-auto aspect-square w-full max-w-[500px] overflow-hidden rounded-lg border border-border bg-card lg:mx-0">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] md:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="relative -mx-4 aspect-square overflow-hidden bg-card sm:mx-0 sm:rounded-lg sm:border sm:border-border lg:max-w-[640px]">
             <Skeleton className="absolute inset-0 rounded-none" />
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1 lg:order-first lg:w-16 lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:pb-0">
+          <div className="flex gap-2.5 overflow-x-auto pb-1">
             {Array.from({ length: 4 }, (_, i) => (
               <div
                 key={i}
@@ -278,25 +278,33 @@ export function ProductDetailSkeleton() {
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-6 w-11/12" />
+            <Skeleton className="h-6 w-2/3" />
+            <Skeleton className="mt-1 h-9 w-40" />
+            <Skeleton className="h-3 w-1/2" />
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <Skeleton className="h-8 w-1/2" />
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Skeleton className="h-14 rounded-md" />
-              <Skeleton className="h-14 rounded-md" />
+          {/* Highlights table parity */}
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-[170px] rounded-lg" />
+          </div>
+          {/* Store card parity */}
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-[124px] rounded-lg" />
+          </div>
+          {/* Service options parity */}
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-36" />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-12 rounded-md" />
+              ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-16 rounded-md" />
-            ))}
-          </div>
-          <Skeleton className="h-24 rounded-lg" />
-          {/* Buy actions parity: add-to-cart + save/ship row */}
+          {/* Buy actions parity */}
           <div className="flex flex-col gap-2">
             <Skeleton className="h-11 w-full rounded-md" />
             <div className="grid grid-cols-2 gap-2">
@@ -304,16 +312,16 @@ export function ProductDetailSkeleton() {
               <Skeleton className="h-4 self-center rounded-sm" />
             </div>
           </div>
-          {/* Description / specifications / variants tabs parity */}
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-1.5">
-              <Skeleton className="h-9 w-28 rounded-md" />
-              <Skeleton className="h-9 w-28 rounded-md" />
-              <Skeleton className="h-9 w-24 rounded-md" />
-            </div>
-            <Skeleton className="h-40 rounded-lg" />
-          </div>
         </div>
+      </div>
+      {/* Description / highlights / return policy tabs parity */}
+      <div className="mt-3 flex flex-col gap-4">
+        <div className="flex gap-1.5">
+          <Skeleton className="h-9 w-32 rounded-md" />
+          <Skeleton className="h-9 w-28 rounded-md" />
+          <Skeleton className="h-9 w-32 rounded-md" />
+        </div>
+        <Skeleton className="h-40 rounded-lg" />
       </div>
     </div>
   )

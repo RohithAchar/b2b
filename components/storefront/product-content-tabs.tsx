@@ -3,45 +3,39 @@ import {
   TabsList,
   TabsTrigger,
   TabsContent,
-} from "@/components/ui/tabs";
+} from "@/components/ui/tabs"
 
 /**
- * Tabbed product content. Only the tab switcher itself is interactive; the
- * (potentially large) description/spec/variant panels are server-rendered and
- * passed in as ReactNode props so they never execute on the client.
+ * Tabbed product content. Only the tab switcher is interactive; the
+ * (potentially large) description/highlights/return panels are server-rendered
+ * and passed in as ReactNode props so they never execute on the client.
  */
 export function ProductDetailTabs({
   description,
-  specifications,
-  variants,
+  highlights,
+  returnPolicy,
 }: {
-  description: React.ReactNode;
-  specifications: React.ReactNode | null;
-  variants: React.ReactNode | null;
+  description: React.ReactNode
+  highlights: React.ReactNode
+  returnPolicy: React.ReactNode
 }) {
   return (
     <Tabs defaultValue="description">
-      <TabsList className="max-w-full overflow-x-auto">
+      <TabsList className="w-full sm:w-fit">
         <TabsTrigger value="description">Description</TabsTrigger>
-        {specifications ? (
-          <TabsTrigger value="specifications">Specifications</TabsTrigger>
-        ) : null}
-        {variants ? <TabsTrigger value="variants">Variants</TabsTrigger> : null}
+        <TabsTrigger value="highlights">Highlights</TabsTrigger>
+        <TabsTrigger value="return-policy">Return Policy</TabsTrigger>
       </TabsList>
 
       <TabsContent value="description" className="mt-4">
         {description}
       </TabsContent>
-      {specifications ? (
-        <TabsContent value="specifications" className="mt-4">
-          {specifications}
-        </TabsContent>
-      ) : null}
-      {variants ? (
-        <TabsContent value="variants" className="mt-4">
-          {variants}
-        </TabsContent>
-      ) : null}
+      <TabsContent value="highlights" className="mt-4">
+        {highlights}
+      </TabsContent>
+      <TabsContent value="return-policy" className="mt-4">
+        {returnPolicy}
+      </TabsContent>
     </Tabs>
-  );
+  )
 }

@@ -50,6 +50,8 @@ export function AddToCartForm({
 
   const selected = variants.find((v) => v.id === variantId);
   const effectiveMoq = Math.max(1, selected?.moq ?? moq);
+  const formId = `add-to-cart-form-${productId}`;
+  const loginHref = `/auth/login?next=/products/${productId}`;
 
   function setBoth(next: number) {
     setQuantity(next);
@@ -77,107 +79,152 @@ export function AddToCartForm({
     }
   }, [state.ok, router]);
 
+  const stickyBar = (
+    <div className="fixed inset-x-0 bottom-(--bottom-nav-offset) z-30 border-t border-border bg-card/95 backdrop-blur lg:hidden">
+      <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-2.5">
+        <Button
+          variant="outline"
+          size="lg"
+          className="h-11 flex-1 text-base font-semibold"
+          nativeButton={false}
+          render={<Link href="/cart" />}
+        >
+          <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
+          View Cart
+        </Button>
+        {signedIn ? (
+          <Button
+            type="submit"
+            form={formId}
+            size="lg"
+            disabled={pending}
+            className="h-11 flex-[1.6] bg-destructive text-base font-semibold text-white hover:bg-destructive/90"
+          >
+            <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
+            {pending ? "Adding..." : "Add to Cart"}
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            className="h-11 flex-[1.6] bg-destructive text-base font-semibold text-white hover:bg-destructive/90"
+            nativeButton={false}
+            render={<Link href={loginHref} />}
+          >
+            <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
+            Add to Cart
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   if (!signedIn) {
     return (
-      <Link href={`/auth/login?next=/products/${productId}`} className="block">
-        <Button size="lg" className="h-11 w-full text-base font-semibold">
-          <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
-          Add to Cart
-        </Button>
-      </Link>
+      <>
+        <Link href={loginHref} className="hidden lg:block">
+          <Button size="lg" className="h-11 w-full text-base font-semibold">
+            <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
+            Add to Cart
+          </Button>
+        </Link>
+        {stickyBar}
+      </>
     );
   }
 
   return (
-    <form action={action} className="flex flex-col gap-2">
-      <input type="hidden" name="productId" value={productId} />
-      {variantId !== "base" && <input type="hidden" name="variantId" value={variantId} />}
-      <input type="hidden" name="quantity" value={quantity} />
+    <>
+      <form id={formId} action={action} className="flex flex-col gap-2">
+        <input type="hidden" name="productId" value={productId} />
+        {variantId !== "base" && <input type="hidden" name="variantId" value={variantId} />}
+        <input type="hidden" name="quantity" value={quantity} />
 
-      {variants.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <Label>Variant</Label>
-          <Select value={variantId} onValueChange={handleVariantChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Base product" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="base">Base product</SelectItem>
-              {variants.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.label}
-                  {v.customer_price != null &&
-                    ` — ₹${v.customer_price.toLocaleString("en-IN")}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+        {variants.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Variant</Label>
+            <Select value={variantId} onValueChange={handleVariantChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Base product" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="base">Base product</SelectItem>
+                {variants.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.label}
+                    {v.customer_price != null &&
+                      ` — ₹${v.customer_price.toLocaleString("en-IN")}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
-      <div className="flex items-center gap-2">
-        <div
-          role="group"
-          aria-label="Quantity"
-          className="flex h-11 items-center rounded-md border border-input bg-card"
-        >
-          <button
-            type="button"
-            aria-label="Decrease quantity"
-            disabled={quantity <= effectiveMoq || pending}
-            onClick={() => setBoth(Math.max(effectiveMoq, quantity - 1))}
-            className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
-          >
-            −
-          </button>
-          <input
+        <div className="flex items-center gap-2">
+          <div
+            role="group"
             aria-label="Quantity"
-            inputMode="numeric"
-            autoComplete="off"
-            disabled={pending}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commitDraft}
-            onKeyDown={(e) => {
-              // Commit on Enter without submitting: the blur handler parses
-              // first, and submitting here could read the pre-commit value.
-              if (e.key === "Enter") {
-                e.preventDefault();
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            className="w-12 bg-transparent text-center text-sm font-bold tabular-nums outline-none disabled:opacity-40"
-          />
-          <button
-            type="button"
-            aria-label="Increase quantity"
-            disabled={pending}
-            onClick={() => setBoth(quantity + 1)}
-            className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
+            className="flex h-11 items-center rounded-md border border-input bg-card"
           >
-            +
-          </button>
+            <button
+              type="button"
+              aria-label="Decrease quantity"
+              disabled={quantity <= effectiveMoq || pending}
+              onClick={() => setBoth(Math.max(effectiveMoq, quantity - 1))}
+              className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
+            >
+              −
+            </button>
+            <input
+              aria-label="Quantity"
+              inputMode="numeric"
+              autoComplete="off"
+              disabled={pending}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitDraft}
+              onKeyDown={(e) => {
+                // Commit on Enter without submitting: the blur handler parses
+                // first, and submitting here could read the pre-commit value.
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="w-12 bg-transparent text-center text-sm font-bold tabular-nums outline-none disabled:opacity-40"
+            />
+            <button
+              type="button"
+              aria-label="Increase quantity"
+              disabled={pending}
+              onClick={() => setBoth(quantity + 1)}
+              className="flex h-full w-10 items-center justify-center text-lg font-semibold text-foreground/70 transition-colors hover:text-foreground disabled:opacity-40"
+            >
+              +
+            </button>
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={pending}
+            className="hidden h-11 flex-1 bg-destructive text-base font-semibold text-white hover:bg-destructive/90 lg:inline-flex"
+          >
+            <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
+            {pending ? "Adding..." : "Add to Cart"}
+          </Button>
         </div>
-        <Button
-          type="submit"
-          size="lg"
-          disabled={pending}
-          className="h-11 flex-1 text-base font-semibold"
-        >
-          <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} className="size-5" />
-          {pending ? "Adding..." : "Add to Cart"}
-        </Button>
-      </div>
 
-      <p className="text-xs text-muted-foreground">
-        MOQ: {effectiveMoq} {unit}
-        {effectiveMoq > 1 ? "s" : ""} · Minimum cart value ₹2,500
-      </p>
-      {state.message && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.message}
+        <p className="text-xs text-muted-foreground">
+          MOQ: {effectiveMoq} {unit}
+          {effectiveMoq > 1 ? "s" : ""} · Minimum cart value ₹2,500
         </p>
-      )}
-    </form>
+        {state.message && (
+          <p role="alert" className="text-sm text-destructive">
+            {state.message}
+          </p>
+        )}
+      </form>
+      {stickyBar}
+    </>
   );
 }

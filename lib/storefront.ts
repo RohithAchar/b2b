@@ -588,6 +588,7 @@ export async function getProduct(supabase: SupabaseClient, productId: string) {
         moq, stock_qty, negotiable,
         sample_available, lead_time_days, gst_rate,
         attributes, certifications, packaging_details, warranty_return,
+        carton_units, carton_dimensions, carton_weight_kg,
         youtube_url, youtube_id, created_at, supplier_id,
         seo_title, seo_description, seo_image_path,
         category:category_id(id, name, slug),
