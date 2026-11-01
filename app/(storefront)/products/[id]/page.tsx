@@ -107,10 +107,11 @@ export default async function ProductPage({
             "@type": "Offer",
             priceCurrency: "INR",
             price: pricing.customer_price,
+            // Products without tracked stock are made to order, not unavailable.
             availability:
               stockQty > 0
                 ? "https://schema.org/InStock"
-                : "https://schema.org/OutOfStock",
+                : "https://schema.org/PreOrder",
             url: `${SITE_URL}/products/${id}`,
           },
         }

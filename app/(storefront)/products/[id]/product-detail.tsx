@@ -206,7 +206,7 @@ export function ProductDetail({ product }: { product: Product }) {
               value={
                 product.stock_qty > 0
                   ? `${product.stock_qty} in stock`
-                  : "Out of stock"
+                  : "Made to order"
               }
             />
             <SpecItem label="Lead time" value={`${product.lead_time_days} days`} />
