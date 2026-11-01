@@ -314,8 +314,13 @@ page owns only the clearance for its own mobile buy bar.
 - Store card: real `storefront_suppliers` data only (name, verified badge,
   location) and a "View More Information" link to `/store/[companyId]`. There
   are no rating/review columns, so no rating or review count is shown.
-- Service strip: FBD, DDP and Fast Delivery are display-only tiles (no invented
-  semantics); WhatsApp Now is a real `wa.me` share link.
+- Service strip: one `rounded-lg` bordered band. A three-up row of hairline-
+  divided spec cells (FBD, DDP, Fast Delivery — display only, no invented
+  semantics) sits above a single full-width WhatsApp row: `text-brand-700` on
+  `bg-primary/10`, not solid orange, so it reads as brand without competing with
+  the Add to Cart CTA. That row opens the real `wa.me` share link in a new tab.
+  Tapping a spec cell opens a bottom Drawer (80% of viewport) with placeholder
+  details.
 - Description: `ExpandableRichText` measures the clamped (6-line) content and
   offers View More/View Less only when it actually overflows.
 - Tabs: Description (sanitized rich text), Highlights (attributes, packaging,
