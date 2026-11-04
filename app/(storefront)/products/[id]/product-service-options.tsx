@@ -77,9 +77,9 @@ export function ProductServiceOptions({ whatsappHref }: { whatsappHref: string }
               {index > 0 && (
                 <span
                   aria-hidden="true"
-                  className="flex shrink-0 items-center justify-center px-0.5 text-brand-amber/70"
+                  className="flex shrink-0 items-center justify-center px-1.5 text-brand-amber"
                 >
-                  <HugeiconsIcon icon={ChevronRightIcon} strokeWidth={1.5} className="size-3.5 -translate-x-px" />
+                  <HugeiconsIcon icon={ChevronRightIcon} strokeWidth={2} className="size-4 -translate-x-0.5" />
                 </span>
               )}
               <button
