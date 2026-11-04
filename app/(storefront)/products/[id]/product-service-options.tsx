@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
+  ArrowRight01Icon,
   ArrowUpRight01Icon,
   BoxIcon,
   Cancel01Icon,
@@ -70,24 +71,33 @@ export function ProductServiceOptions({ whatsappHref }: { whatsappHref: string }
         Service &amp; Delivery
       </h2>
       <div className="mt-2 overflow-hidden rounded-lg border border-border bg-card">
-        <div className="grid grid-cols-3 [&>*+*]:border-l [&>*+*]:border-border">
-          {specCells.map((cell) => (
-            <button
-              key={cell.label}
-              type="button"
-              onClick={() => openDrawer(cell)}
-              className={cn(
-                "press group flex min-w-0 flex-col gap-2 px-3 py-3 text-left outline-none transition-colors",
-                "hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
+        <div className="flex items-stretch">
+          {specCells.map((cell, index) => (
+            <Fragment key={cell.label}>
+              {index > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="flex shrink-0 items-center justify-center px-1 text-brand-amber"
+                >
+                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4" />
+                </span>
               )}
-            >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-brand-700 [&_svg]:size-4">
-                <HugeiconsIcon icon={cell.icon} strokeWidth={2} />
-              </span>
-              <span className="min-w-0 text-sm font-semibold leading-tight text-foreground">
-                {cell.label}
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => openDrawer(cell)}
+                className={cn(
+                  "press group flex min-w-0 flex-1 flex-col gap-2 px-3 py-3 text-left outline-none transition-colors",
+                  "hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
+                )}
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-brand-700 [&_svg]:size-4">
+                  <HugeiconsIcon icon={cell.icon} strokeWidth={2} />
+                </span>
+                <span className="min-w-0 text-sm font-semibold leading-tight text-foreground">
+                  {cell.label}
+                </span>
+              </button>
+            </Fragment>
           ))}
         </div>
         <a
