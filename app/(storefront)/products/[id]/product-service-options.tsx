@@ -4,10 +4,10 @@ import * as React from "react"
 import { Fragment, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  ArrowRight01Icon,
   ArrowUpRight01Icon,
   BoxIcon,
   Cancel01Icon,
+  ChevronRightIcon,
   ContainerTruckIcon,
   FlashIcon,
   WhatsappIcon,
@@ -77,9 +77,9 @@ export function ProductServiceOptions({ whatsappHref }: { whatsappHref: string }
               {index > 0 && (
                 <span
                   aria-hidden="true"
-                  className="flex shrink-0 items-center justify-center px-1 text-brand-amber"
+                  className="flex shrink-0 items-center justify-center px-0.5 text-brand-amber/70"
                 >
-                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4" />
+                  <HugeiconsIcon icon={ChevronRightIcon} strokeWidth={1.5} className="size-3.5" />
                 </span>
               )}
               <button
