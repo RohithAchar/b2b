@@ -1,4 +1,7 @@
+"use client"
+
 import type { ReactNode } from "react"
+import { usePathname } from "next/navigation"
 import { StorefrontHeader } from "@/components/layout/storefront-header"
 import { StorefrontFooter } from "@/components/layout/storefront-footer"
 import { StorefrontBottomNav } from "@/components/layout/storefront-bottom-nav"
@@ -21,8 +24,18 @@ export function StorefrontShell({
   cartCount?: number
   children: ReactNode
 }) {
+  const pathname = usePathname()
+  // Hide the bottom nav (and its reserved padding) on product detail pages.
+  const hideBottomNav = /^\/products\/[^/]+$/.test(pathname ?? "")
+
   return (
-    <div className="flex min-h-screen flex-col pb-(--bottom-nav-offset) lg:pb-0">
+    <div
+      className={
+        hideBottomNav
+          ? "flex min-h-screen flex-col lg:pb-0"
+          : "flex min-h-screen flex-col pb-(--bottom-nav-offset) lg:pb-0"
+      }
+    >
       <StorefrontSession />
       <StorefrontHeader
         user={user}
@@ -32,7 +45,7 @@ export function StorefrontShell({
       />
       <main className="flex-1">{children}</main>
       <StorefrontFooter />
-      <StorefrontBottomNav user={user} />
+      {!hideBottomNav && <StorefrontBottomNav user={user} />}
     </div>
   )
 }
