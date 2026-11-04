@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -41,6 +42,8 @@ export function AddToCartForm({
   signedIn: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const hideBottomNav = /^\/products\/[^/]+$/.test(pathname ?? "");
   const [state, action, pending] = useActionState(addToCart, initialState);
   const [variantId, setVariantId] = useState("base");
   const [quantity, setQuantity] = useState(moq);
@@ -80,7 +83,11 @@ export function AddToCartForm({
   }, [state.ok, router]);
 
   const stickyBar = (
-    <div className="fixed inset-x-0 bottom-(--bottom-nav-offset) z-30 border-t border-border bg-card lg:hidden">
+    <div
+      className={`fixed inset-x-0 z-30 border-t border-border bg-card lg:hidden ${
+        hideBottomNav ? "bottom-0" : "bottom-(--bottom-nav-offset)"
+      }`}
+    >
       <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-2.5">
         <Button
           variant="outline"
