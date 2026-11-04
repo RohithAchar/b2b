@@ -1,5 +1,3 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { PinLocation01Icon } from "@hugeicons/core-free-icons";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { isProductSaved } from "@/lib/buyer/queries";
@@ -24,13 +22,11 @@ export async function ProductActionsIsland({
   moq,
   unit,
   variants,
-  shipFrom,
 }: {
   productId: string;
   moq: number;
   unit: string;
   variants: IslandVariant[];
-  shipFrom: string | null;
 }) {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
@@ -53,12 +49,6 @@ export async function ProductActionsIsland({
       />
       <div className="grid grid-cols-2 gap-2">
         <SaveButton productId={productId} saved={saved} />
-        {shipFrom && (
-          <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-            <HugeiconsIcon icon={PinLocation01Icon} strokeWidth={2} className="size-3.5" />
-            Ships from {shipFrom}
-          </p>
-        )}
       </div>
     </div>
   );

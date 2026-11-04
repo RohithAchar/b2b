@@ -155,12 +155,6 @@ export function ProductDetail({ product }: { product: Product }) {
             <h1 className="text-lg font-bold leading-snug tracking-tight sm:text-xl md:text-2xl">
               {product.title}
             </h1>
-            {product.brand && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Brand:{" "}
-                <span className="font-medium text-foreground">{product.brand}</span>
-              </p>
-            )}
             <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="text-3xl font-bold tracking-tight text-primary tabular-nums">
                 {pricing ? formatRupees(pricing.customer_price) : "Price on request"}
@@ -169,8 +163,7 @@ export function ProductDetail({ product }: { product: Product }) {
               {product.negotiable && <Badge className="ml-auto">Price Negotiable</Badge>}
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              MOQ {product.moq} {product.unit}
-              {product.moq > 1 ? "s" : ""} · {stockLabel(product.stock_qty)}
+              {stockLabel(product.stock_qty)}
               {product.sample_available ? " · Sample available" : ""}
             </p>
             {product.certifications.length > 0 && (
@@ -243,7 +236,6 @@ export function ProductDetail({ product }: { product: Product }) {
                 customer_price: v.customer_price,
                 moq: v.moq,
               }))}
-              shipFrom={supplier ? `${supplier.city}, ${supplier.state}` : null}
             />
           </Suspense>
         </div>
