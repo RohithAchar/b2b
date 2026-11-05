@@ -10,5 +10,12 @@ import { SearchMegaMenu } from "./search-mega-menu";
 export async function SearchMegaMenuSection() {
   const categories = await getCachedMegaMenuCategories();
   if (categories.length === 0) return null;
-  return <SearchMegaMenu categories={categories} trending={TRENDING_SEARCHES} />;
+  return (
+    <SearchMegaMenu
+      categories={categories}
+      trending={TRENDING_SEARCHES}
+      showCategoryChips={false}
+      showCategoryList={false}
+    />
+  );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { isProductSaved } from "@/lib/buyer/queries";
 import { recordRecentlyViewed } from "@/lib/buyer/actions";
+import { GuestRecentlyViewedTracker } from "@/components/storefront/guest-recently-viewed-tracker";
 import { SaveButton } from "./save-button";
 import { AddToCartForm } from "./add-to-cart-form";
 
@@ -19,11 +20,15 @@ export type IslandVariant = {
  */
 export async function ProductActionsIsland({
   productId,
+  title,
+  image,
   moq,
   unit,
   variants,
 }: {
   productId: string;
+  title: string;
+  image: string | null;
   moq: number;
   unit: string;
   variants: IslandVariant[];
@@ -40,6 +45,13 @@ export async function ProductActionsIsland({
 
   return (
     <div className="flex flex-col gap-2">
+      {!user && (
+        <GuestRecentlyViewedTracker
+          productId={productId}
+          title={title}
+          image={image}
+        />
+      )}
       <AddToCartForm
         productId={productId}
         moq={moq}

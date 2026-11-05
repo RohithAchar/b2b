@@ -1,4 +1,4 @@
-# B2B Marketplace — Design System
+# D2B - Design System
 
 An Alibaba.com-inspired wholesale marketplace visual language. Dense, commercial,
 trust-first. The look of a trading floor, not a SaaS dashboard.
@@ -136,9 +136,10 @@ Dark mode: navy-tinted neutral darks (cool hue, no warm cast), same orange prima
 
 One row on desktop: logo, nav links, and search + cart + account actions. The
 search action is an icon that opens the [top search overlay](#top-search-overlay)
-instead of rendering a full-width search tier in the header. On mobile that
-row keeps the menu + logo and hides the desktop actions because the
-[bottom navigation](#mobile-bottom-navigation) covers those destinations.
+instead of rendering a full-width search tier in the header. On mobile the header is hidden entirely (`hidden lg:block`): navigation relies
+on the bottom nav and the homepage search hero, matching the mobile mockup. The
+desktop row keeps the menu + logo and hides the mobile cart because the bottom
+navigation covers those destinations.
 The mobile app bar is `h-(--storefront-header-height)` with `pt-(--safe-area-top)`
 so the brand row clears notches; menu and cart controls use 40px hit areas.
 Nav links come from `navLinksFor(user)` (`lib/nav.ts`): the discovery links
@@ -158,16 +159,68 @@ carries the search glyph, the inline camera action (separated by a hairline) and
 no outer panel padding, so it costs ~110px including the category chip row.
 Popular categories render as a horizontally scrolling row of image + label chips
 (`scroll-pl-4` keeps the first chip clear of the edge); the "Hot" search row
-returns from `sm` up, where the desktop/tablet panel and category browse grid
-also live. Live suggestions and the camera popover must not be clipped by the
-field, so it relies on rounded children rather than `overflow-hidden`.
+returns from `sm` up, where the desktop/tablet panel also lives. Live suggestions
+and the camera popover must not be clipped by the field, so it relies on rounded
+children rather than `overflow-hidden`.
+
+The homepage (`app/(storefront)/page.tsx`) passes `showCategoryChips={false}` and
+`showCategoryList={false}` so the hero stays a search entry point only — the
+canonical category entry point is the Top categories section below, and the
+mobile chip row would duplicate it. The desktop category browse list is also
+suppressed to keep the banner above the fold. Other routes keep both.
 
 ### Homepage products (`components/storefront/home-sections.tsx`)
 
-`AllProductsSection` opens with the shared `SectionHeader` — "Popular products"
-plus a "View all" link to `/products` — then the dense two-column mobile grid.
+`AllProductsSection` opens with the shared `SectionHeader` - "All products"
+plus a "View all" link to `/products` - then the dense two-column mobile grid.
 No popularity metric is implied by the heading; it labels the real `getProducts`
 result, not a fabricated ranking.
+
+### Homepage composition (mobile-first, mockup-aligned)
+
+Section order on `/` is fixed:
+
+1. Store tabs (typographic, above the sticky header, scroll away).
+2. Header + search hero (with image search).
+3. Banner placeholder + "Shop under ₹9/49/99/199" quick actions.
+4. Top categories rail (real category images, 8 visible + "View More").
+5. Recently viewed (signed-in DB history or guest localStorage snapshots).
+6. Frequently bought (preview bundles, clearly labelled "Preview").
+7. Recommended products (viewed/saved categories, newest fallback).
+8. All products (catalogue grid).
+
+### Store tabs (`components/storefront/store-tabs.tsx`)
+
+Four typographic tabs above the sticky header on `/` only (`StorefrontShell`
+renders them conditionally for `pathname === "/"`). `D2H Core` is the active
+tab (primary border + `brand-700`); `D2H Select`, `Ecom Package`, and
+`Dropshoppicals` are disabled placeholders with a "Soon" badge — no routes
+exist yet, so they are not links. No logo assets; icons come from Hugeicons.
+
+### Home banner + quick actions (`components/storefront/home-banner-actions.tsx`)
+
+Banner is a deliberate placeholder (artwork pending) using `brand-50`/`brand-100`
+circles and the D2B mark. Four real catalogue shortcuts (`/products?maxPrice=…`)
+form a 2×2 grid beside it: 3 columns on mobile (banner left, tiles right),
+2 columns from `md` (banner left, tiles right). No fake statistics.
+
+### Top categories (`components/storefront/home-categories.tsx`)
+
+Rail of up to 8 real categories using `publicTransformedImageUrl("category_images")`,
+with a letter fallback when `image_path` is null. Horizontal scroll on mobile,
+`md:grid-cols-5` / `lg:grid-cols-8` on larger screens, then "View More" to
+`/categories`. No emoji.
+
+### Recently viewed (`components/storefront/home-recently-viewed.tsx`)
+
+- Signed-in buyers: real `recently_viewed` rows via `getBuyerRecentlyViewed`,
+  shown through `RecentlyViewedBlock` with "View all" → `/account?tab=recent`.
+- Guests: `GuestRecentlyViewed` reads `localStorage` snapshots written by
+  `GuestRecentlyViewedTracker` on the product page (id + title + image only —
+  prices are deliberately omitted to avoid stale pricing).
+- `lib/recently-viewed.ts` mirrors `lib/recent-searches.ts` (module snapshot +
+  `useSyncExternalStore`). The rail is image + title only. Empty state renders
+  nothing.
 
 ### Top search overlay (`components/layout/storefront-search-overlay.tsx`)
 
@@ -207,12 +260,14 @@ Five items, in order:
   other `/products` view highlights All Products.
 - Icons come from the existing Hugeicons set (`Home01Icon`, `GridViewIcon`,
   `Package01Icon`, `Search01Icon`, `UserCircleIcon`). No new icon library.
-- Each item is `flex-1` with a visible 11px label below a 20px icon; the bar
-  stays 56px tall, so five tabs fit 360px without wrapping, clipping, or
-  horizontal scrolling. Interactive areas are the full 56px-tall tab.
-- Active state is never colour alone: a 20×2px top rule and a heavier icon
-  stroke accompany the deeper orange label (`text-brand-700`, AA on the
-  opaque bar); inactive items stay `text-muted-foreground`. No pills, fills or gradients. Links set
+- Each item is `flex-1` with a visible 12px (`text-xs`) label below a 24px
+  (`size-6`) icon; the bar stays 56px tall, so five tabs fit 360px without
+  wrapping, clipping, or horizontal scrolling. Interactive areas are the full
+  56px-tall tab.
+- Active state is never colour alone: the icon turns `text-primary` and the
+  label becomes `text-brand-700` semibold (`font-semibold`) with a heavier
+  icon stroke; inactive items stay `text-muted-foreground`. The top rule was
+  removed in the mockup-aligned refresh. No pills, fills or gradients. Links set
   `aria-current="page"`; the signed-in Account trigger and Search sheet trigger
   expose it too. Every tab has an inset `focus-visible` ring.
 - Semantic `<nav aria-label="Storefront">`; every item has a visible label and an
@@ -249,7 +304,7 @@ beneath the bar even at fractional device sizes.
 
 The header menu opens the retained left `Sheet` drawer. Its structure is:
 
-- **Brand header** — orange logo mark, "B2B Marketplace", "Wholesale sourcing",
+- **Brand header** - orange logo mark, "D2B", "Wholesale sourcing",
   and the standard close control (the title reserves space for it).
 - **Marketplace** — Home, Categories, All Products. Active rows use the same
   `isStorefrontTabActive()` contract as the bottom bar.
@@ -275,17 +330,37 @@ pointer-down press feedback.
 Alibaba-style dark navy band: `bg-brand-navy text-white`, white `Separator`, two
 link columns under the brand block, bottom legal bar in `text-white/50`.
 
+### Frequently bought (`components/storefront/frequently-bought.tsx`)
+
+Placeholder section until real co-purchase aggregation exists. Two bundles of
+real newest listings, each showing 2 covers on mobile / 4 from `sm`, with a
+"4+ more" pill overlapping the bundle bottom and a "See all orders" full-width
+button. The subtitle states it is a preview, so the placeholder is never
+mistaken for real purchase history.
+
+### Recommended products (`components/storefront/home-recommended.tsx`)
+
+Personalized slice from `getBuyerInterestCategoryIds` (viewed + saved categories,
+newest activity first, capped at 3 categories); guests fall through to newest
+approved listings via `getCachedRecommendedProducts`. Subtitle switches between
+"Based on the categories you have viewed and saved" and "Fresh listings from
+verified suppliers". Renders the standard product card in a
+`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4` grid.
+
 ### Product card (`components/storefront/product-card.tsx`)
 
-Image (square, `object-cover`) → title → **price** (bold `lg`, unit muted) → MOQ
-(`bg-muted` micro-badge) → footer bar (`border-t bg-muted/30`): supplier name +
-verification shield + location | icon-only add-to-cart action. `!gap-0 !py-0`
-card composed with `CardContent`/`CardFooter`; the add action is a 40px
-primary-outline icon button so it never dominates the card, and shows a spinner
-while the server action is pending. Negotiable flag is a `Badge` (`default`);
-price uses `tabular-nums`; the shield icon carries an `sr-only` "Verified
-supplier" label (never color-alone). Missing or failed product images render a
+Minimal layout using real data only (no MRP/discount). Square image → title
+(2-line clamp) → **price** (bold, unit muted) → full-width "Add to cart" button
+(`h-9`, icon + label, primary-outline, spinner while pending). No MOQ, brand/
+supplier name, or Negotiable badge. `!gap-0 !py-0` card with `hover:shadow-md`;
+`CardAddButton` is `w-full`. Missing or failed product images render the
 deliberate `ImageNotFound` + "No image" fallback inside the stable square.
+Cards are 2-up on phones, `sm:grid-cols-3`, `lg:grid-cols-4`,
+`min-[1200px]:grid-cols-6` where used by the catalogue.
+
+Guest product views are recorded client-side by
+`GuestRecentlyViewedTracker` (`lib/recently-viewed.ts`), rendered only for
+signed-out visitors from `ProductActionsIsland`.
 
 ### Category tile (`components/storefront/home-sections.tsx` `CategoryTile`)
 

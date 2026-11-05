@@ -3,9 +3,18 @@ import type { Metadata } from "next"
 import type { CatalogueSearchParams } from "@/lib/catalogue"
 import { AllProductsSection } from "@/components/storefront/home-sections"
 import { SearchMegaMenuSection } from "@/components/storefront/search-mega-menu-section"
+import { HomeBannerActions } from "@/components/storefront/home-banner-actions"
+import { TopCategoriesSection } from "@/components/storefront/home-categories"
+import { RecentlyViewedSection } from "@/components/storefront/home-recently-viewed"
+import { FrequentlyBoughtSection } from "@/components/storefront/frequently-bought"
+import { RecommendedProductsSection } from "@/components/storefront/home-recommended"
 import {
   CatalogueSkeleton,
+  FrequentlyBoughtSkeleton,
+  RecentRailSkeleton,
+  RecommendedProductsSkeleton,
   SearchHeroSkeleton,
+  TopCategoriesSkeleton,
 } from "@/components/storefront/skeletons"
 
 export const metadata: Metadata = {
@@ -33,8 +42,27 @@ export default async function HomePage({
       <h1 className="sr-only">
         Wholesale marketplace — source directly from verified Indian suppliers
       </h1>
+
       <Suspense fallback={<SearchHeroSkeleton />}>
         <SearchMegaMenuSection />
+      </Suspense>
+
+      <HomeBannerActions />
+
+      <Suspense fallback={<TopCategoriesSkeleton />}>
+        <TopCategoriesSection />
+      </Suspense>
+
+      <Suspense fallback={<RecentRailSkeleton />}>
+        <RecentlyViewedSection />
+      </Suspense>
+
+      <Suspense fallback={<FrequentlyBoughtSkeleton />}>
+        <FrequentlyBoughtSection />
+      </Suspense>
+
+      <Suspense fallback={<RecommendedProductsSkeleton />}>
+        <RecommendedProductsSection />
       </Suspense>
 
       <Suspense

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { StorefrontHeader } from "@/components/layout/storefront-header"
 import { StorefrontFooter } from "@/components/layout/storefront-footer"
 import { StorefrontBottomNav } from "@/components/layout/storefront-bottom-nav"
+import { StoreTabs } from "@/components/storefront/store-tabs"
 import { StorefrontSession } from "@/components/storefront/storefront-session"
 import type { MegaMenuCategory } from "@/components/storefront/search-mega-menu"
 
@@ -37,6 +38,7 @@ export function StorefrontShell({
       }
     >
       <StorefrontSession />
+      {pathname === "/" ? <StoreTabs /> : null}
       <StorefrontHeader
         user={user}
         categories={categories}
@@ -45,7 +47,9 @@ export function StorefrontShell({
       />
       <main className="flex-1">{children}</main>
       <StorefrontFooter />
-      {!hideBottomNav && <StorefrontBottomNav user={user} />}
+      {!hideBottomNav && (
+        <StorefrontBottomNav user={user} cartCount={cartCount} />
+      )}
     </div>
   )
 }

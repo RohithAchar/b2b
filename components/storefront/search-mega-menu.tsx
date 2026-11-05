@@ -47,6 +47,8 @@ export function SearchMegaMenu({
   suggestions = [],
   visibleCount = 6,
   autoFocus = false,
+  showCategoryChips = true,
+  showCategoryList = true,
 }: {
   categories: MegaMenuCategory[]
   activeSlug?: string
@@ -56,6 +58,17 @@ export function SearchMegaMenu({
   visibleCount?: number
   /** Focus the search field on mount (used by the desktop search overlay). */
   autoFocus?: boolean
+  /**
+   * Homepage hides the mobile chip row because the Top categories section
+   * below it is the canonical category entry point.
+   */
+  showCategoryChips?: boolean
+  /**
+   * Homepage also hides the desktop category list for the same reason: the
+   * search panel stays a search entry point instead of repeating the category
+   * section that follows it.
+   */
+  showCategoryList?: boolean
 }) {
   const initial =
     categories.find((c) => c.slug === activeSlug) ?? categories[0] ?? null
@@ -210,7 +223,7 @@ export function SearchMegaMenu({
           )}
 
           {/* Popular categories: compact scannable chips on mobile */}
-          {categories.length > 0 && (
+          {showCategoryChips && categories.length > 0 && (
             <div className="-mx-4 mt-3 no-scrollbar flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-0.5 sm:hidden">
               {categories.slice(0, 8).map((cat) => (
                 <Link
@@ -270,6 +283,7 @@ export function SearchMegaMenu({
         </div>
 
         {/* Category browse: desktop-only list (mobile uses bottom-nav Categories) */}
+        {showCategoryList && (
         <nav
           aria-label="Browse categories"
           className="mt-4 hidden overflow-hidden rounded-b-lg border-t border-border sm:mt-5 lg:block"
@@ -328,6 +342,7 @@ export function SearchMegaMenu({
             )}
           </ul>
         </nav>
+        )}
       </div>
     </div>
   )

@@ -5,10 +5,10 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import {
-  GridViewIcon,
   Home01Icon,
   Package01Icon,
   Search01Icon,
+  ShoppingCart01Icon,
   UserCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "cn"
@@ -27,10 +27,10 @@ type User = { email: string; user_type: string; isStaff?: boolean } | null
 
 function itemClass(active: boolean): string {
   return cn(
-    "relative flex min-w-0 flex-1 press touch-manipulation flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] font-medium tracking-tight whitespace-nowrap",
+    "relative flex min-w-0 flex-1 press touch-manipulation flex-col items-center justify-center gap-0.5 px-0.5 text-xs font-medium tracking-tight whitespace-nowrap",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
     active
-      ? "text-brand-700 before:absolute before:top-0 before:left-1/2 before:h-0.5 before:w-5 before:-translate-x-1/2 before:rounded-sm before:bg-primary before:content-['']"
+      ? "font-semibold text-brand-700"
       : "text-muted-foreground hover:text-foreground"
   )
 }
@@ -49,7 +49,7 @@ function ItemContent({
       <HugeiconsIcon
         icon={icon}
         strokeWidth={active ? 2.4 : 2}
-        className="size-5"
+        className={cn("size-6", active ? "text-primary" : undefined)}
       />
       <span>{label}</span>
     </>
@@ -153,20 +153,26 @@ function BottomSearchSheet({ active }: { active: boolean }) {
   )
 }
 
-export function StorefrontBottomNav({ user }: { user: User }) {
+export function StorefrontBottomNav({
+  user,
+  cartCount = 0,
+}: {
+  user: User
+  cartCount?: number
+}) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const hasSearch =
     Boolean(searchParams.get("q")) || Boolean(searchParams.get("img"))
 
   const homeActive = isStorefrontTabActive("home", pathname)
-  const categoriesActive = isStorefrontTabActive("categories", pathname)
   const allProductsActive = isStorefrontTabActive(
     "products",
     pathname,
     hasSearch
   )
   const searchActive = isStorefrontTabActive("search", pathname, hasSearch)
+  const cartActive = pathname === "/cart"
   const accountActive = isStorefrontTabActive("account", pathname)
 
   return (
@@ -181,18 +187,6 @@ export function StorefrontBottomNav({ user }: { user: User }) {
           className={itemClass(homeActive)}
         >
           <ItemContent icon={Home01Icon} label="Home" active={homeActive} />
-        </Link>
-
-        <Link
-          href="/categories"
-          aria-current={categoriesActive ? "page" : undefined}
-          className={itemClass(categoriesActive)}
-        >
-          <ItemContent
-            icon={GridViewIcon}
-            label="Categories"
-            active={categoriesActive}
-          />
         </Link>
 
         <Link
@@ -244,6 +238,28 @@ export function StorefrontBottomNav({ user }: { user: User }) {
             />
           </Link>
         )}
+
+        <span className="w-px self-stretch bg-border" aria-hidden="true" />
+
+        <Link
+          href="/cart"
+          aria-current={cartActive ? "page" : undefined}
+          className={itemClass(cartActive)}
+        >
+          <span className="relative">
+            <HugeiconsIcon
+              icon={ShoppingCart01Icon}
+              strokeWidth={cartActive ? 2.4 : 2}
+              className={cn("size-6", cartActive ? "text-primary" : undefined)}
+            />
+            {cartCount > 0 ? (
+              <span className="absolute -right-2 -top-1.5 flex min-w-4 items-center justify-center rounded-sm bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            ) : null}
+          </span>
+          <span>Cart</span>
+        </Link>
       </nav>
     </div>
   )

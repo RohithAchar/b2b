@@ -46,7 +46,7 @@ export function StorefrontHeader({
   return (
     <header
       data-scrolled={scrolled}
-      className="scroll-edge sticky top-0 z-50 bg-card pt-(--safe-area-top)"
+      className="scroll-edge sticky top-0 z-50 hidden bg-card pt-(--safe-area-top) lg:block"
     >
       {/* ---- Tier 1: logo + nav + actions ---- */}{" "}
       <div>
@@ -57,10 +57,10 @@ export function StorefrontHeader({
           {/* Logo */}
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-              B
+              D
             </span>
             <span className="truncate text-base font-bold tracking-tight">
-              B2B Marketplace
+              D2B
             </span>
           </Link>
 

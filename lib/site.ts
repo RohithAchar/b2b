@@ -3,4 +3,4 @@
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-export const SITE_NAME = "B2B Marketplace";
+export const SITE_NAME = "D2B";

@@ -16,11 +16,9 @@ export function AuthShell({
       <div className="hidden flex-col justify-between border-r border-border bg-card p-12 lg:flex">
         <div className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            B
+            D
           </span>
-          <span className="text-lg font-bold tracking-tight">
-            B2B Marketplace
-          </span>
+          <span className="text-lg font-bold tracking-tight">D2B</span>
         </div>
 
         <div className="max-w-md">

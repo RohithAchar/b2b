@@ -8,24 +8,23 @@ import { Card } from "@/components/ui/card"
 
 export function ProductCardSkeleton() {
   return (
-    <Card className="!gap-0 overflow-hidden border-border !py-0">
+    <Card className="flex h-full !gap-0 flex-col overflow-hidden border-border !py-0">
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
         <Skeleton className="absolute inset-0 rounded-none" />
       </div>
-      <div className="flex flex-col gap-1 px-2.5 py-2.5">
+      <div className="flex flex-col gap-1.5 px-2.5 pt-2.5">
         <div className="min-h-10 space-y-1">
           <Skeleton className="h-3.5 w-3/4" />
           <Skeleton className="h-3.5 w-1/2" />
         </div>
-        <Skeleton className="h-5 w-1/2" />
-        <Skeleton className="h-5 w-16 rounded-sm" />
-      </div>
-      <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-2.5 py-2 !pt-2">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <Skeleton className="h-3 w-24 max-w-full" />
-          <Skeleton className="h-2.5 w-20 max-w-full" />
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-14 shrink-0 rounded-sm" />
         </div>
-        <Skeleton className="size-10 shrink-0 rounded-md" />
+        <Skeleton className="h-2.5 w-3/4" />
+      </div>
+      <div className="mt-auto px-2.5 pt-2 pb-2.5">
+        <Skeleton className="h-9 w-full rounded-md" />
       </div>
     </Card>
   )
@@ -371,12 +370,6 @@ export function SearchHeroSkeleton() {
       <div className="flex flex-col rounded-lg border border-border bg-card max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent">
         <div className="flex flex-col gap-2 px-4 pt-4 max-sm:px-0 max-sm:pt-0 sm:px-5 sm:pt-5">
           <Skeleton className="h-12 w-full rounded-md" />
-          {/* Mobile popular-category chip row */}
-          <div className="flex gap-2 overflow-hidden sm:hidden">
-            <Skeleton className="h-10 w-32 shrink-0 rounded-md" />
-            <Skeleton className="h-10 w-28 shrink-0 rounded-md" />
-            <Skeleton className="h-10 w-36 shrink-0 rounded-md" />
-          </div>
           {/* Tablet/desktop hot-search row */}
           <div className="hidden items-center gap-2 sm:flex">
             <Skeleton className="h-4 w-10 rounded-sm" />
@@ -860,5 +853,119 @@ export function AddressListSkeleton({ count = 3 }: { count?: number }) {
       <Skeleton className="h-px w-full" />
       <Skeleton className="h-3 w-2/3" />
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Homepage sections
+// ---------------------------------------------------------------------------
+
+export function HomeBannerActionsSkeleton() {
+  return (
+    <div aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="grid grid-cols-3 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+        <Skeleton className="col-span-1 row-span-2 min-h-52 rounded-xl" />
+        <div className="col-span-2 grid grid-cols-2 gap-2.5">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="min-h-24 rounded-xl sm:min-h-28" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function RecentRailSkeleton() {
+  return (
+    <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-5 w-16" />
+      </div>
+      <div className="-mx-4 flex gap-3 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-6">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="w-36 shrink-0 md:w-auto">
+            <Skeleton className="aspect-square w-full rounded-lg" />
+            <Skeleton className="mt-1.5 h-3 w-3/4" />
+            <Skeleton className="mt-1 h-3 w-1/2" />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export function FrequentlyBoughtSkeleton() {
+  return (
+    <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-44" />
+          <Skeleton className="h-3 w-64 max-w-full" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 2 }, (_, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-border bg-card p-1.5 pb-2"
+          >
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {Array.from({ length: 4 }, (_, j) => (
+                <Skeleton
+                  key={j}
+                  className={
+                    j > 1
+                      ? "hidden aspect-square w-full rounded-md sm:block"
+                      : "aspect-square w-full rounded-md"
+                  }
+                />
+              ))}
+            </div>
+            <div className="relative z-10 -mt-4 flex justify-center">
+              <Skeleton className="h-8 w-24 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <Skeleton className="mt-2 h-10 w-full rounded-md" />
+    </section>
+  )
+}
+
+export function RecommendedProductsSkeleton() {
+  return (
+    <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-3 w-56 max-w-full" />
+        </div>
+        <Skeleton className="h-5 w-16" />
+      </div>
+      <ProductGridSkeleton
+        count={8}
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4"
+      />
+    </section>
+  )
+}
+
+export function TopCategoriesSkeleton() {
+  return (
+    <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+        <Skeleton className="h-6 w-36" />
+      </div>
+      <div className="-mx-4 flex gap-2.5 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-5 md:px-0 lg:grid-cols-8">
+        {Array.from({ length: 8 }, (_, i) => (
+          <div key={i} className="w-[84px] shrink-0 md:w-auto">
+            <Skeleton className="aspect-square w-full rounded-lg" />
+            <Skeleton className="mx-auto mt-1.5 h-3 w-3/4" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="mt-2 h-10 w-full rounded-md" />
+    </section>
   )
 }

@@ -38,11 +38,9 @@ export function StorefrontFooter() {
         <div className="col-span-2">
           <div className="flex items-center gap-2">
             <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-              B
+              D
             </span>
-            <span className="text-base font-bold tracking-tight">
-              B2B Marketplace
-            </span>
+            <span className="text-base font-bold tracking-tight">D2B</span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-white/60">
             India&apos;s wholesale marketplace. Buy and sell bulk products
@@ -81,8 +79,7 @@ export function StorefrontFooter() {
       {/* Bottom bar */}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-white/50">
         <span>
-          &copy; {new Date().getFullYear()} B2B Marketplace. All rights
-          reserved.
+          &copy; {new Date().getFullYear()} D2B. All rights reserved.
         </span>
         <span className="font-medium text-white/70">
           Made in India for India&apos;s wholesale trade

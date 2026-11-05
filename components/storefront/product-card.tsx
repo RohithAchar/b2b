@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { publicTransformedImageUrl } from "@/lib/storage"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { CardAddButton } from "@/components/storefront/card-add-button"
 import { ProductImage } from "@/components/storefront/product-image"
 
@@ -43,7 +43,7 @@ export function ProductCard({
   sizes?: string
 }) {
   return (
-    <Card className="group !gap-0 overflow-hidden border-border !py-0 transition-shadow hover:shadow-md">
+    <Card className="group flex h-full flex-col !gap-0 overflow-hidden border-border !py-0 transition-shadow hover:shadow-md">
       <Link href={`/products/${product.id}`} className="block press">
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           <ProductImage
@@ -54,28 +54,29 @@ export function ProductCard({
           />
         </div>
 
-        <CardContent className="flex flex-col gap-2 px-2.5 py-2.5">
-          <p className="line-clamp-2 min-h-10 text-sm leading-snug font-semibold">
+        <div className="flex flex-col gap-1 px-2.5 pt-2">
+          <p className="line-clamp-2 min-h-9 text-sm leading-snug font-semibold">
             {product.title}
           </p>
 
-          <div className="flex items-center justify-between gap-2">
-            {product.pricing ? (
-              <p className="min-w-0 truncate text-lg font-bold tracking-tight text-foreground tabular-nums">
-                {formatPrice(product.pricing.customer_price)}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  / {product.unit}
-                </span>
-              </p>
-            ) : (
-              <p className="min-w-0 truncate text-sm font-medium text-muted-foreground">
-                Price on request
-              </p>
-            )}
-            <CardAddButton productId={product.id} moq={product.moq} />
-          </div>
-        </CardContent>
+          {product.pricing ? (
+            <p className="text-base font-bold tracking-tight text-foreground tabular-nums">
+              {formatPrice(product.pricing.customer_price)}
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                / {product.unit}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-muted-foreground">
+              Price on request
+            </p>
+          )}
+        </div>
       </Link>
+
+      <div className="mt-auto px-2.5 pt-1.5 pb-2.5">
+        <CardAddButton productId={product.id} moq={product.moq} />
+      </div>
     </Card>
   )
 }

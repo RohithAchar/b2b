@@ -14,6 +14,7 @@ import {
   getNavigationCategories,
   getProduct,
   getProducts,
+  getRecommendedProducts,
   getRelatedProducts,
   getSourceRegions,
   type ProductListParams,
@@ -91,6 +92,26 @@ export const getCachedHomeProducts = unstable_cache(
   ["home-products"],
   { revalidate: 120, tags: ["products", "prices", "home"] },
 );
+
+/**
+ * Recommended products are derived from a buyer's interest categories, then
+ * cached by the category set itself (not by user), so many buyers share the
+ * same cached slice. Guests fall through to the newest products.
+ */
+export async function getCachedRecommendedProducts(categoryIds: string[]) {
+  const normalized = [...new Set(categoryIds)].sort()
+  const key = normalized.join(",") || "all"
+  return unstable_cache(
+    async () =>
+      getRecommendedProducts(
+        makePublicClient() as unknown as AnyClient,
+        normalized,
+        8,
+      ),
+    ["recommended", key],
+    { revalidate: 120, tags: ["products", "prices", "home"] },
+  )()
+}
 
 export const getCachedHomeBanners = unstable_cache(
   async () => getHomeBanners(makePublicClient() as unknown as AnyClient),

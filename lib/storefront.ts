@@ -156,6 +156,54 @@ export async function getHomeProducts(supabase: SupabaseClient) {
   }));
 }
 
+/**
+ * Homepage recommendations. Callers pass the categories a buyer has shown
+ * interest in (viewed/saved); guests pass none. When the category slice has no
+ * listings yet we fall back to the newest approved products instead of showing
+ * an empty section.
+ */
+export async function getRecommendedProducts(
+  supabase: SupabaseClient,
+  categoryIds: string[],
+  limit = 8,
+) {
+  const select =
+    "id, title, unit, moq, negotiable, created_at, supplier_id, images:product_images(path, sort)";
+
+  const run = (ids: string[]) => {
+    let query = supabase
+      .from("products")
+      .select(select)
+      .eq("status", "approved")
+      .eq("is_hidden", false);
+    if (ids.length > 0) query = query.in("category_id", ids);
+    return query.order("created_at", { ascending: false }).limit(limit);
+  };
+
+  let { data } = await run(categoryIds);
+  if ((data ?? []).length === 0 && categoryIds.length > 0) {
+    ({ data } = await run([]));
+  }
+
+  const products = data ?? [];
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      products.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(
+      supabase,
+      products.map((p) => p.id as string),
+    ),
+  ]);
+
+  return products.map((p) => ({
+    ...p,
+    supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    pricing: priceMap.get(p.id as string) ?? null,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Shared storefront catalogue (homepage + /products)
 // ---------------------------------------------------------------------------

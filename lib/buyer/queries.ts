@@ -83,6 +83,52 @@ export async function getBuyerSavedProducts(
 }
 
 // ---------------------------------------------------------------------------
+// Recommendation interests
+// ---------------------------------------------------------------------------
+
+/**
+ * Categories the buyer has recently viewed or saved, newest activity first.
+ * Used only to pick a homepage recommendation slice; no profile is inferred or
+ * stored.
+ */
+export async function getBuyerInterestCategoryIds(
+  supabase: SupabaseClient,
+  buyerId: string,
+  limit = 3,
+): Promise<string[]> {
+  const [recent, saved] = await Promise.all([
+    supabase
+      .from("recently_viewed")
+      .select("last_viewed_at, product:product_id(category_id)")
+      .eq("buyer_id", buyerId)
+      .order("last_viewed_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("saved_products")
+      .select("created_at, product:product_id(category_id)")
+      .eq("buyer_id", buyerId)
+      .order("created_at", { ascending: false })
+      .limit(12),
+  ]);
+
+  const rows = [
+    ...(recent.data ?? []),
+    ...(saved.data ?? []),
+  ] as unknown as { product: { category_id: string | null } | null }[];
+
+  const seen = new Set<string>();
+  const categoryIds: string[] = [];
+  for (const row of rows) {
+    const id = row.product?.category_id;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    categoryIds.push(id);
+    if (categoryIds.length === limit) break;
+  }
+  return categoryIds;
+}
+
+// ---------------------------------------------------------------------------
 // Recently viewed
 // ---------------------------------------------------------------------------
 

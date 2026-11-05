@@ -3,6 +3,7 @@ import { sanitizeRichText } from "@/lib/supplier/sanitize"
 import { formatIndianNumber, formatRupees, stockLabel } from "@/lib/format"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
 import { getCachedRelatedProducts } from "@/lib/storefront-cache"
+import { publicTransformedImageUrl } from "@/lib/storage"
 import type { CustomerPrices } from "@/lib/pricing"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -112,6 +113,12 @@ export function ProductDetail({ product }: { product: Product }) {
   const sortedVariants = [...product.variants]
     .map((v) => ({ ...v, customer_price: variantPrices.get(v.id) }))
     .sort((a, b) => a.sort - b.sort)
+
+  const coverImage = images[0]
+    ? publicTransformedImageUrl("product_images", images[0].path, {
+        width: 320,
+      })
+    : null
 
   const descriptionHtml = sanitizeRichText(product.description ?? "")
   const hasDescription =
@@ -228,6 +235,8 @@ export function ProductDetail({ product }: { product: Product }) {
           >
             <ProductActionsIsland
               productId={product.id}
+              title={product.title}
+              image={coverImage}
               moq={product.moq}
               unit={product.unit}
               variants={sortedVariants.map((v) => ({

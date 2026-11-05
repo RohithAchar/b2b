@@ -135,10 +135,10 @@ export function MobileNav({
       >
         <SheetTitle className="flex items-center gap-3 border-b border-border px-4 py-4 pr-14 text-base font-bold tracking-tight">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            B
+            D
           </span>
           <span className="flex min-w-0 flex-col">
-            <span className="truncate">B2B Marketplace</span>
+            <span className="truncate">D2B</span>
             <span className="truncate text-[11px] font-medium tracking-wide text-muted-foreground">
               Wholesale sourcing
             </span>

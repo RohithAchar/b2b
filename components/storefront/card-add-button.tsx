@@ -29,7 +29,7 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
   }, [state, router]);
 
   return (
-    <form action={action} className="shrink-0">
+    <form action={action} className="w-full">
       <input type="hidden" name="productId" value={productId} />
       <input type="hidden" name="quantity" value={Math.max(1, moq)} />
       <Button
@@ -39,13 +39,18 @@ export function CardAddButton({ productId, moq }: { productId: string; moq: numb
         aria-label="Add to cart"
         aria-busy={pending}
         title="Add to cart"
-        className="size-11 border-primary/40 bg-primary/5 text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
+        className="h-9 w-full justify-center gap-1.5 border-primary/40 bg-primary/5 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
       >
         {pending ? (
           <Spinner className="size-4" />
         ) : (
-          <HugeiconsIcon icon={ShoppingCart01Icon} strokeWidth={2} />
+          <HugeiconsIcon
+            icon={ShoppingCart01Icon}
+            strokeWidth={2}
+            className="size-4"
+          />
         )}
+        <span>Add to cart</span>
       </Button>
     </form>
   );
