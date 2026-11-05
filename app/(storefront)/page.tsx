@@ -5,7 +5,6 @@ import { AllProductsSection } from "@/components/storefront/home-sections"
 import { SearchMegaMenuSection } from "@/components/storefront/search-mega-menu-section"
 import { HomeBannerActions } from "@/components/storefront/home-banner-actions"
 import { TopCategoriesSection } from "@/components/storefront/home-categories"
-import { HomePromoSection } from "@/components/storefront/home-promo-section"
 import { RecentlyViewedSection } from "@/components/storefront/home-recently-viewed"
 import { FrequentlyBoughtSection } from "@/components/storefront/frequently-bought"
 import { RecommendedProductsSection } from "@/components/storefront/home-recommended"
@@ -44,36 +43,23 @@ export default async function HomePage({
         Wholesale marketplace — source directly from verified Indian suppliers
       </h1>
 
-      <div className="lg:hidden">
-        <Suspense fallback={<SearchHeroSkeleton />}>
-          <SearchMegaMenuSection />
-        </Suspense>
-      </div>
+      <Suspense fallback={<SearchHeroSkeleton />}>
+        <SearchMegaMenuSection />
+      </Suspense>
 
-      <div className="lg:hidden">
-        <HomeBannerActions />
-      </div>
+      <HomeBannerActions />
 
-      <HomePromoSection />
+      <Suspense fallback={<TopCategoriesSkeleton />}>
+        <TopCategoriesSection />
+      </Suspense>
 
-      <div className="lg:hidden">
-        <Suspense fallback={<TopCategoriesSkeleton />}>
-          <TopCategoriesSection />
-        </Suspense>
-      </div>
+      <Suspense fallback={<RecentRailSkeleton />}>
+        <RecentlyViewedSection />
+      </Suspense>
 
-      <div className="mx-auto w-full max-w-7xl px-4 lg:grid lg:grid-cols-[3fr_2fr] lg:gap-6">
-        <div>
-          <Suspense fallback={<RecentRailSkeleton />}>
-            <RecentlyViewedSection />
-          </Suspense>
-        </div>
-        <div className="lg:border-l lg:border-border lg:pl-6">
-          <Suspense fallback={<FrequentlyBoughtSkeleton />}>
-            <FrequentlyBoughtSection />
-          </Suspense>
-        </div>
-      </div>
+      <Suspense fallback={<FrequentlyBoughtSkeleton />}>
+        <FrequentlyBoughtSection />
+      </Suspense>
 
       <Suspense fallback={<RecommendedProductsSkeleton />}>
         <RecommendedProductsSection />
