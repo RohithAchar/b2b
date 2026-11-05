@@ -3,19 +3,27 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  BellIcon,
+  FavouriteIcon,
+  Search01Icon,
+  ShoppingCart01Icon,
+  UserCircleIcon,
+} from "@hugeicons/core-free-icons"
 import { navLinksFor } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
-import { MobileNav } from "@/components/layout/mobile-nav"
-import { StorefrontSearchOverlay } from "@/components/layout/storefront-search-overlay"
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
-import type { MegaMenuCategory } from "@/components/storefront/search-mega-menu"
 import { Button } from "@/components/ui/button"
 
 type User = { email: string; user_type: string; isStaff?: boolean } | null
-type NavCategory = { slug: string; name: string }
 
-/** Scroll distance before the header's content-boundary fade appears. */
-const SCROLL_THRESHOLD = 10
+const PARTNER_TABS = [
+  { label: "D2H Core", active: true },
+  { label: "D2H Select" },
+  { label: "ECom Package" },
+  { label: "Dropship Deals" },
+]
 
 export function StorefrontHeader({
   user,
@@ -24,84 +32,111 @@ export function StorefrontHeader({
   cartCount = 0,
 }: {
   user: User
-  categories?: NavCategory[]
-  megaCategories?: MegaMenuCategory[]
+  categories?: { slug: string; name: string }[]
+  megaCategories?: { id: string; name: string; slug: string; image_path: string | null; product_count: number }[]
   cartCount?: number
 }) {
   const [scrolled, setScrolled] = useState(false)
-  const navLinks = navLinksFor(user)
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  // Remount the overlay on navigation so an open panel can never stay over the
-  // next route/query without an extra state-sync effect.
-  const routeKey = `${pathname}?${searchParams.toString()}`
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
+    const onScroll = () => setScrolled(window.scrollY > 10)
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
+
+  const navLinks = navLinksFor(user)
 
   return (
     <header
       data-scrolled={scrolled}
       className="scroll-edge sticky top-0 z-50 hidden bg-card pt-(--safe-area-top) lg:block"
     >
-      {/* ---- Tier 1: logo + nav + actions ---- */}{" "}
-      <div>
-        <div className="mx-auto flex h-(--storefront-header-height) max-w-7xl items-center gap-2 px-4">
-          {/* Mobile menu */}
-          <MobileNav user={user} categories={categories} />
+      <div className="mx-auto flex h-[82px] max-w-7xl items-center gap-4 px-6 xl:px-10">
+        {/* Brand logo */}
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+            D
+          </span>
+          <span className="text-lg font-bold tracking-tight">D2B</span>
+        </Link>
 
-          {/* Logo */}
-          <Link href="/" className="flex min-w-0 items-center gap-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-              D
+        {/* Partner / store logos */}
+        <div className="flex shrink-0 items-center gap-2">
+          {PARTNER_TABS.map((tab) => (
+            <span
+              key={tab.label}
+              className={
+                tab.active
+                  ? "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-brand-700"
+                  : "flex h-9 items-center rounded-md border border-border bg-card px-3 text-sm font-medium text-muted-foreground"
+              }
+            >
+              {tab.label}
             </span>
-            <span className="truncate text-base font-bold tracking-tight">
-              D2B
-            </span>
+          ))}
+        </div>
+
+        {/* Vertical divider */}
+        <span className="h-8 w-px shrink-0 bg-border" aria-hidden="true" />
+
+        {/* Search */}
+        <form
+          action="/products"
+          method="get"
+          className="flex min-w-0 flex-1 items-stretch rounded-md border border-border bg-card focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+        >
+          <input type="hidden" name="page" value="1" />
+          <input
+            name="q"
+            type="search"
+            placeholder="Search products, categories..."
+            className="min-w-0 flex-1 bg-transparent px-4 text-sm outline-none"
+          />
+          <button
+            type="submit"
+            aria-label="Search"
+            className="flex items-center px-3 text-muted-foreground hover:text-primary"
+          >
+            <HugeiconsIcon icon={Search01Icon} strokeWidth={2} className="size-5" />
+          </button>
+        </form>
+
+        {/* Super Pi */}
+        <button
+          type="button"
+          title="Coming soon"
+          className="shrink-0 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground"
+        >
+          Super Pi
+        </button>
+
+        {/* Header actions */}
+        <div className="flex shrink-0 items-center gap-1">
+          <Link
+            href="/account"
+            aria-label="Notifications"
+            className="flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <HugeiconsIcon icon={BellIcon} strokeWidth={2} className="size-5" />
           </Link>
-
-          {/* Nav links (desktop) */}
-          <nav className="hidden items-center gap-0.5 lg:flex">
-            {navLinks.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Cart (mobile; desktop has it in right actions) */}
-          <CartIconLink count={cartCount} className="ml-auto size-10 lg:hidden" />
-
-          {/* Right actions (desktop; mobile uses the bottom navigation) */}
-          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
-            <StorefrontSearchOverlay
-              key={routeKey}
-              categories={megaCategories}
-            />
-            <CartIconLink count={cartCount} />
-            {user ? (
-              <AccountMenu user={user} />
-            ) : (
-              <>
-                <Link href="/supplier/onboarding" className="hidden md:block">
-                  <Button variant="secondary" size="sm">
-                    Become a Supplier
-                  </Button>
-                </Link>
-                <Link href="/auth/login">
-                  <Button size="sm">Sign In</Button>
-                </Link>
-              </>
-            )}
-          </div>
+          <Link
+            href="/account?tab=saved"
+            aria-label="Wishlist"
+            className="flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <HugeiconsIcon icon={FavouriteIcon} strokeWidth={2} className="size-5" />
+          </Link>
+          <CartIconLink count={cartCount} />
+          {user ? (
+            <AccountMenu user={user} />
+          ) : (
+            <Link href="/auth/login">
+              <Button size="sm">Sign In</Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>

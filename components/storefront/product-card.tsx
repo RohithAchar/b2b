@@ -43,9 +43,12 @@ export function ProductCard({
   sizes?: string
 }) {
   return (
-    <Card className="group flex h-full flex-col !gap-0 overflow-hidden border-border !py-0 transition-shadow hover:shadow-md">
-      <Link href={`/products/${product.id}`} className="block press">
-        <div className="relative aspect-square w-full overflow-hidden bg-muted">
+    <Card className="group flex h-full flex-col !gap-0 overflow-hidden border-border !py-0 transition-shadow hover:shadow-md lg:flex-row">
+      <Link
+        href={`/products/${product.id}`}
+        className="block press lg:flex lg:w-full"
+      >
+        <div className="relative aspect-square w-full overflow-hidden bg-muted lg:aspect-[4/3] lg:w-[48%] lg:shrink-0">
           <ProductImage
             src={coverUrl(product)}
             alt={product.title}
@@ -54,7 +57,7 @@ export function ProductCard({
           />
         </div>
 
-        <div className="flex flex-col gap-1 px-2.5 pt-2">
+        <div className="flex flex-1 flex-col gap-1 px-2.5 pt-2 lg:justify-center lg:px-4">
           <p className="line-clamp-2 min-h-9 text-sm leading-snug font-semibold">
             {product.title}
           </p>
@@ -71,12 +74,12 @@ export function ProductCard({
               Price on request
             </p>
           )}
+
+          <div className="pt-2">
+            <CardAddButton productId={product.id} moq={product.moq} />
+          </div>
         </div>
       </Link>
-
-      <div className="mt-auto px-2.5 pt-1.5 pb-2.5">
-        <CardAddButton productId={product.id} moq={product.moq} />
-      </div>
     </Card>
   )
 }

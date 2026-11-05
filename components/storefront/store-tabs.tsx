@@ -52,7 +52,7 @@ function TabBody({ tab }: { tab: StoreTab }) {
 
 export function StoreTabs() {
   return (
-    <nav aria-label="Store types" className="border-b border-border bg-card">
+    <nav aria-label="Store types" className="border-b border-border bg-card lg:hidden">
       <ul className="mx-auto grid w-full max-w-7xl grid-cols-4 gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
         {STORE_TABS.map((tab) => (
           <li key={tab.id} className="min-w-0">
