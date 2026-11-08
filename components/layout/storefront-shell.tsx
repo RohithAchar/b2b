@@ -38,7 +38,9 @@ export function StorefrontShell({
       }
     >
       <StorefrontSession />
-      {pathname === "/" ? <StoreTabs /> : null}
+      {pathname === "/" || pathname === "/select" || pathname?.startsWith("/select/") ? (
+        <StoreTabs />
+      ) : null}
       <StorefrontHeader
         user={user}
         categories={categories}

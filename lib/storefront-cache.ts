@@ -10,11 +10,13 @@ import {
   getHomeBanners,
   getHomeCategories,
   getHomeProducts,
+  getHotSellingProducts,
   getMegaMenuCategories,
   getNavigationCategories,
   getProduct,
   getProducts,
   getRecommendedProducts,
+  getWinningProducts,
   getRelatedProducts,
   getSourceRegions,
   type ProductListParams,
@@ -90,6 +92,18 @@ export const getCachedMegaMenuCategories = cache(
 export const getCachedHomeProducts = unstable_cache(
   async () => getHomeProducts(makePublicClient() as unknown as AnyClient),
   ["home-products"],
+  { revalidate: 120, tags: ["products", "prices", "home"] },
+);
+
+export const getCachedWinningProducts = unstable_cache(
+  async () => getWinningProducts(makePublicClient() as unknown as AnyClient, 4),
+  ["select-winning-products"],
+  { revalidate: 120, tags: ["products", "prices", "home"] },
+);
+
+export const getCachedHotSellingProducts = unstable_cache(
+  async () => getHotSellingProducts(makePublicClient() as unknown as AnyClient, 4),
+  ["select-hot-selling-products"],
   { revalidate: 120, tags: ["products", "prices", "home"] },
 );
 

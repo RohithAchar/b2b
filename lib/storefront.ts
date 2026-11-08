@@ -157,6 +157,78 @@ export async function getHomeProducts(supabase: SupabaseClient) {
 }
 
 /**
+ * Products flagged by suppliers as "winning" (promotional). Real flag data
+ * from the products table — never synthesized.
+ */
+export async function getWinningProducts(
+  supabase: SupabaseClient,
+  limit = 8,
+) {
+  const { data } = await supabase
+    .from("products")
+    .select(
+      "id, title, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+    )
+    .eq("status", "approved")
+    .eq("is_hidden", false)
+    .eq("is_winning", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const products = data ?? [];
+  const ids = products.map((p) => p.id as string);
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      products.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(supabase, ids),
+  ]);
+
+  return products.map((p) => ({
+    ...p,
+    supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    pricing: priceMap.get(p.id as string) ?? null,
+  }));
+}
+
+/**
+ * Products flagged by suppliers as "hot selling" (promotional). Real flag
+ * data from the products table — never synthesized.
+ */
+export async function getHotSellingProducts(
+  supabase: SupabaseClient,
+  limit = 8,
+) {
+  const { data } = await supabase
+    .from("products")
+    .select(
+      "id, title, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
+    )
+    .eq("status", "approved")
+    .eq("is_hidden", false)
+    .eq("is_hot_selling", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const products = data ?? [];
+  const ids = products.map((p) => p.id as string);
+  const [supplierMap, priceMap] = await Promise.all([
+    fetchSupplierMap(
+      supabase,
+      products.map((p) => p.supplier_id as string),
+    ),
+    fetchCustomerPriceMap(supabase, ids),
+  ]);
+
+  return products.map((p) => ({
+    ...p,
+    supplier: supplierMap.get(p.supplier_id as string) ?? null,
+    pricing: priceMap.get(p.id as string) ?? null,
+  }));
+}
+
+/**
  * Homepage recommendations. Callers pass the categories a buyer has shown
  * interest in (viewed/saved); guests pass none. When the category slice has no
  * listings yet we fall back to the newest approved products instead of showing
