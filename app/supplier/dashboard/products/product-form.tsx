@@ -11,9 +11,11 @@ import {
   type SyntheticEvent,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
 import { FieldError } from "@/components/ui/field";
 import {
   createProduct,
@@ -117,6 +119,7 @@ export function ProductForm({
       if (fieldId) setInvalidField({ id: fieldId, message: state.message });
     }
   }
+  const router = useRouter();
   const [pendingAction, setPendingAction] = useState<"draft" | "submit" | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +133,8 @@ export function ProductForm({
   const autoSubmitRef = useRef(false);
 
   const [negotiable, setNegotiable] = useState(product?.negotiable ?? false);
+  const [isWinning, setIsWinning] = useState(product?.is_winning ?? false);
+  const [isHotSelling, setIsHotSelling] = useState(product?.is_hot_selling ?? false);
   const [hasVariants, setHasVariants] = useState((product?.variants?.length ?? 0) > 0);
   const [variants, setVariants] = useState<ExistingVariant[]>(product?.variants ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -262,6 +267,13 @@ export function ProductForm({
       }
     }
   }, [state.ok, draftKey]);
+
+  // Return to the all products page after a successful save.
+  useEffect(() => {
+    if (state.ok) {
+      router.push("/supplier/dashboard/products");
+    }
+  }, [state.ok, router]);
 
   // Route every field error to one scroll/focus path so client-side and
   // server-side errors behave identically. Hidden inputs (like #images) have
@@ -585,6 +597,8 @@ export function ProductForm({
         <input type="hidden" name="seo_image_clear" value={seoImageCleared ? "1" : ""} />
         <input type="hidden" name="removed_image_paths" value={JSON.stringify(removedImagePaths)} />
         <input type="hidden" name="primary_image" value={effectivePrimaryImageKey ?? ""} />
+        <input type="hidden" name="is_winning" value={isWinning ? "1" : ""} />
+        <input type="hidden" name="is_hot_selling" value={isHotSelling ? "1" : ""} />
 
         <ProductFormSectionTabs />
 
@@ -634,6 +648,17 @@ export function ProductForm({
               negotiable={negotiable}
               onNegotiableChange={setNegotiable}
             />
+            <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+              <span className="text-sm font-medium">Promotions</span>
+              <label className="flex items-center justify-between gap-3 text-sm">
+                Winning product
+                <Switch checked={isWinning} onCheckedChange={setIsWinning} />
+              </label>
+              <label className="flex items-center justify-between gap-3 text-sm">
+                Hot selling product
+                <Switch checked={isHotSelling} onCheckedChange={setIsHotSelling} />
+              </label>
+            </div>
             <ShippingTaxSection
               formValues={formValues}
               onValueChange={setFormValue}

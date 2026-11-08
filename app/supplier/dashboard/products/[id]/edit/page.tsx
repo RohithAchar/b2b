@@ -33,7 +33,7 @@ export default async function EditSupplierProductPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, category_id, seller_sku, hsn_code, gst_rate, carton_units, carton_dimensions, carton_weight_kg, description, unit, negotiable, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
+      "id, title, category_id, seller_sku, hsn_code, gst_rate, carton_units, carton_dimensions, carton_weight_kg, description, unit, negotiable, is_winning, is_hot_selling, packaging_details, warranty_return, youtube_url, seo_title, seo_description, seo_image_path, status, is_hidden",
     )
     .eq("id", id)
     .eq("supplier_id", companyId)
@@ -111,6 +111,8 @@ export default async function EditSupplierProductPage({
     unit: product.unit,
     price_per_unit: Number(basePrices?.price_per_unit ?? 0),
     negotiable: product.negotiable,
+    is_winning: product.is_winning ?? false,
+    is_hot_selling: product.is_hot_selling ?? false,
     packaging_details: product.packaging_details,
     warranty_return: product.warranty_return,
     youtube_url: product.youtube_url,

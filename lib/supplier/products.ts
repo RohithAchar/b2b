@@ -160,6 +160,8 @@ export const productSchema = z.object({
   unit: z.enum(PRODUCT_UNITS),
   price_per_unit: z.coerce.number().positive("Price must be positive."),
   negotiable: z.coerce.boolean().default(false),
+  is_winning: z.coerce.boolean().default(false),
+  is_hot_selling: z.coerce.boolean().default(false),
   packaging_details: z.string().trim().max(1000).optional().default(""),
   warranty_return: z.string().trim().max(1000).optional().default(""),
   youtube_url: z

@@ -242,7 +242,7 @@ async function submitForApproval(
     console.error("submitForApproval failed:", error);
     return { ok: false, message: rpcMessage(error, "Saved, but could not submit for approval. Try again.") };
   }
-  return { ok: true, message: "Saved and submitted for approval." };
+  return { ok: true, message: "Saved and published." };
 }
 
 export async function createProduct(
@@ -273,6 +273,8 @@ export async function createProduct(
     unit: formData.get("unit"),
     price_per_unit: formData.get("price_per_unit"),
     negotiable: boolOf(formData.get("negotiable")),
+    is_winning: boolOf(formData.get("is_winning")),
+    is_hot_selling: boolOf(formData.get("is_hot_selling")),
     packaging_details: formData.get("packaging_details") ?? "",
     warranty_return: formData.get("warranty_return") ?? "",
     youtube_url: formData.get("youtube_url") ?? "",
@@ -325,6 +327,8 @@ export async function createProduct(
       stock_qty: 0,
       lead_time_days: 7,
       negotiable: parsed.data.negotiable,
+      is_winning: parsed.data.is_winning,
+      is_hot_selling: parsed.data.is_hot_selling,
       sample_available: false,
       sample_price: null,
       packaging_details: parsed.data.packaging_details?.trim() ? parsed.data.packaging_details.trim() : null,
@@ -453,6 +457,8 @@ export async function updateProduct(
     unit: formData.get("unit"),
     price_per_unit: formData.get("price_per_unit"),
     negotiable: boolOf(formData.get("negotiable")),
+    is_winning: boolOf(formData.get("is_winning")),
+    is_hot_selling: boolOf(formData.get("is_hot_selling")),
     packaging_details: formData.get("packaging_details") ?? "",
     warranty_return: formData.get("warranty_return") ?? "",
     youtube_url: formData.get("youtube_url") ?? "",
@@ -522,6 +528,8 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
       unit: parsed.data.unit,
       price_per_unit: parsed.data.price_per_unit,
       negotiable: parsed.data.negotiable,
+      is_winning: parsed.data.is_winning,
+      is_hot_selling: parsed.data.is_hot_selling,
       packaging_details: parsed.data.packaging_details?.trim() ? parsed.data.packaging_details.trim() : null,
       warranty_return: parsed.data.warranty_return?.trim() ? parsed.data.warranty_return.trim() : null,
       youtube_url: youtubeUrl,
@@ -639,7 +647,7 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
   }
   revalidatePath("/supplier/dashboard/products");
   revalidatePath("/admin/dashboard/products");
-  return { ok: true, message: "Submitted for approval." };
+  return { ok: true, message: "Published." };
 }
 
 export async function deleteProduct(productId: string): Promise<ProductActionState> {

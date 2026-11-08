@@ -35,7 +35,7 @@ export function ProductFormActions({
           )}
           {pending && pendingAction === "submit"
             ? "Submitting…"
-            : "Save & submit for approval"}
+            : "Save & publish"}
         </Button>
       ) : null}
       <Button
@@ -89,7 +89,7 @@ export function ProductFormStickyActions({
               )}
               {pending && pendingAction === "submit"
                 ? "Submitting…"
-                : "Save & submit for approval"}
+                : "Save & publish"}
             </Button>
           ) : null}
           <Button

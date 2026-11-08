@@ -30,6 +30,8 @@ export type ExistingProduct = {
   unit: string;
   price_per_unit: number;
   negotiable: boolean;
+  is_winning: boolean;
+  is_hot_selling: boolean;
   packaging_details: string | null;
   warranty_return: string | null;
   youtube_url: string | null;

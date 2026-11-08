@@ -30,7 +30,7 @@ export default async function NewSupplierProductPage() {
       mode="create"
       categories={options}
       title="Add new product"
-      description="Save as draft, then submit for approval from the product list."
+      description="Save as draft, or publish directly to your storefront."
     />
   );
 }
