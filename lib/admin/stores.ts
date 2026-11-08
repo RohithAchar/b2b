@@ -53,6 +53,7 @@ export async function getStoreSelectorItems(): Promise<{
   slug: string;
   status: string;
 }[]> {
+  await requireAdmin();
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
   const { data } = await supabase

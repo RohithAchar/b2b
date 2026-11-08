@@ -45,7 +45,7 @@ export function AdminSidebar({
   const bannersActive = pathname.startsWith("/admin/dashboard/banners");
   const storesActive =
     pathname === "/admin/dashboard/stores" ||
-    /\/admin\/dashboard\/stores\/[\w-]+$/.test(pathname);
+    pathname.startsWith("/admin/dashboard/stores/");
 
   return (
     <Sidebar collapsible="icon">

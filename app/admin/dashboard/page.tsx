@@ -14,7 +14,14 @@ import { StoreSelector } from "@/components/dashboard/store-selector";
 import { getStoreSelectorItems } from "@/lib/admin/stores";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function AdminOverviewPage() {
+type AdminOverviewPageProps = {
+  searchParams: Promise<{ storeId?: string }>;
+};
+
+export default async function AdminOverviewPage({
+  searchParams,
+}: AdminOverviewPageProps) {
+  const { storeId } = await searchParams;
   const supabase = await createClient();
 
   const [{ count: supplierCount }, { count: pendingProducts }, stores] =
@@ -42,7 +49,7 @@ export default async function AdminOverviewPage() {
       <div className="flex items-center justify-between gap-3">
         <StoreSelector
           stores={stores}
-          selectedStoreId={null}
+          selectedStoreId={storeId ?? null}
           label="View store"
         />
       </div>
