@@ -124,8 +124,10 @@ export async function submitKyb(
     city: parsed.data.city,
     state: parsed.data.state,
     pincode: parsed.data.pincode,
-    gstin: parsed.data.gstin ?? null,
-    pan: parsed.data.pan ?? null,
+    gstin: parsed.data.gstin,
+    pan: parsed.data.pan,
+    bank_account: parsed.data.bank_account,
+    bank_ifsc: parsed.data.bank_ifsc,
     logo_path: logoPath,
   };
 

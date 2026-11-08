@@ -74,7 +74,7 @@ export function ProductInformationSection({
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="seller_sku">Your SKU</FieldLabel>
-            <Input id="seller_sku" name="seller_sku" required pattern="[A-Za-z0-9-_]{3,30}" aria-invalid={invalidFor("seller_sku")} value={v("seller_sku")} onChange={(e) => onValueChange("seller_sku", e.target.value)} placeholder="SCK-ANK-001" />
+            <Input id="seller_sku" name="seller_sku" required aria-invalid={invalidFor("seller_sku")} value={v("seller_sku")} onChange={(e) => onValueChange("seller_sku", e.target.value)} placeholder="SCK-ANK-001" />
             <FieldDescription>Unique per product. Variants use their own SKUs.</FieldDescription>
             {errorFor("seller_sku")}
           </Field>

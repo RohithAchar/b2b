@@ -29,7 +29,7 @@ export default async function OnboardingPage() {
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
-      "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, logo_path, kyb_status",
+      "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, logo_path, kyb_status",
     )
     .eq("owner_id", user.id)
     .maybeSingle();

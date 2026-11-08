@@ -48,27 +48,40 @@ export const kybSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{6}$/, "Enter a valid 6-digit pincode."),
-  gstin: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    gstinSchema.optional(),
-  ),
-  pan: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    panSchema.optional(),
-  ),
-  // Bank details are collected in payout/payment settings, not onboarding.
+  gstin: z
+    .string()
+    .trim()
+    .transform(upper)
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/,
+          "Enter a valid 15-character GSTIN.",
+        ),
+    ),
+  pan: z
+    .string()
+    .trim()
+    .transform(upper)
+    .pipe(
+      z
+        .string()
+        .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid 10-character PAN."),
+    ),
   bank_account: z
     .string()
     .trim()
-    .regex(/^\d{9,18}$/, "Enter a valid bank account number.")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^\d{9,18}$/, "Enter a valid bank account number."),
   bank_ifsc: z
     .string()
     .trim()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Enter a valid IFSC (e.g. HDFC0001234).")
-    .optional()
-    .or(z.literal("")),
+    .transform(upper)
+    .pipe(
+      z
+        .string()
+        .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Enter a valid IFSC (e.g. HDFC0001234)."),
+    ),
 });
 
 export type KybInput = z.input<typeof kybSchema>;

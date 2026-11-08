@@ -77,7 +77,7 @@ export function VariantsSection({
                         }} placeholder="size: 500ml" />
                       </TableCell>
                       <TableCell>
-                        <Input id={`variant-${i}-sku`} aria-label={`Variant ${i + 1} SKU`} required={hasVariants} pattern="[A-Za-z0-9-_]{3,30}" aria-invalid={invalidFor(`variant-${i}-sku`)} value={v.seller_sku} onChange={(e) => onUpdateVariant(i, { seller_sku: e.target.value })} />
+                        <Input id={`variant-${i}-sku`} aria-label={`Variant ${i + 1} SKU`} required={hasVariants} aria-invalid={invalidFor(`variant-${i}-sku`)} value={v.seller_sku} onChange={(e) => onUpdateVariant(i, { seller_sku: e.target.value })} />
                       </TableCell>
                       <TableCell>
                         <Input id={`variant-${i}-price`} aria-label={`Variant ${i + 1} price`} required={hasVariants} type="number" min={0.01} step="0.01" aria-invalid={invalidFor(`variant-${i}-price`)} value={v.price || ""} onChange={(e) => onUpdateVariant(i, { price: Number(e.target.value) })} />

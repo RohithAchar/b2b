@@ -27,6 +27,8 @@ export type ExistingCompany = {
   pincode: string | null;
   gstin: string | null;
   pan: string | null;
+  bank_account: string | null;
+  bank_ifsc: string | null;
   logo_path: string | null;
 } | null;
 
@@ -60,6 +62,8 @@ export function OnboardingForm({
       pincode: data.get("pincode"),
       gstin: data.get("gstin"),
       pan: data.get("pan"),
+      bank_account: data.get("bank_account"),
+      bank_ifsc: data.get("bank_ifsc"),
     });
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
@@ -154,7 +158,7 @@ export function OnboardingForm({
 
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Optional tax details. You can add these later.
+              Tax and bank details are required to activate your business.
             </p>
             <TextField
               id="gstin"
@@ -162,6 +166,7 @@ export function OnboardingForm({
               existing={existing?.gstin}
               error={fieldError?.field === "gstin" ? fieldError.message : null}
               placeholder="22AAAAA0000A1Z5"
+              required
             />
             <TextField
               id="pan"
@@ -169,13 +174,34 @@ export function OnboardingForm({
               existing={existing?.pan}
               error={fieldError?.field === "pan" ? fieldError.message : null}
               placeholder="AAAAA0000A"
+              required
             />
           </div>
 
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Optional company logo. JPG, PNG or WEBP, max 2 MB.
+              Bank details are required to set up payouts for your business.
             </p>
+            <TextField
+              id="bank_account"
+              label="Bank account number"
+              existing={existing?.bank_account ?? undefined}
+              error={fieldError?.field === "bank_account" ? fieldError.message : null}
+              inputMode="numeric"
+              placeholder="12345678901"
+              required
+            />
+            <TextField
+              id="bank_ifsc"
+              label="Bank IFSC"
+              existing={existing?.bank_ifsc ?? undefined}
+              error={fieldError?.field === "bank_ifsc" ? fieldError.message : null}
+              placeholder="HDFC0001234"
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="logo">Company logo</Label>
               <Input
