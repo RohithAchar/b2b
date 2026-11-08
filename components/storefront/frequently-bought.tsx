@@ -59,6 +59,7 @@ export async function FrequentlyBoughtSection() {
                       src={coverUrl(product.images)}
                       alt={product.title}
                       sizes="(min-width: 640px) 12vw, 44vw"
+                      priority={index < 2}
                     />
                   </div>
                 </Link>

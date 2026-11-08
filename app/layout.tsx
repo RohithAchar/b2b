@@ -1,4 +1,5 @@
-import { Geist_Mono, Inter } from "next/font/google"
+import { Geist_Mono } from "next/font/google"
+import localFont from "next/font/local"
 import type { Metadata, Viewport } from "next"
 import { MotionConfig } from "motion/react"
 
@@ -32,10 +33,32 @@ export const viewport: Viewport = {
   themeColor: "#FF6A00",
 }
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [
+    {
+      path: "../public/fonts/Inter-400.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Inter-500.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Inter-600.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Inter-700.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   variable: "--font-sans",
   display: "swap",
+  preload: true,
 })
 
 const fontMono = Geist_Mono({
