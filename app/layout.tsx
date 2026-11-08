@@ -4,7 +4,6 @@ import { MotionConfig } from "motion/react"
 
 import "./globals.css"
 import { Toaster } from "@/components/ui/toast"
-import { PhoneGate } from "@/components/auth/phone-gate-lazy"
 import { cn } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
 
@@ -67,7 +66,6 @@ export default function RootLayout({
         {/* Motion honours prefers-reduced-motion app-wide (apple-design §14). */}
         <MotionConfig reducedMotion="user">
           {children}
-          <PhoneGate />
           <Toaster />
         </MotionConfig>
       </body>

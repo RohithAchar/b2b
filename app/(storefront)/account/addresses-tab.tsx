@@ -38,7 +38,6 @@ import {
   setDefaultAddress,
   type AddressActionState,
 } from "@/lib/buyer/address-actions";
-import { getStoredUserPhone } from "@/lib/user-phone";
 import {
   detectAddressFromDevice,
   locationFailureMessage,
@@ -230,15 +229,6 @@ function AddressForm({
     if (detected.state && stateRef.current) stateRef.current.value = detected.state;
     if (detected.pincode && pincodeRef.current) pincodeRef.current.value = detected.pincode;
   }
-
-  useEffect(() => {
-    // Best-effort convenience prefill only; the value is validated and saved
-    // server-side like any other input. localStorage is never authoritative.
-    if (!initial && !phoneRef.current?.value) {
-      const stored = getStoredUserPhone();
-      if (stored && phoneRef.current) phoneRef.current.value = stored;
-    }
-  }, [initial]);
 
   useEffect(() => {
     if (state.ok && state.message) {
