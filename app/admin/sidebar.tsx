@@ -43,6 +43,9 @@ export function AdminSidebar({
     pathname === "/admin/dashboard/products" ||
     /\/admin\/dashboard\/products\/[\w-]+$/.test(pathname);
   const bannersActive = pathname.startsWith("/admin/dashboard/banners");
+  const storesActive =
+    pathname === "/admin/dashboard/stores" ||
+    /\/admin\/dashboard\/stores\/[\w-]+$/.test(pathname);
 
   return (
     <Sidebar collapsible="icon">
@@ -120,6 +123,16 @@ export function AdminSidebar({
                 >
                   <HugeiconsIcon icon={Image01Icon} strokeWidth={2} />
                   <span>Home banners</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/admin/dashboard/stores" />}
+                  isActive={storesActive}
+                  tooltip="Store management"
+                >
+                  <HugeiconsIcon icon={LayoutDashboardIcon} strokeWidth={2} />
+                  <span>Stores</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
