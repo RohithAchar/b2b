@@ -12,6 +12,7 @@ import {
 import { KpiStat } from "@/components/dashboard/kpi-stat";
 import { StoreSelector } from "@/components/dashboard/store-selector";
 import { getStoreSelectorItems } from "@/lib/admin/stores";
+import { resolveStore } from "@/lib/store-context";
 import { createClient } from "@/lib/supabase/server";
 
 type AdminOverviewPageProps = {
@@ -24,8 +25,12 @@ export default async function AdminOverviewPage({
   const { storeId } = await searchParams;
   const supabase = await createClient();
 
-  const [{ count: supplierCount }, { count: pendingProducts }, stores] =
+  // Resolve and validate the store context. Client-supplied ?storeId is
+  // validated against the stores table — an inactive or unknown store is
+  // never used, and we fall back to the first active store.
+  const [activeStore, { count: supplierCount }, { count: pendingProducts }, stores] =
     await Promise.all([
+      resolveStore(supabase, storeId ?? null),
       supabase
         .from("profiles")
         .select("id", { count: "exact", head: true })
@@ -49,7 +54,7 @@ export default async function AdminOverviewPage({
       <div className="flex items-center justify-between gap-3">
         <StoreSelector
           stores={stores}
-          selectedStoreId={storeId ?? null}
+          selectedStoreId={activeStore?.id ?? null}
           label="View store"
         />
       </div>
