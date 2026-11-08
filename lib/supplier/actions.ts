@@ -45,13 +45,13 @@ export async function submitKyb(
 ): Promise<KybActionState | never> {
   const { supabase, user } = await requireUser();
 
-  // Verification is owner-only: staff manage the catalogue, never the KYB
-  // application. (submit_kyb stays owner-only at the database level too.)
+  // Verification is owner-only: staff manage the catalogue, never the company
+  // profile. (submit_kyb stays owner-only at the database level too.)
   const ctx = await getSupplierContext(supabase, user.id);
   if (ctx?.role === "staff") {
     return {
       ok: false,
-      message: "Only the business owner can manage verification.",
+      message: "Only the business owner can manage the business profile.",
     };
   }
 
@@ -65,8 +65,6 @@ export async function submitKyb(
     pincode: formData.get("pincode"),
     gstin: formData.get("gstin"),
     pan: formData.get("pan"),
-    bank_account: formData.get("bank_account"),
-    bank_ifsc: formData.get("bank_ifsc"),
   });
 
   if (!parsed.success) {
@@ -77,39 +75,13 @@ export async function submitKyb(
     };
   }
 
-  // Validate + upload documents before touching the companies row.
-  // Documents are mandatory: each needs a fresh upload or a stored path
-  // from a previous submission (resubmit case).
+  // Logo is optional: upload when provided, otherwise keep any stored one.
   const { data: preExisting } = await supabase
     .from("companies")
-    .select("gst_certificate_path, pan_card_path, license_path, logo_path")
+    .select("id, logo_path")
     .eq("owner_id", user.id)
     .maybeSingle();
 
-  const docPaths: Record<string, string> = {};
-  try {
-    for (const doc of DOC_FIELDS) {
-      const value = formData.get(doc.field);
-      const file = value instanceof File && value.size > 0 ? value : null;
-      const fileError = await validateDocFile(file);
-      if (fileError) {
-        return { ok: false, message: `${doc.label}: ${fileError}` };
-      }
-      if (file) {
-        docPaths[doc.column] = await uploadDoc(supabase, user.id, doc.field, file);
-      } else if (!preExisting?.[doc.column as keyof typeof preExisting]) {
-        return { ok: false, message: `${doc.label} is required.` };
-      }
-    }
-  } catch (err) {
-    console.error("submitKyb upload failed:", err);
-    return {
-      ok: false,
-      message: err instanceof Error ? err.message : "Document upload failed.",
-    };
-  }
-
-  // Logo is optional: upload when provided, otherwise keep any stored one.
   let logoPath = preExisting?.logo_path ?? null;
   const logoValue = formData.get("logo");
   const logoFile =
@@ -140,36 +112,27 @@ export async function submitKyb(
 
   const { data: existing } = await supabase
     .from("companies")
-    .select("id, kyb_status")
+    .select("id")
     .eq("owner_id", user.id)
     .maybeSingle();
 
-  if (existing?.kyb_status === "verified") {
-    return { ok: false, message: "Your business is already verified." };
-  }
-  if (existing?.kyb_status === "pending") {
-    return { ok: false, message: "Your application is already under review." };
-  }
+  const payload = {
+    business_name: parsed.data.business_name,
+    contact_person: parsed.data.contact_person,
+    phone: parsed.data.phone,
+    address: parsed.data.address,
+    city: parsed.data.city,
+    state: parsed.data.state,
+    pincode: parsed.data.pincode,
+    gstin: parsed.data.gstin ?? null,
+    pan: parsed.data.pan ?? null,
+    logo_path: logoPath,
+  };
 
   if (existing) {
-    // Content-only update; approval fields are owned by admin/RPCs.
     const { error: updateError } = await supabase
       .from("companies")
-      .update({
-        business_name: parsed.data.business_name,
-        contact_person: parsed.data.contact_person,
-        phone: parsed.data.phone,
-        address: parsed.data.address,
-        city: parsed.data.city,
-        state: parsed.data.state,
-        pincode: parsed.data.pincode,
-        gstin: parsed.data.gstin,
-        pan: parsed.data.pan,
-        bank_account: parsed.data.bank_account,
-        bank_ifsc: parsed.data.bank_ifsc,
-        ...docPaths,
-        logo_path: logoPath,
-      })
+      .update(payload)
       .eq("owner_id", user.id);
 
     if (updateError) {
@@ -182,17 +145,14 @@ export async function submitKyb(
     });
     if (submitError) {
       console.error("submitKyb rpc failed:", submitError);
-      return { ok: false, message: "Could not submit. Try again." };
+      return { ok: false, message: "Could not activate. Try again." };
     }
   } else {
-    // Fresh application: insert as draft (RLS requires it), then submit.
     const { data: inserted, error: insertError } = await supabase
       .from("companies")
       .insert({
         owner_id: user.id,
-        ...parsed.data,
-        ...docPaths,
-        logo_path: logoPath,
+        ...payload,
         kyb_status: "draft",
       })
       .select("id")
@@ -208,7 +168,7 @@ export async function submitKyb(
     });
     if (submitError) {
       console.error("submitKyb rpc failed:", submitError);
-      return { ok: false, message: "Could not submit. Try again." };
+      return { ok: false, message: "Could not activate. Try again." };
     }
   }
 

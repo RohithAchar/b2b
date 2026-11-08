@@ -48,13 +48,27 @@ export const kybSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{6}$/, "Enter a valid 6-digit pincode."),
-  gstin: gstinSchema,
-  pan: panSchema,
+  gstin: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    gstinSchema.optional(),
+  ),
+  pan: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    panSchema.optional(),
+  ),
+  // Bank details are collected in payout/payment settings, not onboarding.
   bank_account: z
     .string()
     .trim()
-    .regex(/^\d{9,18}$/, "Enter a valid bank account number."),
-  bank_ifsc: ifscSchema,
+    .regex(/^\d{9,18}$/, "Enter a valid bank account number.")
+    .optional()
+    .or(z.literal("")),
+  bank_ifsc: z
+    .string()
+    .trim()
+    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Enter a valid IFSC (e.g. HDFC0001234).")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type KybInput = z.input<typeof kybSchema>;

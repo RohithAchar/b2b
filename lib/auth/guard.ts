@@ -87,14 +87,18 @@ export const getSupplierContext = cache(async (
   };
 });
 
-export async function getVerifiedSupplierId(
+export async function getSupplierId(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<string | null> {
   const ctx = await getSupplierContext(supabase, userId);
-  if (!ctx || !ctx.verified) return null;
+  if (!ctx) return null;
   return ctx.companyId;
 }
+
+// Backwards-compatible alias: all suppliers are internal and activated
+// automatically, so verification no longer gates product management.
+export const getVerifiedSupplierId = getSupplierId;
 
 /**
  * Owner-only pages and actions (business profile, verification, margin,

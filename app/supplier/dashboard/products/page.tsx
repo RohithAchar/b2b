@@ -120,7 +120,7 @@ export default async function SupplierProductsPage({
   }
   if (!company) redirect("/supplier/onboarding");
 
-  const verified = company.kyb_status === "verified";
+  const verified = true;
 
   const counts: Record<TabKey, number> = {
     all: 0,

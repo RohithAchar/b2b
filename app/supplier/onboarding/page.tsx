@@ -7,7 +7,7 @@ import { OnboardingForm } from "./onboarding-form";
 
 export const metadata: Metadata = {
   title: "Supplier onboarding",
-  description: "Create your supplier profile and submit your business for verification.",
+  description: "Create your supplier profile and activate your account.",
   robots: { index: false, follow: false },
 };
 
@@ -29,13 +29,12 @@ export default async function OnboardingPage() {
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select(
-      "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, logo_path, kyb_status",
+      "business_name, contact_person, phone, address, city, state, pincode, gstin, pan, logo_path, kyb_status",
     )
     .eq("owner_id", user.id)
     .maybeSingle();
 
-  // Throwing rather than redirecting: a failed read would otherwise bounce
-  // between this page and /supplier/status indefinitely.
+  // Throwing rather than redirecting: a failed read would otherwise bounce.
   if (companyError) {
     console.error(
       "Supplier onboarding company query failed:",
@@ -45,24 +44,16 @@ export default async function OnboardingPage() {
     throw companyError;
   }
 
-  if (company?.kyb_status === "verified") {
-    redirect("/supplier/status");
-  }
-
-  if (company?.kyb_status === "pending") {
-    redirect("/supplier/status");
+  if (company) {
+    redirect("/supplier/dashboard");
   }
 
   return (
     <div className="mx-auto w-full max-w-2xl p-6">
       <OnboardingForm
         title="Become a supplier"
-        description={
-          company?.kyb_status === "rejected"
-            ? "Your application needs changes — update the details below and resubmit."
-            : "Fill in your business details. We review every application before approval."
-        }
-        existing={company}
+        description="Fill in your business details to activate your supplier account."
+        existing={null}
       />
     </div>
   );

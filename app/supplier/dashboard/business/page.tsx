@@ -23,7 +23,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { requireOwnerCompany } from "@/lib/auth/guard";
-import { VerificationChecklistCard } from "@/components/dashboard/verification-checklist";
 import { BusinessProfileForm } from "./business-form";
 
 function Detail({ label, value }: { label: string; value: string | null }) {
@@ -85,15 +84,7 @@ export default async function SupplierBusinessPage() {
             Edit company name, logo and contact here. Your margin lives under Products. Full application details are under Verification.
           </p>
         </div>
-        <Button
-          render={<Link href="/supplier/dashboard/verification" />}
-          nativeButton={false}
-          variant="outline"
-          className="[&_svg]:size-3.5"
-        >
-          Verification
-          <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-3.5" />
-        </Button>
+
       </div>
 
       <div className="grid grid-cols-1 gap-4 @lg/content:grid-cols-[minmax(0,1fr)_320px]">
@@ -116,7 +107,7 @@ export default async function SupplierBusinessPage() {
         <div className="flex flex-col gap-4 @lg/content:sticky @lg/content:top-4 @lg/content:self-start">
           <Card size="sm" className="!gap-0 !py-0">
             <CardHeader className="border-b border-border px-5 py-4">
-              <CardTitle>Verification details</CardTitle>
+              <CardTitle>Business details</CardTitle>
               <CardDescription>
                 Read-only unless you update the onboarding application.
               </CardDescription>
@@ -163,7 +154,7 @@ export default async function SupplierBusinessPage() {
               ) : null}
             </CardContent>
           </Card>
-          <VerificationChecklistCard company={company} />
+
         </div>
       </div>
     </div>

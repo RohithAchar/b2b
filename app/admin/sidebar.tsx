@@ -36,9 +36,6 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queueActive =
-    pathname.startsWith("/admin/dashboard/supplier-verification") &&
-    (searchParams.get("tab") ?? "pending") === "pending";
   const overviewActive =
     pathname === "/admin/dashboard" || pathname === "/admin/dashboard/";
   const categoriesActive = pathname.startsWith("/admin/dashboard/categories");
@@ -88,19 +85,6 @@ export function AdminSidebar({
           <SidebarGroupLabel>Review</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link href="/admin/dashboard/supplier-verification" />}
-                  isActive={queueActive}
-                  tooltip="Supplier verification"
-                >
-                  <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} />
-                  <span>Supplier verification</span>
-                </SidebarMenuButton>
-                {pendingCount > 0 ? (
-                  <SidebarMenuBadge>{pendingCount}</SidebarMenuBadge>
-                ) : null}
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={<Link href="/admin/dashboard/products" />}

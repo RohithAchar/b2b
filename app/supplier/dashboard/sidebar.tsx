@@ -83,11 +83,8 @@ export function SupplierSidebar({
   const productsActive =
     productsListActive || addProductActive || productEditActive || marginActive
   const businessActive = pathname.startsWith("/supplier/dashboard/business")
-  const verificationActive = pathname.startsWith(
-    "/supplier/dashboard/verification"
-  )
   const teamActive = pathname.startsWith("/supplier/dashboard/team")
-  const settingsActive = businessActive || verificationActive || teamActive
+  const settingsActive = businessActive || teamActive
 
   return (
     <Sidebar collapsible="icon">
@@ -330,16 +327,6 @@ export function SupplierSidebar({
                     >
                       <HugeiconsIcon icon={Building02Icon} strokeWidth={2} />
                       <span>Business profile</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      render={<Link href="/supplier/dashboard/verification" />}
-                      isActive={verificationActive}
-                      onClick={closeMobile}
-                    >
-                      <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} />
-                      <span>Verification</span>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                   <SidebarMenuSubItem>

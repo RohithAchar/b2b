@@ -252,7 +252,7 @@ export async function createProduct(
   const { supabase, user } = await requireUser();
 
   const supplierId = await getVerifiedSupplierId(supabase, user.id);
-  if (!supplierId) return { ...initialState, message: "Only verified suppliers can list products." };
+  if (!supplierId) return { ...initialState, message: "Only suppliers can list products." };
 
   // Wizard-completion token: rendered only on the Review step. Rejects any
   // POST that didn't come from a completed wizard pass.
@@ -424,7 +424,7 @@ export async function updateProduct(
   const { supabase, user } = await requireUser();
 
   const supplierId = await getVerifiedSupplierId(supabase, user.id);
-  if (!supplierId) return { ok: false, message: "Only verified suppliers can list products." };
+  if (!supplierId) return { ok: false, message: "Only suppliers can list products." };
 
   // Wizard-completion token: rendered only on the Review step. Rejects any
   // POST that didn't come from a completed wizard pass.
@@ -616,7 +616,7 @@ export async function submitProduct(productId: string): Promise<ProductActionSta
   const { supabase, user } = await requireUser();
 
   const supplierId = await getVerifiedSupplierId(supabase, user.id);
-  if (!supplierId) return { ok: false, message: "Only verified suppliers can list products." };
+  if (!supplierId) return { ok: false, message: "Only suppliers can list products." };
 
   const { data: product } = await supabase
     .from("products")
@@ -654,7 +654,7 @@ export async function deleteProduct(productId: string): Promise<ProductActionSta
   const { supabase, user } = await requireUser();
 
   const supplierId = await getVerifiedSupplierId(supabase, user.id);
-  if (!supplierId) return { ok: false, message: "Only verified suppliers can list products." };
+  if (!supplierId) return { ok: false, message: "Only suppliers can list products." };
 
   const { data: images } = await supabase
     .from("product_images")
@@ -688,7 +688,7 @@ async function setHidden(productId: string, hidden: boolean): Promise<ProductAct
   const { supabase, user } = await requireUser();
 
   const supplierId = await getVerifiedSupplierId(supabase, user.id);
-  if (!supplierId) return { ok: false, message: "Only verified suppliers can manage products." };
+  if (!supplierId) return { ok: false, message: "Only suppliers can manage products." };
 
   const { data: product } = await supabase
     .from("products")

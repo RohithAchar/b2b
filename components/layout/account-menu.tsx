@@ -92,11 +92,6 @@ const ROLE_LINKS: Record<
       href: "/supplier/dashboard/products",
       icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2} />,
     },
-    {
-      label: "Verification",
-      href: "/supplier/dashboard/verification",
-      icon: <HugeiconsIcon icon={ShieldCheckIcon} strokeWidth={2} />,
-    },
   ],
   admin: [
     {
@@ -112,7 +107,6 @@ const ROLE_LINKS: Record<
 // staff — those pages redirect them out, so linking them would be a dead end.
 const OWNER_ONLY_HREFS = new Set([
   "/supplier/dashboard/business",
-  "/supplier/dashboard/verification",
 ])
 
 const STAFF_LINKS: { label: string; href: string; icon: ReactNode }[] = [

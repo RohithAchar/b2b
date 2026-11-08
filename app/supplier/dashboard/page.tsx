@@ -118,7 +118,7 @@ export default async function SupplierOverviewPage({
     redirect("/supplier/onboarding")
   }
 
-  const verified = company.kyb_status === "verified"
+  const verified = true
 
   // Analytics resolve alongside the product stats so the range filter costs
   // no extra latency. A failure here degrades to an inline error — the
@@ -219,37 +219,6 @@ export default async function SupplierOverviewPage({
   const missingCount = checklist.items.filter((i) => !i.done).length
 
   const attention: AttentionItem[] = []
-  if (company.kyb_status === "draft") {
-    attention.push({
-      id: "kyb-draft",
-      title: "Finish your application",
-      description:
-        "Complete business details, IDs and documents to unlock selling.",
-      severity: "error",
-      href: "/supplier/onboarding",
-      actionLabel: "Continue",
-    })
-  } else if (company.kyb_status === "rejected") {
-    attention.push({
-      id: "kyb-rejected",
-      title: "Business application needs changes",
-      description:
-        company.rejection_note ??
-        "Review the note and resubmit your application.",
-      severity: "error",
-      href: "/supplier/onboarding",
-      actionLabel: "Fix and resubmit",
-    })
-  } else if (company.kyb_status === "pending") {
-    attention.push({
-      id: "kyb-pending",
-      title: "Verification under review",
-      description: "Listing unlocks once our team verifies your business.",
-      severity: "warning",
-      href: "/supplier/dashboard/verification",
-      actionLabel: "Track",
-    })
-  }
 
   if ((paymentClaimCount ?? 0) > 0) {
     attention.push({
@@ -274,16 +243,6 @@ export default async function SupplierOverviewPage({
     })
   }
 
-  if (verified && (rejectedCount ?? 0) > 0) {
-    attention.push({
-      id: "products-rejected",
-      title: `${rejectedCount} product${rejectedCount === 1 ? "" : "s"} need changes`,
-      description: "Fix the notes and resubmit for approval.",
-      severity: "error",
-      href: "/supplier/dashboard/products?tab=rejected",
-      actionLabel: "Review",
-    })
-  }
   if (missingCount > 0) {
     attention.push({
       id: "profile",
@@ -514,7 +473,7 @@ export default async function SupplierOverviewPage({
           label="Live listings"
           value={liveCount ?? 0}
           caption={
-            verified ? "Visible to buyers" : "Unlocks after verification"
+            "Visible to buyers"
           }
           icon={ShieldCheckIcon}
         />
