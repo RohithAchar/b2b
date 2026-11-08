@@ -105,6 +105,7 @@ export async function SelectPromotionalCollections() {
                   src={imageSrc}
                   alt={product?.title ?? ""}
                   sizes="(min-width: 1024px) 18vw, (min-width: 768px) 22vw, 44vw"
+                  priority={index === 0}
                 />
               </div>
               <div className="flex flex-col gap-1 px-3 py-2.5">

@@ -44,11 +44,11 @@ export function KpiStat({
       <CardContent className="flex items-center gap-3 py-4">
         {icon ? (
           <span
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-lg [&_svg]:size-5",
-              ACCENT_CLASS[accent]
-            )}
-          >
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl [&_svg]:size-5",
+                ACCENT_CLASS[accent]
+              )}
+            >
             <HugeiconsIcon icon={icon} strokeWidth={2} />
           </span>
         ) : null}

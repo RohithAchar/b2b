@@ -96,7 +96,7 @@ export function SupplierSidebar({
               onClick={closeMobile}
               render={<Link href="/supplier/dashboard" />}
             >
-              <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <span className="flex aspect-square size-8 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
                 <HugeiconsIcon icon={Building02Icon} strokeWidth={2} />
               </span>
               <span className="grid flex-1 text-left text-sm leading-tight">

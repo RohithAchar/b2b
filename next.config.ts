@@ -2,13 +2,9 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   images: {
-    // Retested 2026-10-06: keep direct serving until `/_next/image?url=<supabase>`
-    // returns 200 in both `pnpm dev` and `pnpm start`. This network resolves
-    // *.supabase.co to NAT64 IPv6 (64:ff9b::/96), which the optimizer rejects
-    // as a private IP. Mitigation is Supabase `/render/image` transforms via
-    // `publicTransformedImageUrl()` in heavy slots. To retest, comment out
-    // `unoptimized`, `rm -rf .next`, and curl `/_next/image?url=<encoded>`.
-    unoptimized: true,
+    // Image optimization enabled: AVIF/WebP conversion + auto-resizing via
+    // Next.js Image Optimization API. Remote images from Supabase storage are
+    // proxied and resized on demand.
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {

@@ -12,16 +12,16 @@ export function TopBar({
   className?: string;
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-1 items-center gap-3", className)}>
-      <div className="grid min-w-0 flex-1 gap-0.5">
+    <div className={cn("flex min-w-0 flex-1 items-center gap-4", className)}>
+      <div className="grid min-w-0 flex-1 gap-1">
         {/* p, not h1: every dashboard page renders its own h1. */}
-        <p className="truncate text-sm font-medium">{title}</p>
+        <p className="truncate text-base font-medium">{title}</p>
         {description ? (
-          <p className="truncate text-xs text-muted-foreground">{description}</p>
+          <p className="truncate text-sm text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {actions ? (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        <div className="flex shrink-0 items-center gap-3">{actions}</div>
       ) : null}
     </div>
   );

@@ -19,11 +19,11 @@ export function FormSection({
     <section
       id={id}
       className={cn(
-        "@container/form-section overflow-hidden rounded-lg border border-border bg-card",
+        "@container/form-section overflow-hidden rounded-2xl border border-border bg-card",
         className,
       )}
     >
-      <header className="border-b border-border px-5 py-4">
+      <header className="border-b border-border px-6 py-5">
         <h2 className="text-base font-medium">{title}</h2>
         {description ? (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
@@ -31,10 +31,10 @@ export function FormSection({
       </header>
       <div
         className={cn(
-          "px-5 py-5",
+          "px-6 py-6",
           columns === 2
-            ? "grid gap-x-6 gap-y-6 @3xl/form-section:grid-cols-2"
-            : "grid gap-y-6",
+            ? "grid gap-x-8 gap-y-8 @3xl/form-section:grid-cols-2"
+            : "grid gap-y-8",
         )}
       >
         {children}

@@ -22,7 +22,7 @@ export async function TopCategoriesSection() {
     <section className="mx-auto w-full max-w-7xl px-4 py-5">
       <SectionHeader title="Top categories" />
       <div className={RAIL_CLASS}>
-        {visible.map((category) => (
+        {visible.map((category, index) => (
           <Link
             key={category.id}
             href={`/category/${category.slug}`}
@@ -38,6 +38,7 @@ export async function TopCategoriesSection() {
                   )}
                   alt=""
                   sizes="(min-width: 1024px) 12vw, (min-width: 768px) 18vw, 84px"
+                  priority={index === 0}
                 />
               ) : (
                 <span
