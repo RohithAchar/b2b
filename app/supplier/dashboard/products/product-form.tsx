@@ -676,14 +676,16 @@ export function ProductForm({
                 errorFor={errorFor}
               />
             ) : null}
-            <PricingSection
-              invalidFor={invalidFor}
-              errorFor={errorFor}
-              formValues={formValues}
-              onValueChange={setFormValue}
-              negotiable={negotiable}
-              onNegotiableChange={setNegotiable}
-            />
+            {mode === "edit" ? (
+              <>
+                <PricingSection
+                  invalidFor={invalidFor}
+                  errorFor={errorFor}
+                  formValues={formValues}
+                  onValueChange={setFormValue}
+                  negotiable={negotiable}
+                  onNegotiableChange={setNegotiable}
+                />
             <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
               <span className="text-sm font-medium">Promotions</span>
               <label className="flex items-center justify-between gap-3 text-sm">
@@ -728,6 +730,8 @@ export function ProductForm({
               onSeoCropApplied={applySeoCrop}
               productImageUrl={productImageUrl}
             />
+              </>
+            ) : null}
             <div className="@3xl/content:hidden">{statusAlert}</div>
           </div>
 
