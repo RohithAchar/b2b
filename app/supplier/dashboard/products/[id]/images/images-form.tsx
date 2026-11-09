@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { uploadProductImages, removeProductImage, setPrimaryImage } from "@/lib/supplier/product-actions";
-import type { ProductActionState } from "@/lib/supplier/product-actions";
+import { uploadProductImagesAction } from "@/lib/supplier/product-image-upload-action";
+import { removeProductImageAction, setPrimaryImageAction } from "@/lib/supplier/product-image-actions";
 
-const initialState: ProductActionState = { ok: false, message: "" };
+const initialState = { ok: false, message: "" };
 
 export function ProductImagesForm({
   productId,
@@ -28,7 +28,7 @@ export function ProductImagesForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [state, action, pending] = useActionState(uploadProductImages, initialState);
+  const [state, action, pending] = useActionState(uploadProductImagesAction, initialState);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export function ProductImagesForm({
   const handleRemoveExisting = (path: string) => {
     setRemoving(path);
     startTransition(async () => {
-      await removeProductImage(productId, path);
+      await removeProductImageAction(productId, path);
       setRemoving(null);
       router.refresh();
     });
@@ -68,7 +68,7 @@ export function ProductImagesForm({
   const handleSetPrimary = (path: string) => {
     setSettingPrimary(path);
     startTransition(async () => {
-      await setPrimaryImage(productId, path);
+      await setPrimaryImageAction(productId, path);
       setSettingPrimary(null);
       router.refresh();
     });
