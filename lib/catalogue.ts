@@ -23,7 +23,6 @@ export type CatalogueFilters = {
   negotiable?: boolean
   sampleAvailable?: boolean
   imageToken?: string
-  storeId?: string
 }
 
 
@@ -96,7 +95,6 @@ export function parseCatalogueFilters(
     negotiable: first(searchParams.negotiable) === "true",
     sampleAvailable: first(searchParams.sampleAvailable) === "true",
     imageToken: imageIds ? imageToken : undefined,
-    storeId: first(searchParams.store),
   }
 }
 
@@ -123,7 +121,6 @@ export function buildCatalogueUrl(
   if (next.negotiable) sp.set("negotiable", "true")
   if (next.sampleAvailable) sp.set("sampleAvailable", "true")
   if (next.imageToken) sp.set("img", next.imageToken)
-  if (next.storeId) sp.set("store", next.storeId)
 
   const qs = sp.toString()
   return qs ? `${basePath}?${qs}` : basePath
