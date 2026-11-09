@@ -79,7 +79,7 @@ export async function requireActiveStore(
 export async function setActiveStore(
   _prevState: { ok: boolean; message: string },
   formData: FormData,
-): Promise<{ ok: boolean; message: string } | never> {
+): Promise<{ ok: boolean; message: string }> {
   "use server";
   const storeId = formData.get("storeId");
   if (typeof storeId !== "string" || !storeId) {

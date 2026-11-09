@@ -40,12 +40,13 @@ export function StoreSelector({
         onChange={handleChange}
       >
         <option value="">All stores</option>
-        {stores.map((store) => (
-          <option key={store.id} value={store.id}>
-            {store.name}
-            {store.status !== "active" ? ` (${store.status})` : null}
-          </option>
-        ))}
+        {stores
+          .filter((store) => store.status === "active")
+          .map((store) => (
+            <option key={store.id} value={store.id}>
+              {store.name}
+            </option>
+          ))}
       </NativeSelect>
     </div>
   );

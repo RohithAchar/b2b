@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/guard";
 
 export type StoreActionState = {
@@ -54,7 +55,6 @@ export async function getStoreSelectorItems(): Promise<{
   status: string;
 }[]> {
   await requireAdmin();
-  const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
   const { data } = await supabase
     .from("stores")
@@ -120,6 +120,21 @@ export async function toggleStore(
     .maybeSingle();
   if (!row) {
     return { ok: false, message: "Store not found." };
+  }
+
+  // Never deactivate the last active store — there must always be at least
+  // one active store for storefront and dashboard operations.
+  if (row.status === "active") {
+    const { count } = await supabase
+      .from("stores")
+      .select("id", { head: true })
+      .eq("status", "active");
+    if ((count ?? 0) <= 1) {
+      return {
+        ok: false,
+        message: "Cannot deactivate the last active store.",
+      };
+    }
   }
 
   const { error } = await supabase
