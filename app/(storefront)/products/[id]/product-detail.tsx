@@ -1,6 +1,4 @@
 import { Suspense } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { sanitizeRichText } from "@/lib/supplier/sanitize"
 import { formatIndianNumber, formatRupees, stockLabel } from "@/lib/format"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
@@ -18,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card"
+import { ProductBackButton } from "@/components/storefront/product-back-button"
 import { ProductGallery, type GalleryImage } from "@/components/storefront/product-gallery"
 import { ProductDetailTabs } from "@/components/storefront/product-content-tabs"
 import { ExpandableRichText } from "@/components/storefront/expandable-rich-text"
@@ -137,16 +136,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-5">
-      <div className="mb-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 hover:underline"
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-          Back
-        </button>
-      </div>
+      <ProductBackButton />
 
       <div className="mt-3 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] md:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:gap-8">
         {/* Product imagery */}
