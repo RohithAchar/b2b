@@ -1,9 +1,6 @@
 import Link from "next/link"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { getCachedHomeCategories } from "@/lib/storefront-cache"
 import { publicTransformedImageUrl } from "@/lib/storage"
-import { Button } from "@/components/ui/button"
 import { SectionHeader } from "@/components/storefront/section-header"
 import { ProductImage } from "@/components/storefront/product-image"
 
@@ -55,20 +52,6 @@ export async function TopCategoriesSection() {
           </Link>
         ))}
       </div>
-
-      <Button
-        variant="outline"
-        nativeButton={false}
-        render={<Link href="/categories" />}
-        className="mt-2 h-10 w-full border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 hover:text-brand-800"
-      >
-        View More
-        <HugeiconsIcon
-          icon={ArrowRight01Icon}
-          strokeWidth={2.2}
-          data-icon="inline-end"
-        />
-      </Button>
     </section>
   )
 }

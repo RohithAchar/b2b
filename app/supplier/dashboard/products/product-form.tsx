@@ -209,7 +209,10 @@ export function ProductForm({
     if (primaryImageKey && imageKeys.includes(primaryImageKey)) return primaryImageKey;
     return imageKeys[0] ?? null;
   }, [primaryImageKey, imageKeys]);
-  const totalImages = existingImages.length - removedImagePaths.length + newFiles.length;
+  const totalImages =
+    existingImages.length -
+    removedImagePaths.length +
+    Math.max(newFiles.length, fileInputRef.current?.files?.length || 0);
   const canAddMore = totalImages < MAX_PRODUCT_IMAGES;
 
   const variantsJson = useMemo(() => {

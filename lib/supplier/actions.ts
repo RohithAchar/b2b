@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser, getSupplierContext, requireOwnerCompany } from "@/lib/auth/guard";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   businessProfileSchema,
   kybSchema,
@@ -305,4 +306,43 @@ export async function updateMargin(
   revalidatePath("/supplier/dashboard/products");
   revalidatePath("/supplier/dashboard/products/margin");
   return { ok: true, message: "Saved." };
+}
+
+export type AccountActionState = {
+  ok: boolean;
+  message: string;
+};
+
+/**
+ * Delete the authenticated supplier's account.
+ *
+ * Only the company owner can do this: staff removing themselves from a team is
+ * a separate flow, while this deletes the whole business account. Deleting the
+ * auth user cascades through the database: profiles -> company -> products ->
+ * images/variants, and company_members, so the supplier's entire footprint is
+ * removed. The session is cleared so the client can navigate back to log in.
+ */
+export async function deleteAccount(): Promise<AccountActionState> {
+  const { supabase, user } = await requireUser();
+
+  const ctx = await getSupplierContext(supabase, user.id);
+  if (!ctx || ctx.role !== "owner") {
+    return {
+      ok: false,
+      message: "Only the business owner can delete the supplier account.",
+    };
+  }
+
+  // Service role is required: auth.admin.deleteUser is not exposed to the
+  // caller's regular (RLS-bound) token.
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) {
+    console.error("deleteAccount failed:", error);
+    return { ok: false, message: "Could not delete account. Try again." };
+  }
+
+  // Clear the session now that the auth user no longer exists.
+  await supabase.auth.signOut();
+  return { ok: true, message: "Your supplier account has been deleted." };
 }

@@ -289,6 +289,15 @@ export async function createProduct(
   if (!Array.isArray(variantsOrErr)) return { ok: false, message: variantsOrErr.error };
   const imagesOrErr = await collectImages(formData);
   if (!Array.isArray(imagesOrErr)) return { ok: false, message: imagesOrErr.error };
+  
+  // If submitting for approval, require images BEFORE creating the product
+  // so we don't create a draft with 0 images that can never be published.
+  if (boolOf(formData.get("auto_submit")) && imagesOrErr.length < MIN_PRODUCT_IMAGES) {
+    return {
+      ok: false,
+      message: `Add at least ${MIN_PRODUCT_IMAGES} images before submitting.`,
+    };
+  }
   const seoChoice = await collectSeoFile(formData);
   if ("error" in seoChoice) return { ok: false, message: seoChoice.error };
 
