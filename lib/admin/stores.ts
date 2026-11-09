@@ -633,3 +633,92 @@ export async function updateStoreProductPricing(
   revalidatePath("/admin/dashboard");
   redirect("/admin/dashboard/stores");
 }
+
+// ---------------------------------------------------------------------------
+// Store inventory ------------------------------------------------------------
+// ---------------------------------------------------------------------------
+
+export type StoreInventory = {
+  id: string;
+  store_id: string;
+  global_product_id: string;
+  variant_label: string | null;
+  stock_qty: number;
+  reserved_qty: number;
+};
+
+export async function getStoreInventory(storeId: string): Promise<StoreInventory[]> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("store_inventory")
+    .select("id, store_id, global_product_id, variant_label, stock_qty, reserved_qty")
+    .eq("store_id", storeId)
+    .order("global_product_id")
+    .order("variant_label");
+  return (data ?? []) as StoreInventory[];
+}
+
+const storeInventorySchema = z.object({
+  store_id: z.string().uuid("Invalid store."),
+  global_product_id: z.string().uuid("Invalid product."),
+  variant_label: z.string().optional(),
+  stock_qty: z
+    .string()
+    .trim()
+    .transform((val) => (val === "" ? 0 : Number(val)))
+    .refine((val) => Number.isFinite(val) && val >= 0, "Stock cannot be negative."),
+});
+
+export async function updateStoreInventory(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = storeInventorySchema.safeParse({
+    store_id: formData.get("store_id"),
+    global_product_id: formData.get("global_product_id"),
+    variant_label: formData.get("variant_label") || undefined,
+    stock_qty: formData.get("stock_qty"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  const { data: existing } = await supabase
+    .from("store_inventory")
+    .select("id")
+    .eq("store_id", parsed.data.store_id)
+    .eq("global_product_id", parsed.data.global_product_id)
+    .is("variant_label", parsed.data.variant_label ?? null)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("store_inventory")
+      .update({ stock_qty: parsed.data.stock_qty })
+      .eq("id", existing.id);
+    if (error) {
+      console.error("updateStoreInventory failed:", error);
+      return { ok: false, message: "Could not save. Try again." };
+    }
+  } else {
+    const { error } = await supabase.from("store_inventory").insert({
+      store_id: parsed.data.store_id,
+      global_product_id: parsed.data.global_product_id,
+      variant_label: parsed.data.variant_label || null,
+      stock_qty: parsed.data.stock_qty,
+    });
+    if (error) {
+      console.error("insertStoreInventory failed:", error);
+      return { ok: false, message: "Could not save. Try again." };
+    }
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
