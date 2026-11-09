@@ -1,17 +1,9 @@
-import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-/** Cookie used to persist a customer's store selection across the storefront. */
-export const STORE_COOKIE_NAME = "d2b_store";
-
-export type ActiveStore = {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-};
+import type { ActiveStore } from "@/lib/store-context-types";
+export type { ActiveStore } from "@/lib/store-context-types";
 
 /**
  * Resolve the active store for the current request.
@@ -69,36 +61,16 @@ export async function requireActiveStore(
 }
 
 /**
- * Server action: persist the customer's store selection in a cookie.
- *
- * The storeId is validated against the `stores` table (must exist and be
- * active) before the cookie is written — an inactive or unknown store can
- * never be selected. Not admin-restricted: any storefront visitor may select
- * among active stores.
+ * Public read of active stores for the storefront store selector.
+ * No admin required — any visitor may see which stores are open.
  */
-export async function setActiveStore(
-  _prevState: { ok: boolean; message: string },
-  formData: FormData,
-): Promise<{ ok: boolean; message: string }> {
-  "use server";
-  const storeId = formData.get("storeId");
-  if (typeof storeId !== "string" || !storeId) {
-    return { ok: false, message: "No store selected." };
-  }
-
+export async function getActiveStores(): Promise<ActiveStore[]> {
+  const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
-  const store = await resolveStore(supabase, storeId);
-  if (!store) {
-    return { ok: false, message: "Store not found or inactive." };
-  }
-
-  const cookieStore = await cookies();
-  cookieStore.set(STORE_COOKIE_NAME, storeId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-  });
-
-  return { ok: true, message: "" };
+  const { data } = await supabase
+    .from("stores")
+    .select("id, name, slug, status")
+    .eq("status", "active")
+    .order("name");
+  return (data ?? []) as ActiveStore[];
 }

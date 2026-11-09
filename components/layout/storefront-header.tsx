@@ -10,6 +10,8 @@ import { StorefrontSearchOverlay } from "@/components/layout/storefront-search-o
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
 import type { MegaMenuCategory } from "@/components/storefront/search-mega-menu"
 import { Button } from "@/components/ui/button"
+import { StorefrontStoreSelector } from "@/components/storefront/storefront-store-selector"
+import type { ActiveStore } from "@/lib/store-context"
 
 type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
@@ -19,11 +21,15 @@ export function StorefrontHeader({
   categories = [],
   megaCategories = [],
   cartCount = 0,
+  activeStore,
+  activeStores,
 }: {
   user: User
   categories?: NavCategory[]
   megaCategories?: MegaMenuCategory[]
   cartCount?: number
+  activeStore: ActiveStore | null
+  activeStores: ActiveStore[]
 }) {
   const navLinks = navLinksFor(user)
   const pathname = usePathname()
@@ -63,6 +69,10 @@ export function StorefrontHeader({
 
           {/* Right actions (desktop; mobile uses the bottom navigation) */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+            <StorefrontStoreSelector
+              stores={activeStores}
+              selectedStoreId={activeStore?.id ?? null}
+            />
             <StorefrontSearchOverlay
               key={routeKey}
               categories={megaCategories}
