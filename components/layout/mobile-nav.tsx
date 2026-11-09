@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react"
 import Link from "next/link"
+import { Logo } from "@/components/layout/logo"
 import { usePathname, useSearchParams } from "next/navigation"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import {
@@ -134,11 +135,8 @@ export function MobileNav({
         className="max-w-sm border-r border-border bg-popover p-0"
       >
         <SheetTitle className="flex items-center gap-3 border-b border-border px-4 py-4 pr-14 text-base font-bold tracking-tight">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            D
-          </span>
+          <Logo className="size-9" />
           <span className="flex min-w-0 flex-col">
-            <span className="truncate">D2B</span>
             <span className="truncate text-[11px] font-medium tracking-wide text-muted-foreground">
               Wholesale sourcing
             </span>

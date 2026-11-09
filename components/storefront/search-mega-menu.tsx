@@ -15,6 +15,7 @@ import { useRecentSearches } from "@/hooks/use-recent-searches"
 import { addRecentSearch, clearRecentSearches } from "@/lib/recent-searches"
 import { normalizeSuggestQuery, SUGGEST_MIN_CHARS } from "@/lib/search-suggest"
 import { publicTransformedImageUrl } from "@/lib/storage"
+import { Logo } from "@/components/layout/logo"
 
 export type MegaMenuCategory = {
   id: string
@@ -106,13 +107,14 @@ export function SearchMegaMenu({
         <div className="flex min-w-0 flex-col px-4 py-4 max-sm:px-0 max-sm:py-0 sm:px-5 sm:py-5 lg:pb-0">
           {/* Large search bar */}
           <div
-            className="relative min-w-0"
+            className="relative flex items-center gap-2.5 min-w-0"
             onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
                 setOpen(false)
               }
             }}
           >
+            <Logo className="size-8" />
             <form
               action="/products"
               method="get"
@@ -120,7 +122,7 @@ export function SearchMegaMenu({
                 addRecentSearch(value)
                 setOpen(false)
               }}
-              className="flex h-12 w-full min-w-0 items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 lg:border-2 lg:border-primary lg:focus-within:ring-0"
+              className="flex h-12 flex-1 min-w-0 items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 lg:border-2 lg:border-primary lg:focus-within:ring-0"
             >
               <input type="hidden" name="page" value="1" />
               <div className="relative min-w-0 flex-1">

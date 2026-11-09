@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { navLinksFor } from "@/lib/nav"
 import { AccountMenu } from "@/components/layout/account-menu"
+import { Logo } from "@/components/layout/logo"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { StorefrontSearchOverlay } from "@/components/layout/storefront-search-overlay"
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
@@ -13,9 +13,6 @@ import { Button } from "@/components/ui/button"
 
 type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
-
-/** Scroll distance before the header's content-boundary fade appears. */
-const SCROLL_THRESHOLD = 10
 
 export function StorefrontHeader({
   user,
@@ -28,7 +25,6 @@ export function StorefrontHeader({
   megaCategories?: MegaMenuCategory[]
   cartCount?: number
 }) {
-  const [scrolled, setScrolled] = useState(false)
   const navLinks = navLinksFor(user)
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -36,17 +32,9 @@ export function StorefrontHeader({
   // next route/query without an extra state-sync effect.
   const routeKey = `${pathname}?${searchParams.toString()}`
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
-    onScroll()
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
   return (
     <header
-      data-scrolled={scrolled}
-      className="scroll-edge sticky top-0 z-50 hidden bg-card pt-(--safe-area-top) lg:block"
+      className="sticky top-0 z-50 hidden bg-card pt-(--safe-area-top) lg:block"
     >
       {/* ---- Tier 1: logo + nav + actions ---- */}{" "}
       <div>
@@ -55,14 +43,7 @@ export function StorefrontHeader({
           <MobileNav user={user} categories={categories} />
 
           {/* Logo */}
-          <Link href="/" className="flex min-w-0 items-center gap-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-              D
-            </span>
-            <span className="truncate text-base font-bold tracking-tight">
-              D2B
-            </span>
-          </Link>
+          <Logo className="size-8" />
 
           {/* Nav links (desktop) */}
           <nav className="hidden items-center gap-0.5 lg:flex">

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShieldCheckIcon, Store01Icon, Tag01Icon } from "@hugeicons/core-free-icons";
+import { Logo } from "@/components/layout/logo";
 
 export function AuthShell({
   heading,
@@ -15,10 +16,7 @@ export function AuthShell({
     <div className="grid min-h-svh bg-background lg:grid-cols-[1fr_480px]">
       <div className="hidden flex-col justify-between border-r border-border bg-card p-12 lg:flex">
         <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            D
-          </span>
-          <span className="text-lg font-bold tracking-tight">D2B</span>
+          <Logo className="size-8" />
         </div>
 
         <div className="max-w-md">
