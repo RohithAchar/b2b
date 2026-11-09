@@ -31,11 +31,12 @@ export async function TopCategoriesSection() {
                   src={publicTransformedImageUrl(
                     "category_images",
                     category.image_path,
-                    { width: 200 }
+                    { width: 200, height: 200 }
                   )}
                   alt=""
                   sizes="(min-width: 1024px) 12vw, (min-width: 768px) 18vw, 84px"
                   priority={index === 0}
+                  unoptimized
                 />
               ) : (
                 <span

@@ -46,7 +46,10 @@ export const metadata: Metadata = {
 
 function categoryImageUrl(path: string | null) {
   if (!path) return null
-  return publicTransformedImageUrl("category_images", path, { width: 640 })
+  return publicTransformedImageUrl("category_images", path, {
+    width: 640,
+    height: 480,
+  })
 }
 
 async function CategoriesSummary() {
@@ -101,6 +104,7 @@ async function CategoryGrid() {
                 alt=""
                 priority={index < 4}
                 sizes={CATEGORY_IMAGE_SIZES}
+                unoptimized
               />
             </div>
 

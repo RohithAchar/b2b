@@ -239,11 +239,12 @@ export function SearchMegaMenu({
                         src={publicTransformedImageUrl(
                           "category_images",
                           cat.image_path,
-                          { width: 100 }
+                          { width: 100, height: 100 }
                         )}
                         alt=""
                         aria-hidden
                         fill
+                        unoptimized
                         sizes="32px"
                         className="object-cover"
                       />

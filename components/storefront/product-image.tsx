@@ -14,11 +14,13 @@ export function ProductImage({
   alt,
   sizes,
   priority = false,
+  unoptimized = false,
 }: {
   src: string | null
   alt: string
   sizes?: string
   priority?: boolean
+  unoptimized?: boolean
 }) {
   const [failed, setFailed] = useState(false)
 
@@ -40,6 +42,7 @@ export function ProductImage({
       src={src}
       alt={alt}
       fill
+      unoptimized={unoptimized}
       loading={priority ? "eager" : undefined}
       sizes={sizes}
       className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
