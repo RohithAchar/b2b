@@ -1,4 +1,7 @@
+import Link from "next/link"
 import { Suspense } from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { sanitizeRichText } from "@/lib/supplier/sanitize"
 import { formatIndianNumber, formatRupees, stockLabel } from "@/lib/format"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
@@ -136,6 +139,15 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-5">
+      <div className="mb-4 flex items-center gap-2">
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 hover:underline"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+          Back
+        </Link>
+      </div>
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },
