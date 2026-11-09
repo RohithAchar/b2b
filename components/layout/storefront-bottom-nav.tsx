@@ -10,6 +10,7 @@ import {
   Search01Icon,
   ShoppingCart01Icon,
   UserCircleIcon,
+  ListIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "cn"
 import { isStorefrontTabActive } from "@/lib/nav"
@@ -171,6 +172,7 @@ export function StorefrontBottomNav({
     pathname,
     hasSearch
   )
+  const selectActive = isStorefrontTabActive("select", pathname)
   const searchActive = isStorefrontTabActive("search", pathname, hasSearch)
   const cartActive = pathname === "/cart"
   const accountActive = isStorefrontTabActive("account", pathname)
@@ -199,6 +201,14 @@ export function StorefrontBottomNav({
             label="All Products"
             active={allProductsActive}
           />
+        </Link>
+
+        <Link
+          href="/select"
+          aria-current={selectActive ? "page" : undefined}
+          className={itemClass(selectActive)}
+        >
+          <ItemContent icon={ListIcon} label="Select" active={selectActive} />
         </Link>
 
         <BottomSearchSheet

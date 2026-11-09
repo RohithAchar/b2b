@@ -26,7 +26,7 @@ export function dashboardHref(userType: string, isStaff = false): string {
 }
 
 export type StorefrontTab =
-  "home" | "categories" | "products" | "search" | "account"
+  "home" | "categories" | "products" | "search" | "account" | "select"
 
 /**
  * Shared active-state contract for the storefront's mobile navigation.
@@ -49,5 +49,7 @@ export function isStorefrontTabActive(
       return pathname === "/products" && hasSearchQuery
     case "account":
       return pathname.startsWith("/auth") || pathname.startsWith("/account")
+    case "select":
+      return pathname === "/select" || pathname.startsWith("/select/")
   }
 }
