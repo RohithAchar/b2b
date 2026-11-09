@@ -12,11 +12,17 @@ export function publicImageUrl(bucket: string, path: string): string {
 export function publicTransformedImageUrl(
   bucket: string,
   path: string,
-  opts: { width: number; quality?: number; fit?: "cover" | "contain" },
+  opts: {
+    width: number
+    height?: number
+    quality?: number
+    fit?: "cover" | "contain"
+  },
 ): string {
   const quality = opts.quality ?? 75;
   const fit = opts.fit ?? "cover";
-  return `${SUPABASE_URL}/storage/v1/render/image/public/${bucket}/${path}?width=${opts.width}&quality=${quality}&resize=${fit}`;
+  const height = opts.height ? `&height=${opts.height}` : "";
+  return `${SUPABASE_URL}/storage/v1/render/image/public/${bucket}/${path}?width=${opts.width}${height}&quality=${quality}&resize=${fit}`;
 }
 
 type SniffedType =
