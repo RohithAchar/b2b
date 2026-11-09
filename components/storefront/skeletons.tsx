@@ -878,16 +878,17 @@ export function HomeBannerActionsSkeleton() {
 export function RecentRailSkeleton() {
   return (
     <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
-      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+      <div className="mb-1 flex items-end justify-between gap-2 pb-1">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-5 w-16" />
       </div>
-      <div className="-mx-4 flex gap-3 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-6">
+      <div
+        className="-mx-4 no-scrollbar flex snap-x gap-3 overflow-x-auto scroll-pl-4 px-4 pb-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 lg:grid-cols-6"
+      >
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="w-36 shrink-0 md:w-auto">
-            <Skeleton className="aspect-square w-full rounded-lg" />
+            <Skeleton className="aspect-square w-full rounded-lg border border-border bg-muted" />
             <Skeleton className="mt-1.5 h-3 w-3/4" />
-            <Skeleton className="mt-1 h-3 w-1/2" />
           </div>
         ))}
       </div>
@@ -898,7 +899,7 @@ export function RecentRailSkeleton() {
 export function FrequentlyBoughtSkeleton() {
   return (
     <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
-      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+      <div className="mb-1 flex items-end justify-between gap-2 pb-1">
         <div className="flex flex-col gap-2">
           <Skeleton className="h-6 w-44" />
           <Skeleton className="h-3 w-64 max-w-full" />
@@ -936,7 +937,7 @@ export function FrequentlyBoughtSkeleton() {
 export function RecommendedProductsSkeleton() {
   return (
     <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
-      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+      <div className="mb-1 flex items-end justify-between gap-2 pb-1">
         <div className="flex flex-col gap-2">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-3 w-56 max-w-full" />
@@ -954,18 +955,66 @@ export function RecommendedProductsSkeleton() {
 export function TopCategoriesSkeleton() {
   return (
     <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
-      <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
+      <div className="mb-1 flex items-end justify-between gap-2 pb-1">
         <Skeleton className="h-6 w-36" />
       </div>
-      <div className="-mx-4 flex gap-2.5 overflow-hidden px-4 md:mx-0 md:grid md:grid-cols-5 md:px-0 lg:grid-cols-8">
+      <div
+        className="-mx-4 no-scrollbar flex snap-x gap-2.5 overflow-x-auto scroll-pl-4 px-4 pb-1 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0 lg:grid-cols-8"
+      >
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="w-[84px] shrink-0 md:w-auto">
-            <Skeleton className="aspect-square w-full rounded-lg" />
+            <Skeleton className="aspect-square w-full rounded-lg border border-border bg-muted" />
             <Skeleton className="mx-auto mt-1.5 h-3 w-3/4" />
           </div>
         ))}
       </div>
-      <Skeleton className="mt-2 h-10 w-full rounded-md" />
+    </section>
+  )
+}
+
+export function PromotionalCollectionsSkeleton() {
+  return (
+    <section aria-hidden className="mx-auto w-full max-w-7xl px-4 py-5">
+      {/* Winning / hot-selling promotional panels */}
+      <div className="flex snap-x gap-4 overflow-x-auto px-4 pb-1 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0">
+        {Array.from({ length: 2 }, (_, i) => (
+          <div
+            key={i}
+            className="flex w-[85vw] shrink-0 snap-start flex-col rounded-xl bg-brand-50 p-4 lg:w-auto"
+          >
+            <div className="mb-3 overflow-hidden rounded-lg bg-muted">
+              <div className="relative aspect-[3/1] w-full overflow-hidden bg-brand-50">
+                <Skeleton className="absolute inset-0 rounded-none" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 ml-1">
+              {Array.from({ length: 4 }, (_, j) => (
+                <ProductCardSkeleton key={j} />
+              ))}
+            </div>
+            <Skeleton className="mt-3 h-10 w-full rounded-md" />
+          </div>
+        ))}
+      </div>
+
+      {/* Price-limit cards (Under ₹9 / ₹29 / ₹49 / ₹99) */}
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div
+            key={i}
+            className="group press flex flex-col overflow-hidden rounded-xl border border-border bg-card"
+          >
+            <div className="relative aspect-square w-full overflow-hidden bg-muted">
+              <Skeleton className="absolute inset-0 rounded-none" />
+            </div>
+            <div className="flex flex-col gap-1 px-3 py-2.5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-1 h-4 w-24" />
+              <Skeleton className="mt-1 h-8 w-full rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

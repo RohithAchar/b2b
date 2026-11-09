@@ -7,6 +7,7 @@ import { FrequentlyBoughtSection } from "@/components/storefront/frequently-boug
 import { RecommendedProductsSection } from "@/components/storefront/home-recommended"
 import {
   FrequentlyBoughtSkeleton,
+  PromotionalCollectionsSkeleton,
   RecentRailSkeleton,
   RecommendedProductsSkeleton,
   TopCategoriesSkeleton,
@@ -24,7 +25,7 @@ export default function SelectPage() {
     <div className="min-h-full bg-white">
       <h1 className="sr-only">D2H Select — curated wholesale picks</h1>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<PromotionalCollectionsSkeleton />}>
         <SelectPromotionalCollections />
       </Suspense>
 
