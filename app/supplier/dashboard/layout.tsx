@@ -1,15 +1,19 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { getAuthUser } from "@/lib/auth/session";
-import { getSupplierContext } from "@/lib/auth/guard";
+import { resolveStore } from "@/lib/store-context";
+import { STORE_COOKIE_NAME } from "@/lib/store-context-types";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { SupplierSidebar } from "./sidebar";
+import { DashboardStoreSelector } from "@/components/dashboard/dashboard-store-selector";
+import { getAccountStores } from "@/lib/supplier/account-stores";
 
 // Private workspace: never indexed.
 export const metadata: Metadata = {
@@ -29,17 +33,21 @@ export default async function SupplierDashboardLayout({
     redirect(LOGIN_PATH);
   }
 
-  const [{ data: profile }, ctx] = await Promise.all([
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get(STORE_COOKIE_NAME)?.value ?? null;
+
+  const [{ data: profile }, accountStores, activeStore] = await Promise.all([
     supabase.from("profiles").select("user_type").eq("id", user.id).maybeSingle(),
-    getSupplierContext(supabase, user.id),
+    getAccountStores(),
+    resolveStore(supabase, storeId),
   ]);
 
   let userType = profile?.user_type;
-  // Staff usually join with a buyer account. Promote on first dashboard
-  // visit: this is the trigger-allowed *self* buyer->supplier transition (an
-  // owner cannot flip another user: profiles RLS + prevent_role_escalation
-  // block cross-user changes).
-  if (ctx?.role === "staff" && userType === "buyer") {
+
+  // An account linked to stores is a supplier. Promote buyer->supplier on
+  // first dashboard visit (an allowed self-transition per
+  // internal.prevent_role_escalation).
+  if (accountStores.length > 0 && userType === "buyer") {
     const { error: promoteError } = await supabase
       .from("profiles")
       .update({ user_type: "supplier" })
@@ -47,33 +55,34 @@ export default async function SupplierDashboardLayout({
     if (!promoteError) userType = "supplier";
   }
 
-  if (userType !== "supplier" && ctx?.role !== "staff") {
+  // Buyers without store access have no place in the supplier workspace.
+  if (userType === "buyer") {
     redirect("/");
   }
-
-  const { data: company } = ctx
-    ? await supabase
-        .from("companies")
-        .select("business_name, kyb_status")
-        .eq("id", ctx.companyId)
-        .maybeSingle()
-    : { data: null };
 
   return (
     <SidebarProvider>
       <Suspense>
         <SupplierSidebar
           user={{
-            name: company?.business_name ?? "Supplier",
+            name: profile?.user_type === "admin" ? "Admin" : "Supplier",
             email: user.email ?? "",
           }}
-          kybStatus={company?.kyb_status ?? "draft"}
-          isStaff={ctx?.role === "staff"}
+          kybStatus="verified"
+          isStaff={userType === "staff"}
         />
       </Suspense>
       <SidebarInset className="@container/content">
         <Header>
-          <TopBar title="Supplier dashboard" />
+          <TopBar
+            title="Supplier dashboard"
+            actions={
+              <DashboardStoreSelector
+                stores={accountStores}
+                selectedStoreId={activeStore?.id ?? null}
+              />
+            }
+          />
         </Header>
         <Main>{children}</Main>
       </SidebarInset>

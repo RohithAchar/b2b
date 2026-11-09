@@ -10,8 +10,8 @@ import { StorefrontSearchOverlay } from "@/components/layout/storefront-search-o
 import { CartIconLink } from "@/components/storefront/cart-icon-link"
 import type { MegaMenuCategory } from "@/components/storefront/search-mega-menu"
 import { Button } from "@/components/ui/button"
-import { StorefrontStoreSelector } from "@/components/storefront/storefront-store-selector"
-import type { ActiveStore } from "@/lib/store-context"
+// StorefrontStoreSelector removed — store switching is handled by the
+// homepage store tabs and the supplier dashboard topbar.
 
 type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
@@ -21,15 +21,11 @@ export function StorefrontHeader({
   categories = [],
   megaCategories = [],
   cartCount = 0,
-  activeStore,
-  activeStores,
 }: {
   user: User
   categories?: NavCategory[]
   megaCategories?: MegaMenuCategory[]
   cartCount?: number
-  activeStore: ActiveStore | null
-  activeStores: ActiveStore[]
 }) {
   const navLinks = navLinksFor(user)
   const pathname = usePathname()
@@ -69,28 +65,26 @@ export function StorefrontHeader({
 
           {/* Right actions (desktop; mobile uses the bottom navigation) */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
-            <StorefrontStoreSelector
-              stores={activeStores}
-              selectedStoreId={activeStore?.id ?? null}
-            />
             <StorefrontSearchOverlay
               key={routeKey}
               categories={megaCategories}
             />
             <CartIconLink count={cartCount} />
             {user ? (
-              <AccountMenu user={user} />
-            ) : (
               <>
-                <Link href="/supplier/onboarding" className="hidden md:block">
-                  <Button variant="secondary" size="sm">
-                    Become a Supplier
-                  </Button>
-                </Link>
-                <Link href="/auth/login">
-                  <Button size="sm">Sign In</Button>
-                </Link>
+                {user.email === "oxmdev0@gmail.com" && (
+                  <Link href="/supplier/dashboard">
+                    <Button size="sm" variant="secondary">
+                      Dashboard
+                    </Button>
+                  </Link>
+                )}
+                <AccountMenu user={user} />
               </>
+            ) : (
+              <Link href="/auth/login">
+                <Button size="sm">Sign In</Button>
+              </Link>
             )}
           </div>
         </div>

@@ -249,11 +249,6 @@ export function MobileNav({
                 active={pathname.startsWith("/auth")}
                 onClick={close}
               />
-              <DrawerLink
-                href="/supplier/onboarding"
-                label="Become a Supplier"
-                onClick={close}
-              />
             </>
           )}
         </div>

@@ -57,7 +57,6 @@ export function StorefrontFooter() {
         <LinkColumn
           title="For Suppliers"
           links={[
-            { label: "Become a Supplier", href: "/supplier/onboarding" },
             { label: "Supplier Dashboard", href: "/supplier/dashboard" },
             { label: "Post Requirements", href: "/products" },
           ]}

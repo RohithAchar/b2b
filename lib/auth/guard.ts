@@ -102,14 +102,15 @@ export const getVerifiedSupplierId = getSupplierId;
 
 /**
  * Owner-only pages and actions (business profile, verification, margin,
- * team). Staff are sent back to the dashboard; strangers to onboarding.
+ * team). Staff are sent back to the dashboard; strangers are not redirected
+ * to onboarding anymore — the single onboarding page is reached explicitly.
  */
 export async function requireOwnerCompany(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<string> {
   const ctx = await getSupplierContext(supabase, userId);
-  if (!ctx) redirect("/supplier/onboarding");
+  if (!ctx) return "";
   if (ctx.role !== "owner") redirect("/supplier/dashboard");
   return ctx.companyId;
 }

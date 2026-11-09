@@ -35,8 +35,8 @@ import {
 import { createClient } from "@/lib/supabase/server"
 import { getAuthUser } from "@/lib/auth/session"
 import { LOGIN_PATH } from "@/lib/auth/paths"
-import { getSupplierContext } from "@/lib/auth/guard"
 import { fetchCustomerPricing } from "@/lib/pricing-data"
+import { getAccountStores } from "@/lib/supplier/account-stores"
 import { formatRupees, stockLabel } from "@/lib/format"
 import { latestAcceptedQuotation } from "@/lib/orders/quotation"
 import {
@@ -90,9 +90,30 @@ export default async function SupplierOverviewPage({
     redirect(LOGIN_PATH)
   }
 
-  const ctx = await getSupplierContext(supabase, user.id)
-  if (!ctx) {
-    redirect("/supplier/onboarding")
+  const accountStores = await getAccountStores()
+
+  // An account that has not been linked to any store yet sees an empty state
+  // with a setup button instead of being forced through onboarding.
+  if (accountStores.length === 0) {
+    return (
+      <div className="mx-auto w-full max-w-2xl p-6">
+        <div className="text-center">
+          <h1 className="text-xl font-bold tracking-tight">Set up your stores</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Link your account to the stores you want to manage before opening
+            the dashboard.
+          </p>
+        </div>
+        <div className="mt-8 flex justify-center">
+          <Button
+            render={<Link href="/supplier/onboarding" />}
+            nativeButton={false}
+          >
+            Set up stores
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   const { data: company, error: companyError } = await supabase
@@ -100,7 +121,7 @@ export default async function SupplierOverviewPage({
     .select(
       "id, business_name, contact_person, phone, address, city, state, pincode, gstin, pan, bank_account, bank_ifsc, gst_certificate_path, pan_card_path, license_path, kyb_status, rejection_note, logo_path, submitted_at, margin_pct"
     )
-    .eq("id", ctx.companyId)
+    .eq("owner_id", user.id)
     .maybeSingle()
 
   // See app/supplier/dashboard/business/page.tsx: a failed read must not be
@@ -114,8 +135,26 @@ export default async function SupplierOverviewPage({
     throw companyError
   }
 
+  // Linked to stores but no company profile yet: show the setup state.
   if (!company) {
-    redirect("/supplier/onboarding")
+    return (
+      <div className="mx-auto w-full max-w-2xl p-6">
+        <div className="text-center">
+          <h1 className="text-xl font-bold tracking-tight">Set up your business</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Create your business profile to start selling on your stores.
+          </p>
+        </div>
+        <div className="mt-8 flex justify-center">
+          <Button
+            render={<Link href="/supplier/onboarding" />}
+            nativeButton={false}
+          >
+            Set up business
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   const verified = true

@@ -8,7 +8,7 @@ import { StorefrontBottomNav } from "@/components/layout/storefront-bottom-nav"
 import { StoreTabs } from "@/components/storefront/store-tabs"
 import { StorefrontSession } from "@/components/storefront/storefront-session"
 import type { MegaMenuCategory } from "@/components/storefront/search-mega-menu"
-import type { ActiveStore } from "@/lib/store-context"
+
 
 type User = { email: string; user_type: string; isStaff?: boolean } | null
 type NavCategory = { slug: string; name: string }
@@ -18,16 +18,12 @@ export function StorefrontShell({
   categories,
   megaCategories,
   cartCount = 0,
-  activeStore,
-  activeStores,
   children,
 }: {
   user: User
   categories?: NavCategory[]
   megaCategories?: MegaMenuCategory[]
   cartCount?: number
-  activeStore: ActiveStore | null
-  activeStores: ActiveStore[]
   children: ReactNode
 }) {
   const pathname = usePathname()
@@ -54,8 +50,6 @@ export function StorefrontShell({
         categories={categories}
         megaCategories={megaCategories}
         cartCount={cartCount}
-        activeStore={activeStore}
-        activeStores={activeStores}
       />
       <main className="flex-1">{children}</main>
       <StorefrontFooter />
