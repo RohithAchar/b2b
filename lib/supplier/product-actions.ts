@@ -781,6 +781,51 @@ export async function saveProductAdditionalInfo(
   return { ok: true, message: "Additional information saved.", productId };
 }
 
+export async function removeProductImage(
+  productId: string,
+  imagePath: string,
+): Promise<ProductActionState> {
+  const { supabase, user } = await requireUser();
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
+  if (!supplierId) return { ...initialState, message: "Only suppliers can list products." };
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, supplier_id")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product || product.supplier_id !== supplierId) {
+    return { ...initialState, message: "Product not found." };
+  }
+
+  const { data: existing } = await supabase
+    .from("product_images")
+    .select("path")
+    .eq("product_id", productId);
+  const remaining = (existing ?? [])
+    .map((r) => r.path as string)
+    .filter((p) => p !== imagePath);
+
+  const { error } = await supabase.rpc("replace_product_images", {
+    p_product_id: productId,
+    p_paths: remaining,
+  });
+  if (error) {
+    console.error("removeProductImage failed:", error);
+    return { ...initialState, message: "Could not remove image. Try again." };
+  }
+
+  // Best-effort storage cleanup.
+  try {
+    await supabase.storage.from("product_images").remove([imagePath]);
+  } catch {
+    // ignore
+  }
+
+  revalidatePath(`/supplier/dashboard/products/${productId}/images`);
+  return { ok: true, message: "Image removed.", productId };
+}
+
 export async function submitProduct(productId: string): Promise<ProductActionState> {
   const { supabase, user } = await requireUser();
 
