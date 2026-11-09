@@ -20,6 +20,7 @@ import { FieldError } from "@/components/ui/field";
 import {
   createProduct,
   updateProduct,
+  checkSkuDuplicate,
   type ProductActionState,
 } from "@/lib/supplier/product-actions";
 import {
@@ -103,7 +104,7 @@ export function ProductForm({
     mode === "create"
       ? createProduct
       : updateProduct.bind(null, product?.id ?? "");
-  const showSubmit = product?.status !== "approved";
+  const showSubmit = mode !== "create" && product?.status !== "approved";
   const saveLabel = product?.status === "approved" ? "Save changes" : "Save draft";
   const [state, action, pending] = useActionState(boundAction, initialState);
   const [invalidField, setInvalidField] = useState<{ id: string; message: string } | null>(null);
@@ -152,6 +153,9 @@ export function ProductForm({
   const [seoFile, setSeoFile] = useState<File | null>(null);
   const [seoPreview, setSeoPreview] = useState<string | null>(null);
   const [seoImageCleared, setSeoImageCleared] = useState(false);
+
+  // Real-time SKU duplicate check.
+  const [skuDuplicate, setSkuDuplicate] = useState<boolean | null>(null);
   const seoObjectUrlRef = useRef<string | null>(null);
 
   // Draft persistence: text fields survive a full reload. Files, cropped
@@ -273,12 +277,35 @@ export function ProductForm({
     }
   }, [state.ok, draftKey]);
 
-  // Return to the all products page after a successful save.
+  // Real-time SKU duplicate check (debounced).
   useEffect(() => {
-    if (state.ok) {
-      router.push("/supplier/dashboard/products");
+    const sku = formValues.get("seller_sku")?.trim() ?? "";
+    const timer = window.setTimeout(async () => {
+      if (!sku) {
+        setSkuDuplicate(null);
+        return;
+      }
+      try {
+        const res = await checkSkuDuplicate(sku, product?.id);
+        setSkuDuplicate(res.duplicate);
+      } catch {
+        setSkuDuplicate(null);
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [formValues, product?.id]);
+
+  // After creating a product, redirect to the image-adding page so images
+  // can be uploaded in a separate step. In edit mode, return to the list.
+  useEffect(() => {
+    if (state.ok && state.productId) {
+      if (mode === "create") {
+        router.push(`/supplier/dashboard/products/${state.productId}/images`);
+      } else {
+        router.push("/supplier/dashboard/products");
+      }
     }
-  }, [state.ok, router]);
+  }, [state.ok, state.productId, mode, router]);
 
   // Route every field error to one scroll/focus path so client-side and
   // server-side errors behave identically. Hidden inputs (like #images) have
@@ -623,29 +650,32 @@ export function ProductForm({
               errorFor={errorFor}
               formValues={formValues}
               onValueChange={setFormValue}
+              skuDuplicate={skuDuplicate}
             />
-            <ProductMediaSection
-              fileInputRef={fileInputRef}
-              onFilesPicked={addFiles}
-              existingImages={existingImages}
-              newFiles={newFiles}
-              previewUrls={previewUrls}
-              removedImagePaths={removedImagePaths}
-              totalImages={totalImages}
-              canAddMore={canAddMore}
-              primaryImageKey={effectivePrimaryImageKey}
-              onMakePrimary={setPrimaryImageKey}
-              onRemoveStaged={removeStaged}
-              onRemoveExisting={removeExisting}
-              onReplaceStaged={replaceStaged}
-              onReplaceExisting={replaceExisting}
-              productImageUrl={productImageUrl}
-              youtubeUrl={youtubeUrl}
-              onYoutubeChange={setYoutubeUrl}
-              youtubeId={youtubeId}
-              invalidFor={invalidFor}
-              errorFor={errorFor}
-            />
+            {mode === "edit" ? (
+              <ProductMediaSection
+                fileInputRef={fileInputRef}
+                onFilesPicked={addFiles}
+                existingImages={existingImages}
+                newFiles={newFiles}
+                previewUrls={previewUrls}
+                removedImagePaths={removedImagePaths}
+                totalImages={totalImages}
+                canAddMore={canAddMore}
+                primaryImageKey={effectivePrimaryImageKey}
+                onMakePrimary={setPrimaryImageKey}
+                onRemoveStaged={removeStaged}
+                onRemoveExisting={removeExisting}
+                onReplaceStaged={replaceStaged}
+                onReplaceExisting={replaceExisting}
+                productImageUrl={productImageUrl}
+                youtubeUrl={youtubeUrl}
+                onYoutubeChange={setYoutubeUrl}
+                youtubeId={youtubeId}
+                invalidFor={invalidFor}
+                errorFor={errorFor}
+              />
+            ) : null}
             <PricingSection
               invalidFor={invalidFor}
               errorFor={errorFor}

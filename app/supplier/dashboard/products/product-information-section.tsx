@@ -32,12 +32,14 @@ export function ProductInformationSection({
   errorFor,
   formValues,
   onValueChange,
+  skuDuplicate,
 }: {
   categories: CategoryOption[];
   invalidFor: FieldErrorHelpers["invalidFor"];
   errorFor: FieldErrorHelpers["errorFor"];
   formValues: Map<string, string>;
   onValueChange: (key: string, value: string) => void;
+  skuDuplicate?: boolean | null;
 }) {
   const v = (key: string): string => formValues.get(key) ?? "";
   const descriptionLength = plainTextLength(v("description"));
@@ -76,6 +78,12 @@ export function ProductInformationSection({
             <FieldLabel htmlFor="seller_sku">Your SKU</FieldLabel>
             <Input id="seller_sku" name="seller_sku" required aria-invalid={invalidFor("seller_sku")} value={v("seller_sku")} onChange={(e) => onValueChange("seller_sku", e.target.value)} placeholder="SCK-ANK-001" />
             <FieldDescription>Unique per product. Variants use their own SKUs.</FieldDescription>
+            {skuDuplicate === true ? (
+              <p className="text-sm text-destructive">This SKU is already used by another product.</p>
+            ) : null}
+            {skuDuplicate === false && v("seller_sku").trim() !== "" ? (
+              <p className="text-sm text-success">SKU is available.</p>
+            ) : null}
             {errorFor("seller_sku")}
           </Field>
           <FieldGroup className="grid gap-7 sm:grid-cols-2">
