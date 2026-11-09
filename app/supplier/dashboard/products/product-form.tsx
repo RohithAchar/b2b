@@ -661,6 +661,7 @@ export function ProductForm({
         <input type="hidden" name="primary_image" value={effectivePrimaryImageKey ?? ""} />
         <input type="hidden" name="is_winning" value={isWinning ? "1" : ""} />
         <input type="hidden" name="is_hot_selling" value={isHotSelling ? "1" : ""} />
+        <input type="hidden" name="negotiable" value={negotiable ? "1" : ""} />
         {storeId ? <input type="hidden" name="store_id" value={storeId} /> : null}
 
         <ProductFormSectionTabs />

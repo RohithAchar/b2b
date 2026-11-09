@@ -37,26 +37,6 @@ export function PricingSection({
       <FieldSet>
         <FieldLegend>Price</FieldLegend>
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="unit">Selling unit</FieldLabel>
-            <NativeSelect id="unit" name="unit" required aria-invalid={invalidFor("unit")} value={v("unit") || "pcs"} onChange={(e) => onValueChange("unit", e.target.value)}>
-              {PRODUCT_UNITS.map((u) => (
-                <NativeSelectOption key={u} value={u}>{u}</NativeSelectOption>
-              ))}
-            </NativeSelect>
-            {errorFor("unit")}
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="price_per_unit">Base price per unit</FieldLabel>
-            <InputGroup>
-              <InputGroupInput id="price_per_unit" name="price_per_unit" required type="number" min={0.01} step="0.01" aria-invalid={invalidFor("price_per_unit")} value={v("price_per_unit")} onChange={(e) => onValueChange("price_per_unit", e.target.value)} />
-              <InputGroupAddon align="inline-start">
-                <InputGroupText>₹</InputGroupText>
-              </InputGroupAddon>
-            </InputGroup>
-            <FieldDescription>Variants can override this with their own absolute price. Margin is added to variant prices too.</FieldDescription>
-            {errorFor("price_per_unit")}
-          </Field>
           <Field orientation="horizontal">
             <Switch id="negotiable-switch" checked={negotiable} onCheckedChange={onNegotiableChange} />
             <FieldLabel htmlFor="negotiable-switch">Price negotiable</FieldLabel>

@@ -18,7 +18,7 @@ import {
   DESCRIPTION_MIN_TEXT_CHARS,
   plainTextLength,
 } from "@/lib/supplier/rich-text";
-import { PRODUCT_GST_RATES } from "@/lib/supplier/products";
+import { PRODUCT_GST_RATES, PRODUCT_UNITS } from "@/lib/supplier/products";
 import type { CategoryOption, FieldErrorHelpers } from "./product-form-types";
 
 const RichTextEditor = dynamic(
@@ -105,6 +105,25 @@ export function ProductInformationSection({
               {errorFor("gst_rate")}
             </Field>
           </FieldGroup>
+        </FieldGroup>
+      </FieldSet>
+      <FieldSet>
+        <FieldLegend>Pricing</FieldLegend>
+        <FieldGroup className="grid gap-7 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="unit">Selling unit</FieldLabel>
+            <NativeSelect id="unit" name="unit" required aria-invalid={invalidFor("unit")} value={v("unit") || "pcs"} onChange={(e) => onValueChange("unit", e.target.value)}>
+              {PRODUCT_UNITS.map((u) => (
+                <NativeSelectOption key={u} value={u}>{u}</NativeSelectOption>
+              ))}
+            </NativeSelect>
+            {errorFor("unit")}
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="price_per_unit">Base price per unit</FieldLabel>
+            <Input id="price_per_unit" name="price_per_unit" required type="number" min={0.01} step="0.01" aria-invalid={invalidFor("price_per_unit")} value={v("price_per_unit")} onChange={(e) => onValueChange("price_per_unit", e.target.value)} placeholder="100" />
+            {errorFor("price_per_unit")}
+          </Field>
         </FieldGroup>
       </FieldSet>
       <FieldSet>
