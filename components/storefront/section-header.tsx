@@ -16,7 +16,7 @@ export function SectionHeader({
 }) {
   return (
     <div
-      className={`mb-3 flex items-end justify-between gap-2 border-b border-border pb-2 sm:gap-4 ${className ?? ""}`}
+      className={`mb-1 flex items-end justify-between gap-2 pb-1 sm:gap-4 ${className ?? ""}`}
     >
       <div className="min-w-0 flex-1">
         <h2 className="text-lg font-bold tracking-tight text-foreground">
