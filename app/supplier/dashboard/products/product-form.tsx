@@ -598,13 +598,16 @@ export function ProductForm({
       form.appendChild(input);
     }
     // Explicitly allowed: re-submit programmatically so the POST goes
-    // through the second pass above.
+    // through the second pass above. Deferred to avoid re-entrancy issues
+    // where requestSubmit() is ignored during an active submit handler.
     allowSubmitRef.current = true;
-    try {
-      form.requestSubmit();
-    } catch {
-      allowSubmitRef.current = false;
-    }
+    setTimeout(() => {
+      try {
+        form.requestSubmit();
+      } catch {
+        allowSubmitRef.current = false;
+      }
+    }, 0);
   }
 
   function requestSave(kind: "draft" | "submit") {
