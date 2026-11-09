@@ -90,12 +90,14 @@ export function ProductForm({
   categories,
   title,
   description,
+  storeId,
 }: {
   mode: "create" | "edit";
   product?: ExistingProduct;
   categories: CategoryOption[];
   title: string;
   description: string;
+  storeId?: string;
 }) {
   const boundAction =
     mode === "create"
@@ -602,6 +604,7 @@ export function ProductForm({
         <input type="hidden" name="primary_image" value={effectivePrimaryImageKey ?? ""} />
         <input type="hidden" name="is_winning" value={isWinning ? "1" : ""} />
         <input type="hidden" name="is_hot_selling" value={isHotSelling ? "1" : ""} />
+        {storeId ? <input type="hidden" name="store_id" value={storeId} /> : null}
 
         <ProductFormSectionTabs />
 

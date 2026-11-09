@@ -128,14 +128,16 @@ export async function getHomeCategories(supabase: SupabaseClient) {
   }));
 }
 
-export async function getHomeProducts(supabase: SupabaseClient) {
-  const { data } = await supabase
+export async function getHomeProducts(supabase: SupabaseClient, storeId?: string | null) {
+  let qb = supabase
     .from("products")
     .select(
       "id, title, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
     )
     .eq("status", "approved")
-    .eq("is_hidden", false)
+    .eq("is_hidden", false);
+  if (storeId) qb = qb.eq("store_id", storeId);
+  const { data } = await qb
     .order("created_at", { ascending: false })
     .limit(12);
 
@@ -163,15 +165,18 @@ export async function getHomeProducts(supabase: SupabaseClient) {
 export async function getWinningProducts(
   supabase: SupabaseClient,
   limit = 8,
+  storeId?: string | null,
 ) {
-  const { data } = await supabase
+  let qb = supabase
     .from("products")
     .select(
       "id, title, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
     )
     .eq("status", "approved")
     .eq("is_hidden", false)
-    .eq("is_winning", true)
+    .eq("is_winning", true);
+  if (storeId) qb = qb.eq("store_id", storeId);
+  const { data } = await qb
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -199,15 +204,18 @@ export async function getWinningProducts(
 export async function getHotSellingProducts(
   supabase: SupabaseClient,
   limit = 8,
+  storeId?: string | null,
 ) {
-  const { data } = await supabase
+  let qb = supabase
     .from("products")
     .select(
       "id, title, unit, moq, negotiable, created_at, supplier_id, category:category_id(name, slug), images:product_images(path, sort)",
     )
     .eq("status", "approved")
     .eq("is_hidden", false)
-    .eq("is_hot_selling", true)
+    .eq("is_hot_selling", true);
+  if (storeId) qb = qb.eq("store_id", storeId);
+  const { data } = await qb
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -238,6 +246,7 @@ export async function getRecommendedProducts(
   supabase: SupabaseClient,
   categoryIds: string[],
   limit = 8,
+  storeId?: string | null,
 ) {
   const select =
     "id, title, unit, moq, negotiable, created_at, supplier_id, images:product_images(path, sort)";
@@ -248,6 +257,7 @@ export async function getRecommendedProducts(
       .select(select)
       .eq("status", "approved")
       .eq("is_hidden", false);
+    if (storeId) query = query.eq("store_id", storeId);
     if (ids.length > 0) query = query.in("category_id", ids);
     return query.order("created_at", { ascending: false }).limit(limit);
   };
@@ -319,6 +329,7 @@ export async function getCataloguePage(
   supabase: SupabaseClient,
   filters: CatalogueFilters,
   cursor: CatalogueCursor | null = null,
+  storeId?: string | null,
 ): Promise<CataloguePage> {
   const candidateIds = decodeImageResultToken(filters.imageToken) ?? null;
 
@@ -335,6 +346,7 @@ export async function getCataloguePage(
     p_candidate_ids: candidateIds,
     p_cursor: cursor,
     p_limit: CATALOGUE_PAGE_SIZE,
+    p_store_id: storeId ?? null,
   });
 
   if (error) {
@@ -412,6 +424,8 @@ export type ProductListParams = {
   sampleAvailable?: boolean;
   page?: number;
   perPage?: number;
+  /** Restrict the listing to products belonging to this store. */
+  storeId?: string;
   /**
    * Search-by-image candidate products, most visually similar first. Constrains
    * the listing to this set — it is a candidate pool, never a bypass of the
@@ -435,6 +449,7 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     page = 1,
     perPage = 24,
     imageProductIds,
+    storeId,
   } = params;
   const from = (page - 1) * perPage;
   const to = from + perPage - 1;
@@ -455,6 +470,10 @@ export async function getProducts(supabase: SupabaseClient, params: ProductListP
     )
     .eq("status", "approved")
     .eq("is_hidden", false);
+
+  if (storeId) {
+    qb = qb.eq("store_id", storeId);
+  }
 
   // An .eq("id") per candidate would be an OR chain; .in() is a single
   // membership test, so the candidate set can only ever narrow the listing.

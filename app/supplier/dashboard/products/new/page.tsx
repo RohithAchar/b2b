@@ -20,6 +20,13 @@ export default async function NewSupplierProductPage() {
     .eq("is_active", true)
     .order("sort_order");
 
+  // Products created from the core dashboard belong to D2H Core.
+  const { data: coreStore } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("slug", "d2h-core")
+    .maybeSingle();
+
   const options = (categories ?? []).map((c) => ({
     id: c.id as string,
     name: c.name as string,
@@ -31,6 +38,7 @@ export default async function NewSupplierProductPage() {
       categories={options}
       title="Add new product"
       description="Save as draft, or publish directly to your storefront."
+      storeId={coreStore?.id as string | undefined}
     />
   );
 }

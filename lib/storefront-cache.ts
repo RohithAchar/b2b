@@ -57,6 +57,7 @@ function normalizeProductParams(params: ProductListParams): ProductListParams {
     // imageProductIds intentionally excluded from the stable key helper below —
     // callers bypass the cache when it is present (unique per upload).
     imageProductIds: params.imageProductIds,
+    storeId: params.storeId,
   };
 }
 
@@ -95,17 +96,25 @@ export const getCachedHomeProducts = unstable_cache(
   { revalidate: 120, tags: ["products", "prices", "home"] },
 );
 
-export const getCachedWinningProducts = unstable_cache(
-  async () => getWinningProducts(makePublicClient() as unknown as AnyClient, 4),
-  ["select-winning-products"],
-  { revalidate: 120, tags: ["products", "prices", "home"] },
-);
+export async function getCachedWinningProducts(storeId?: string | null) {
+  const client = makePublicClient() as unknown as AnyClient;
+  const key = storeId ? `select-winning-products:${storeId}` : "select-winning-products";
+  return unstable_cache(
+    async () => getWinningProducts(client, 4, storeId),
+    [key],
+    { revalidate: 120, tags: ["products", "prices", "home"] },
+  )();
+}
 
-export const getCachedHotSellingProducts = unstable_cache(
-  async () => getHotSellingProducts(makePublicClient() as unknown as AnyClient, 4),
-  ["select-hot-selling-products"],
-  { revalidate: 120, tags: ["products", "prices", "home"] },
-);
+export async function getCachedHotSellingProducts(storeId?: string | null) {
+  const client = makePublicClient() as unknown as AnyClient;
+  const key = storeId ? `select-hot-selling-products:${storeId}` : "select-hot-selling-products";
+  return unstable_cache(
+    async () => getHotSellingProducts(client, 4, storeId),
+    [key],
+    { revalidate: 120, tags: ["products", "prices", "home"] },
+  )();
+}
 
 /**
  * Recommended products are derived from a buyer's interest categories, then
@@ -172,21 +181,27 @@ export const getCachedCatalogueCategories = unstable_cache(
  * action (never cached), and image-search candidate sets are unique per upload,
  * so they bypass the cache entirely.
  */
-export async function getCachedCataloguePage(filters: CatalogueFilters) {
+export async function getCachedCataloguePage(
+  filters: CatalogueFilters,
+  storeId?: string | null,
+) {
   if (filters.imageToken) {
     return getCataloguePage(
       makePublicClient() as unknown as AnyClient,
       filters,
+      null,
+      storeId,
     );
   }
 
-  const key = catalogueFiltersKey(filters);
+  const key = catalogueFiltersKey(filters) + (storeId ? `:store:${storeId}` : "");
   const tags = ["products", "prices", "catalogue"];
   if (filters.categorySlug) tags.push(`category:${filters.categorySlug}`);
+  if (storeId) tags.push(`store:${storeId}`);
 
   return unstable_cache(
     async () =>
-      getCataloguePage(makePublicClient() as unknown as AnyClient, filters),
+      getCataloguePage(makePublicClient() as unknown as AnyClient, filters, null, storeId),
     ["catalogue", key],
     { revalidate: 60, tags },
   )();

@@ -3,8 +3,10 @@ import { CatalogueSection } from "@/components/storefront/catalogue-section"
 
 export async function AllProductsSection({
   searchParams,
+  storeId,
 }: {
   searchParams: CatalogueSearchParams
+  storeId?: string | null
 }) {
   return (
     <section id="all-products" className="border-y border-border bg-white">
@@ -14,6 +16,7 @@ export async function AllProductsSection({
           basePath="/"
           title="All products"
           description="Browse the full catalogue from verified suppliers, with live customer pricing and MOQs."
+          storeId={storeId}
         />
       </div>
     </section>

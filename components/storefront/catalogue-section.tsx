@@ -14,17 +14,19 @@ export async function CatalogueSection({
   title = "All products",
   description,
   headingLevel = "h2",
+  storeId,
 }: {
   searchParams: CatalogueSearchParams
   basePath: string
   title?: string
   description?: string
   headingLevel?: "h1" | "h2"
+  storeId?: string | null
 }) {
   const filters = parseCatalogueFilters(searchParams)
   const [categoryData, initialPage] = await Promise.all([
     getCachedCatalogueCategories(),
-    getCachedCataloguePage(filters),
+    getCachedCataloguePage(filters, storeId),
   ])
 
   return (

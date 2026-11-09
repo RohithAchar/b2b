@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import type { CatalogueSearchParams } from "@/lib/catalogue"
+import { createClient } from "@/lib/supabase/server"
 import { AllProductsSection } from "@/components/storefront/home-sections"
 import { SearchMegaMenuSection } from "@/components/storefront/search-mega-menu-section"
 import { HomeBannerActions } from "@/components/storefront/home-banner-actions"
@@ -36,6 +37,14 @@ export default async function HomePage({
   searchParams: Promise<CatalogueSearchParams>
 }) {
   const sp = await searchParams
+
+  const supabase = await createClient()
+  const { data: coreStore } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("slug", "d2h-core")
+    .maybeSingle()
+  const coreStoreId = (coreStore?.id as string | null) ?? null
 
   return (
     <div className="min-h-full bg-white">
@@ -74,7 +83,7 @@ export default async function HomePage({
           </section>
         }
       >
-        <AllProductsSection searchParams={sp} />
+        <AllProductsSection searchParams={sp} storeId={coreStoreId} />
       </Suspense>
     </div>
   )

@@ -313,10 +313,13 @@ export async function createProduct(
   const youtubeUrl = parsed.data.youtube_url?.trim() ? parsed.data.youtube_url.trim() : null;
   const youtubeId = youtubeUrl ? extractYoutubeId(youtubeUrl) : null;
 
+  const storeId = (formData.get("store_id") as string | null) || null;
+
   const { data: product, error: insertError } = await supabase
     .from("products")
     .insert({
       supplier_id: supplierId,
+      store_id: storeId,
       category_id: parsed.data.category_id,
       title: parsed.data.title.trim(),
       description: sanitizeRichText(parsed.data.description),

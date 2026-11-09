@@ -2,6 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
+import { createClient } from "@/lib/supabase/server"
 import { getCachedWinningProducts, getCachedHotSellingProducts, getCachedProducts } from "@/lib/storefront-cache"
 import { publicTransformedImageUrl } from "@/lib/storage"
 import { ProductImage } from "@/components/storefront/product-image"
@@ -68,11 +69,19 @@ function Panel({
 }
 
 export async function SelectPromotionalCollections() {
+  const supabase = await createClient();
+  const { data: selectStore } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("slug", "d2h-select")
+    .maybeSingle();
+  const selectStoreId = (selectStore?.id as string | null) ?? null;
+
   const [winning, hotSelling, ...pricePages] = await Promise.all([
-    getCachedWinningProducts(),
-    getCachedHotSellingProducts(),
+    getCachedWinningProducts(selectStoreId),
+    getCachedHotSellingProducts(selectStoreId),
     ...PRICE_LIMITS.map((limit) =>
-      getCachedProducts({ maxPrice: limit, perPage: 1, sort: "newest" }),
+      getCachedProducts({ maxPrice: limit, perPage: 1, sort: "newest", storeId: selectStoreId ?? undefined }),
     ),
   ])
 
