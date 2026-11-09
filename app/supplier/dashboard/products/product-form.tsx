@@ -104,13 +104,9 @@ export function ProductForm({
     mode === "create"
       ? createProduct
       : updateProduct.bind(null, product?.id ?? "");
-  const showSubmit = mode !== "create" && product?.status !== "approved";
+  const showSubmit = product?.status !== "approved";
   const saveLabel =
-    mode === "create"
-      ? "Next"
-      : product?.status === "approved"
-        ? "Save changes"
-        : "Save draft";
+    product?.status === "approved" ? "Save changes" : "Save draft";
   const [state, action, pending] = useActionState(boundAction, initialState);
   const [invalidField, setInvalidField] = useState<{ id: string; message: string } | null>(null);
   // Render-phase adjustment: when a server action returns an error, attach it
@@ -195,10 +191,7 @@ export function ProductForm({
     return m;
   }, [product]);
 
-  const [formValues, setFormValues] = useState<Map<string, string>>(() => {
-    const draft = loadDraft(draftKey);
-    return draft ?? initialFormValues;
-  });
+  const [formValues, setFormValues] = useState<Map<string, string>>(initialFormValues);
 
   const [seoTitleTouched, setSeoTitleTouched] = useState(false);
   const [seoDescriptionTouched, setSeoDescriptionTouched] = useState(false);
@@ -259,6 +252,17 @@ export function ProductForm({
     if (invalidField?.id === key) setInvalidField(null);
   }
 
+  // Restore any saved draft after mount so the server-rendered markup and the
+  // first client render match. Loading in the useState initializer caused a
+  // hydration mismatch whenever a draft existed. Deferred so the restore does
+  // not cascade a synchronous render inside the effect.
+  useEffect(() => {
+    const draft = loadDraft(draftKey);
+    if (!draft) return;
+    const timer = window.setTimeout(() => setFormValues(draft), 0);
+    return () => window.clearTimeout(timer);
+  }, [draftKey]);
+
   // Persist text fields to sessionStorage (debounced).
   const draftSaveTimerRef = useRef<number | null>(null);
   useEffect(() => {
@@ -274,18 +278,6 @@ export function ProductForm({
       if (draftSaveTimerRef.current) window.clearTimeout(draftSaveTimerRef.current);
     };
   }, [formValues, draftKey]);
-
-  // Clear any stale draft on mount for create mode so old product data
-  // doesn't bleed into a new product form.
-  useEffect(() => {
-    if (mode === "create") {
-      try {
-        window.sessionStorage.removeItem(draftKey);
-      } catch {
-        // ignore
-      }
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear the draft once a save succeeds.
   useEffect(() => {
@@ -316,8 +308,7 @@ export function ProductForm({
     return () => window.clearTimeout(timer);
   }, [formValues, product?.id]);
 
-  // After creating a product, redirect to the image-adding page so images
-  // can be uploaded in a separate step. In edit mode, return to the list.
+  // Return to the all products page after a successful save.
   useEffect(() => {
     if (state.ok && state.productId) {
       // Cancel any pending draft save so it doesn't re-save after clear.
@@ -331,13 +322,9 @@ export function ProductForm({
       } catch {
         // ignore
       }
-      if (mode === "create") {
-        router.push(`/supplier/dashboard/products/${state.productId}/images`);
-      } else {
-        router.push("/supplier/dashboard/products");
-      }
+      router.push("/supplier/dashboard/products");
     }
-  }, [state.ok, state.productId, mode, router, draftKey]);
+  }, [state.ok, state.productId, router, draftKey]);
 
   // Route every field error to one scroll/focus path so client-side and
   // server-side errors behave identically. Hidden inputs (like #images) have
@@ -582,6 +569,13 @@ export function ProductForm({
     // without passing explicit validation below.
     e.preventDefault();
     if (!form) return;
+    if (skuDuplicate === true) {
+      setInvalidField({
+        id: "seller_sku",
+        message: "This SKU is already used by another product.",
+      });
+      return;
+    }
     if (!validateDescription()) return;
     if (autoSubmitRef.current && totalImages < MIN_PRODUCT_IMAGES) {
       setInvalidField({
@@ -656,6 +650,7 @@ export function ProductForm({
       <form
         ref={formRef}
         action={action}
+        noValidate
         onChangeCapture={clearInvalidForEvent}
         onSubmit={onFormSubmit}
       >
@@ -666,7 +661,6 @@ export function ProductForm({
         <input type="hidden" name="primary_image" value={effectivePrimaryImageKey ?? ""} />
         <input type="hidden" name="is_winning" value={isWinning ? "1" : ""} />
         <input type="hidden" name="is_hot_selling" value={isHotSelling ? "1" : ""} />
-        <input type="hidden" name="negotiable" value={negotiable ? "1" : ""} />
         {storeId ? <input type="hidden" name="store_id" value={storeId} /> : null}
 
         <ProductFormSectionTabs />
@@ -688,40 +682,36 @@ export function ProductForm({
               onValueChange={setFormValue}
               skuDuplicate={skuDuplicate}
             />
-            {mode === "edit" ? (
-              <ProductMediaSection
-                fileInputRef={fileInputRef}
-                onFilesPicked={addFiles}
-                existingImages={existingImages}
-                newFiles={newFiles}
-                previewUrls={previewUrls}
-                removedImagePaths={removedImagePaths}
-                totalImages={totalImages}
-                canAddMore={canAddMore}
-                primaryImageKey={effectivePrimaryImageKey}
-                onMakePrimary={setPrimaryImageKey}
-                onRemoveStaged={removeStaged}
-                onRemoveExisting={removeExisting}
-                onReplaceStaged={replaceStaged}
-                onReplaceExisting={replaceExisting}
-                productImageUrl={productImageUrl}
-                youtubeUrl={youtubeUrl}
-                onYoutubeChange={setYoutubeUrl}
-                youtubeId={youtubeId}
-                invalidFor={invalidFor}
-                errorFor={errorFor}
-              />
-            ) : null}
-            {mode === "edit" ? (
-              <>
-                <PricingSection
-                  invalidFor={invalidFor}
-                  errorFor={errorFor}
-                  formValues={formValues}
-                  onValueChange={setFormValue}
-                  negotiable={negotiable}
-                  onNegotiableChange={setNegotiable}
-                />
+            <ProductMediaSection
+              fileInputRef={fileInputRef}
+              onFilesPicked={addFiles}
+              existingImages={existingImages}
+              newFiles={newFiles}
+              previewUrls={previewUrls}
+              removedImagePaths={removedImagePaths}
+              totalImages={totalImages}
+              canAddMore={canAddMore}
+              primaryImageKey={effectivePrimaryImageKey}
+              onMakePrimary={setPrimaryImageKey}
+              onRemoveStaged={removeStaged}
+              onRemoveExisting={removeExisting}
+              onReplaceStaged={replaceStaged}
+              onReplaceExisting={replaceExisting}
+              productImageUrl={productImageUrl}
+              youtubeUrl={youtubeUrl}
+              onYoutubeChange={setYoutubeUrl}
+              youtubeId={youtubeId}
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+            />
+            <PricingSection
+              invalidFor={invalidFor}
+              errorFor={errorFor}
+              formValues={formValues}
+              onValueChange={setFormValue}
+              negotiable={negotiable}
+              onNegotiableChange={setNegotiable}
+            />
             <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
               <span className="text-sm font-medium">Promotions</span>
               <label className="flex items-center justify-between gap-3 text-sm">
@@ -766,8 +756,6 @@ export function ProductForm({
               onSeoCropApplied={applySeoCrop}
               productImageUrl={productImageUrl}
             />
-              </>
-            ) : null}
             <div className="@3xl/content:hidden">{statusAlert}</div>
           </div>
 

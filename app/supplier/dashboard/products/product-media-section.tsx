@@ -208,7 +208,7 @@ export function ProductMediaSection({
         {selected ? (
           <div className="rounded-lg border border-border bg-muted/20 p-3 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-md border border-border bg-muted sm:mx-0">
+              <div className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-md border border-border bg-muted sm:mx-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   loading="lazy"
