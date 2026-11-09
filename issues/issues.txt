@@ -1,0 +1,260 @@
+The main weakness in the original breakdown is that several tickets combine separate implementation layers. For example, “store-aware checkout” bundles cart persistence, server-side validation, order attribution, and transactional checkout. Those are distinct changes with different failure modes and should be independently implementable and testable.
+
+I’ve split the work into smaller vertical steps while preserving the blocking relationships. The key architectural constraint remains: expand alongside the supplier model, migrate workflows incrementally, and only remove supplier-specific structures after their dependencies are gone.
+
+## Revised ticket breakdown
+
+### Foundation and store management
+
+01 — Add the store domain schema
+
+- Add a `stores` table and the core store identifiers and relationships.
+- Support the four initial stores: D2H Core, D2H Select, Ecom Package, and Dropshopping.
+- Add migrations, indexes, constraints, and appropriate RLS policies.
+- Keep existing supplier tables and workflows operational.
+
+Blocked by: None
+
+02 — Build central store management
+
+- Allow the central admin to create, edit, activate, and deactivate stores.
+- Add a store selector to the admin dashboard.
+- Provide a consolidated dashboard view and store-specific dashboard context.
+- Enforce central-admin permissions on store management operations.
+
+Blocked by: 01
+
+03 — Implement server-side store context and authorization
+
+- Resolve the active store for dashboard and storefront operations.
+- Enforce store access in server actions, queries, and mutations.
+- Prevent client-supplied store IDs from granting unauthorized access.
+- Define behavior when no store is selected or a store is inactive.
+
+Blocked by: 01, 02
+
+### Shared product catalogue
+
+04 — Introduce the global product catalogue model
+
+- Establish globally shared product records.
+- Preserve shared product descriptions, categories, images, and core attributes.
+- Define how existing supplier-owned products map into the shared catalogue.
+- Keep existing product workflows compatible during migration.
+
+Blocked by: 01
+
+05 — Add store-product assignments
+
+- Add `store_products` to associate global products with individual stores.
+- Support listing and unlisting a product per store.
+- Prevent duplicate assignments for the same store and product.
+- Add store-scoped product assignment queries and mutations.
+
+Blocked by: 04
+
+06 — Add store-specific product variant configuration
+
+- Support store-specific variant availability and overrides.
+- Keep shared variant information in the global catalogue where appropriate.
+- Ensure a store's configuration cannot change another store's listing.
+
+Blocked by: 05
+
+07 — Implement store-specific pricing and MOQ
+
+- Support per-store product and variant pricing.
+- Support per-store minimum order quantities.
+- Update server-side price resolution to use the active store.
+- Ensure checkout does not trust prices supplied by the client.
+
+Blocked by: 05, 06
+
+08 — Implement store-specific inventory
+
+- Track stock independently for each store and relevant variant.
+- Add store-scoped stock updates and availability queries.
+- Prevent overselling through server-side stock validation.
+- Define how stock is reserved or decremented during checkout.
+
+Blocked by: 05, 06
+
+### Storefront browsing
+
+09 — Add store selection to the shared storefront
+
+- Allow customers to select among the active stores.
+- Keep the customer identity and authentication shared.
+- Persist the selected store appropriately across navigation and sessions.
+- Handle inactive or unavailable stores gracefully.
+
+Blocked by: 03
+
+10 — Implement store-scoped catalogue browsing and search
+
+- Show only products assigned to the selected store.
+- Filter by store-specific availability.
+- Display the correct store price, MOQ, and variant options.
+- Ensure search, categories, and product details all respect store context.
+
+Blocked by: 07, 08, 09
+
+### Cart, orders, and checkout
+
+11 — Introduce store-aware cart persistence
+
+- Associate cart lines with a store.
+- Support products from multiple stores in one shared customer cart.
+- Preserve cart identity across customer sessions where appropriate.
+- Prevent invalid or inactive store assignments from remaining actionable.
+
+Blocked by: 09, 10
+
+12 — Implement server-side cart validation
+
+- Revalidate product assignments, variants, prices, MOQ, and stock.
+- Recalculate line totals from canonical server-side data.
+- Return clear validation errors for unavailable or changed products.
+- Prevent manipulated client-side cart values from affecting checkout.
+
+Blocked by: 07, 08, 11
+
+13 — Add store attribution to the order data model
+
+- Introduce store attribution for orders and order lines as appropriate.
+- Add compatibility with existing supplier-owned orders.
+- Update relevant queries and constraints without breaking existing order history.
+- Preserve payment, delivery, and order lifecycle semantics.
+
+Blocked by: 01
+
+14 — Implement multi-store transactional checkout
+
+- Create the correct store-specific orders from a shared cart.
+- Reuse server-side pricing and cart validation.
+- Preserve idempotency and transactional guarantees.
+- Ensure a failed multi-store checkout does not leave partial orders.
+- Preserve applicable delivery and minimum-order rules.
+
+Blocked by: 12, 13
+
+15 — Implement store-specific order management
+
+- Display orders filtered by store.
+- Support a consolidated central-admin order view.
+- Preserve existing order status transitions and payment workflows.
+- Ensure updates are authorized for the relevant store.
+
+Blocked by: 14
+
+### Customers, promotions, and analytics
+
+16 — Consolidate customer management around shared identities
+
+- Use one customer identity across all stores.
+- Build a shared customer directory for the central admin.
+- Provide store-filtered customer activity.
+- Avoid duplicate customer records when customers purchase from multiple stores.
+
+Blocked by: 02
+
+17 — Add cross-store customer order history
+
+- Show a customer's orders across all stores.
+- Provide store-specific order filtering.
+- Ensure customer access and admin access follow the correct authorization rules.
+
+Blocked by: 15, 16
+
+18 — Implement store-owned coupons and promotions
+
+- Associate coupons with individual stores.
+- Support store-specific eligibility, expiry, usage limits, and discount rules.
+- Validate coupon ownership and eligibility on the server.
+- Preserve the ability to add shared promotions later if required.
+
+Blocked by: 12
+
+19 — Integrate coupon validation into checkout
+
+- Apply valid store-specific coupons to the correct store's order.
+- Recalculate discounts server-side.
+- Enforce usage limits and prevent duplicate redemption.
+- Preserve checkout idempotency when coupons are used.
+
+Blocked by: 14, 18
+
+20 — Implement store-level and consolidated analytics
+
+- Attribute orders and revenue to the correct store.
+- Provide store-level and consolidated reporting.
+- Include relevant customer activity metrics.
+- Avoid double-counting orders, customers, and revenue.
+
+Blocked by: 15, 17
+
+### Supplier architecture retirement
+
+21 — Remove supplier-specific dashboard and onboarding workflows
+
+- Retire supplier onboarding and supplier team management where no longer needed.
+- Replace supplier dashboard navigation with central and store-specific workflows.
+- Remove obsolete supplier-only UI and actions.
+- Verify that all required workflows are available through the new model.
+
+Blocked by: 02, 05, 15, 16
+
+22 — Migrate remaining supplier-specific data and dependencies
+
+- Audit remaining supplier references across queries, actions, views, RPCs, and policies.
+- Migrate required data to the store model.
+- Replace supplier-based ownership checks with store-based authorization.
+- Verify that no active workflow depends on supplier ownership.
+
+Blocked by: 05, 07, 08, 13, 15, 18, 20, 21
+
+23 — Retire supplier-specific schema and compatibility code
+
+- Remove obsolete supplier-specific columns, views, RPCs, policies, and grants.
+- Remove compatibility code only after all consumers have migrated.
+- Keep historical business data intact.
+- Run migration, RLS, checkout, and regression tests before deployment.
+
+Blocked by: 22
+
+## Dependency overview
+
+The revised sequence is:
+
+```
+01 Store schema
+├── 02 Central store management
+│   ├── 03 Store context and authorization
+│   │   └── 09 Storefront store selection
+│   └── 16 Shared customer management
+├── 04 Global product catalogue
+│   └── 05 Store-product assignments
+│       ├── 06 Store variants
+│       │   ├── 07 Store pricing and MOQ
+│       │   └── 08 Store inventory
+│       └── 21 Supplier dashboard retirement
+│
+07 + 08 + 09
+└── 10 Storefront browsing
+    └── 11 Store-aware cart
+        └── 12 Cart validation
+            └── 14 Multi-store checkout
+                ├── 15 Order management
+                │   └── 17 Customer order history
+                │       └── 20 Analytics
+                └── 18 Coupons
+                    └── 19 Coupon checkout integration
+
+13 Order data model ────────────────┘
+
+All migration batches
+└── 22 Supplier dependency migration
+    └── 23 Supplier schema retirement
+```
+
+The diagram is an overview; the explicit blocker lists on each ticket are authoritative.
