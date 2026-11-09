@@ -74,9 +74,7 @@ export default async function AdminOverviewPage({
                   Product moderation
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  {pendingProducts ?? 0} listing{
-                  pendingProducts === 1 ? "" : "s"
-                } awaiting review.
+                  {pendingProducts ?? 0} listing{pendingProducts === 1 ? "" : "s"} awaiting review.
                 </CardDescription>
               </div>
               <Button

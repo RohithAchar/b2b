@@ -87,13 +87,8 @@ export async function setActiveStore(
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("stores")
-    .select("id, status")
-    .eq("id", storeId)
-    .eq("status", "active")
-    .maybeSingle();
-  if (!data) {
+  const store = await resolveStore(supabase, storeId);
+  if (!store) {
     return { ok: false, message: "Store not found or inactive." };
   }
 
