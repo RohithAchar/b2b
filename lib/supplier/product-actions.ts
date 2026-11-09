@@ -826,6 +826,46 @@ export async function removeProductImage(
   return { ok: true, message: "Image removed.", productId };
 }
 
+export async function setPrimaryImage(
+  productId: string,
+  imagePath: string,
+): Promise<ProductActionState> {
+  const { supabase, user } = await requireUser();
+  const supplierId = await getVerifiedSupplierId(supabase, user.id);
+  if (!supplierId) return { ...initialState, message: "Only suppliers can list products." };
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, supplier_id")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product || product.supplier_id !== supplierId) {
+    return { ...initialState, message: "Product not found." };
+  }
+
+  const { data: existing } = await supabase
+    .from("product_images")
+    .select("path")
+    .eq("product_id", productId);
+  const paths = (existing ?? []).map((r) => r.path as string);
+  if (!paths.includes(imagePath)) {
+    return { ...initialState, message: "Image not found." };
+  }
+
+  const reordered = [imagePath, ...paths.filter((p) => p !== imagePath)];
+  const { error } = await supabase.rpc("replace_product_images", {
+    p_product_id: productId,
+    p_paths: reordered,
+  });
+  if (error) {
+    console.error("setPrimaryImage failed:", error);
+    return { ...initialState, message: "Could not set primary image. Try again." };
+  }
+
+  revalidatePath(`/supplier/dashboard/products/${productId}/images`);
+  return { ok: true, message: "Primary image updated.", productId };
+}
+
 export async function submitProduct(productId: string): Promise<ProductActionState> {
   const { supabase, user } = await requireUser();
 

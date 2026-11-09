@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { uploadProductImages, removeProductImage } from "@/lib/supplier/product-actions";
+import { uploadProductImages, removeProductImage, setPrimaryImage } from "@/lib/supplier/product-actions";
 import type { ProductActionState } from "@/lib/supplier/product-actions";
 
 const initialState: ProductActionState = { ok: false, message: "" };
@@ -28,14 +28,12 @@ export function ProductImagesForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [state, action, pending] = useActionState(
-    (prev: ProductActionState, formData: FormData) =>
-      uploadProductImages(productId, prev, formData),
-    initialState,
-  );
+  const boundUpload = uploadProductImages.bind(null, productId);
+  const [state, action, pending] = useActionState(boundUpload, initialState);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
 
   useEffect(() => {
     const urls = selectedFiles.map((f) => URL.createObjectURL(f));
@@ -68,6 +66,15 @@ export function ProductImagesForm({
     });
   };
 
+  const handleSetPrimary = (path: string) => {
+    setSettingPrimary(path);
+    startTransition(async () => {
+      await setPrimaryImage(productId, path);
+      setSettingPrimary(null);
+      router.refresh();
+    });
+  };
+
   const totalAfterUpload = existingImages.length + selectedFiles.length;
 
   return (
@@ -80,7 +87,7 @@ export function ProductImagesForm({
         <div>
           <p className="mb-2 text-sm font-medium">Existing images ({existingImages.length})</p>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-            {existingImages.map((img) => (
+            {existingImages.map((img, index) => (
               <div
                 key={img.id}
                 className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
@@ -90,15 +97,34 @@ export function ProductImagesForm({
                   alt={productTitle}
                   className="h-full w-full object-cover"
                 />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveExisting(img.path)}
-                  disabled={removing === img.path}
-                  className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
-                  aria-label="Remove image"
-                >
-                  ×
-                </button>
+                {index === 0 ? (
+                  <span className="absolute left-1 top-1 rounded-sm bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                    Primary
+                  </span>
+                ) : null}
+                <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {index !== 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimary(img.path)}
+                      disabled={settingPrimary === img.path}
+                      className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+                      aria-label="Set as primary"
+                      title="Set as primary"
+                    >
+                      ★
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExisting(img.path)}
+                    disabled={removing === img.path}
+                    className="flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground disabled:opacity-50"
+                    aria-label="Remove image"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             ))}
           </div>
