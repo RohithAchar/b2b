@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { getCachedWinningProducts, getCachedHotSellingProducts, getCachedProducts } from "@/lib/storefront-cache"
@@ -13,16 +14,24 @@ function Panel({
   products,
   ctaLabel,
   ctaHref,
+  imageSrc,
 }: {
   products: ProductCardData[]
   ctaLabel: string
   ctaHref: string
+  imageSrc: string
 }) {
   return (
-    <div className="flex w-[85vw] shrink-0 snap-start flex-col rounded-xl border border-border bg-card p-4 lg:w-auto">
-      <div className="mb-3 overflow-hidden rounded-lg border border-border bg-muted">
-        <div className="flex aspect-[3/1] w-full items-center justify-center bg-brand-50 text-sm font-medium text-brand-700">
-          Image placeholder
+    <div className="flex w-[85vw] shrink-0 snap-start flex-col rounded-xl bg-brand-50 p-4 lg:w-auto">
+      <div className="mb-3 overflow-hidden rounded-lg bg-muted">
+        <div className="relative aspect-[3/1] w-full overflow-hidden bg-brand-50">
+          <Image
+            src={imageSrc}
+            alt={ctaLabel}
+            fill
+            sizes="(min-width: 1024px) 18vw, (min-width: 768px) 22vw, 44vw"
+            className="object-cover"
+          />
         </div>
       </div>
       {products.length === 0 ? (
@@ -30,7 +39,7 @@ function Panel({
           No products available right now.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 ml-1">
           {products.slice(0, 4).map((product, index) => (
             <ProductCard
               key={product.id}
@@ -69,16 +78,18 @@ export async function SelectPromotionalCollections() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-5">
-      <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0">
+      <div className="flex snap-x gap-4 overflow-x-auto px-4 pb-1 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0">
         <Panel
           products={winning as unknown as ProductCardData[]}
           ctaLabel="See all winning products"
           ctaHref="/select/winning"
+          imageSrc="/d2h_select/Winning_Products_troph_Banner.jpg"
         />
         <Panel
           products={hotSelling as unknown as ProductCardData[]}
           ctaLabel="See all hot selling"
           ctaHref="/select/hot-selling"
+          imageSrc="/d2h_select/Hot_Selling_Shopping_Cart_Banner.jpg"
         />
       </div>
 
