@@ -625,10 +625,12 @@ const removedPaths = parseRemovedPaths(String(formData.get("removed_image_paths"
 }
 
 export async function uploadProductImages(
-  productId: string,
   _prev: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  if (!productId) return { ...initialState, message: "Missing product ID." };
+
   const { supabase, user } = await requireUser();
 
   const supplierId = await getVerifiedSupplierId(supabase, user.id);

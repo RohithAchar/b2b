@@ -28,8 +28,7 @@ export function ProductImagesForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const boundUpload = uploadProductImages.bind(null, productId);
-  const [state, action, pending] = useActionState(boundUpload, initialState);
+  const [state, action, pending] = useActionState(uploadProductImages, initialState);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -83,6 +82,7 @@ export function ProductImagesForm({
       action={action}
       className="flex flex-col gap-4"
     >
+      <input type="hidden" name="product_id" value={productId} />
       {existingImages.length > 0 ? (
         <div>
           <p className="mb-2 text-sm font-medium">Existing images ({existingImages.length})</p>
