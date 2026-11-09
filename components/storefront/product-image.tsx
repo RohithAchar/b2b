@@ -14,11 +14,13 @@ export function ProductImage({
   alt,
   sizes,
   priority = false,
+  objectFit = "cover",
 }: {
   src: string | null
   alt: string
   sizes?: string
   priority?: boolean
+  objectFit?: "cover" | "contain"
 }) {
   const [failed, setFailed] = useState(false)
 
@@ -42,7 +44,7 @@ export function ProductImage({
       fill
       loading={priority ? "eager" : undefined}
       sizes={sizes}
-      className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+      className={`object-${objectFit} transition-transform duration-300 group-hover:scale-[1.03]`}
       onError={() => setFailed(true)}
     />
   )

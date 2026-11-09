@@ -30,6 +30,7 @@ function coverUrl(product: ProductCardData): string | null {
   const sorted = [...images].sort((a, b) => a.sort - b.sort)
   return publicTransformedImageUrl("product_images", sorted[0].path, {
     width: 640,
+    fit: "contain",
   })
 }
 
@@ -51,6 +52,7 @@ export function ProductCard({
             alt={product.title}
             priority={priority}
             sizes={sizes}
+            objectFit="contain"
           />
         </div>
 
