@@ -12,7 +12,7 @@ const BUNDLE_SIZE = 4
 function coverUrl(images: { path: string; sort: number }[] | null) {
   const cover = [...(images ?? [])].sort((a, b) => a.sort - b.sort)[0]
   return cover
-    ? publicTransformedImageUrl("product_images", cover.path, { width: 240 })
+    ? publicTransformedImageUrl("product_images", cover.path, { width: 240, height: 240 })
     : null
 }
 
