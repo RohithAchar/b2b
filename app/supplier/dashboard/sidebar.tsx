@@ -149,7 +149,6 @@ export function SupplierSidebar({
           ))}
 
           <Collapsible
-            defaultOpen={analyticsActive}
             className="group/collapsible"
             render={<SidebarMenuItem />}
           >
@@ -227,7 +226,6 @@ export function SupplierSidebar({
           </SidebarMenuItem>
 
           <Collapsible
-            defaultOpen={productsActive}
             className="group/collapsible"
             render={<SidebarMenuItem />}
           >
@@ -300,7 +298,6 @@ export function SupplierSidebar({
 
           {isStaff ? null : (
             <Collapsible
-              defaultOpen={settingsActive}
               className="group/collapsible"
               render={<SidebarMenuItem />}
             >
