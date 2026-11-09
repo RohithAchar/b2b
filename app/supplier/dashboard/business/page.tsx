@@ -23,7 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/session";
 import { LOGIN_PATH } from "@/lib/auth/paths";
 import { requireOwnerCompany } from "@/lib/auth/guard";
-import { BusinessProfileForm } from "./business-form";
+import { BusinessProfileForm, DeleteAccountSection } from "./business-form";
 
 function Detail({ label, value }: { label: string; value: string | null }) {
   return (
@@ -157,6 +157,8 @@ export default async function SupplierBusinessPage() {
 
         </div>
       </div>
+
+      <DeleteAccountSection />
     </div>
   );
 }
