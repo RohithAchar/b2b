@@ -330,3 +330,242 @@ export async function deleteStoreProductAssignment(
   revalidatePath("/admin/dashboard");
   redirect("/admin/dashboard/stores");
 }
+
+// ---------------------------------------------------------------------------
+// Store product variants -------------------------------------------------------
+// ---------------------------------------------------------------------------
+
+export type StoreProductVariant = {
+  id: string;
+  store_product_id: string;
+  variant_label: string;
+  is_available: boolean;
+  price_override: number | null;
+  moq_override: number | null;
+  stock_override: number;
+  sort: number;
+};
+
+export async function getStoreProductVariants(
+  storeProductId: string,
+): Promise<StoreProductVariant[]> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("store_product_variants")
+    .select(
+      "id, store_product_id, variant_label, is_available, price_override, moq_override, stock_override, sort",
+    )
+    .eq("store_product_id", storeProductId)
+    .order("sort")
+    .order("id");
+  return (data ?? []) as StoreProductVariant[];
+}
+
+const storeProductVariantSchema = z.object({
+  store_product_id: z.string().uuid("Invalid store product."),
+  variant_label: z.string().trim().min(1, "Variant label is required."),
+  is_available: z.string().optional(),
+  price_override: z
+    .string()
+    .trim()
+    .optional()
+    .transform((val) => (val === "" ? null : Number(val)))
+    .refine(
+      (val) => val === null || (Number.isFinite(val) && val > 0),
+      "Price must be greater than 0.",
+    ),
+  moq_override: z
+    .string()
+    .trim()
+    .optional()
+    .transform((val) => (val === "" ? null : Number(val)))
+    .refine(
+      (val) => val === null || (Number.isFinite(val) && val >= 1),
+      "MOQ must be at least 1.",
+    ),
+  stock_override: z
+    .string()
+    .trim()
+    .optional()
+    .transform((val) => (val === "" ? "0" : val))
+    .refine(
+      (val) => Number.isFinite(Number(val)) && Number(val) >= 0,
+      "Stock cannot be negative.",
+    ),
+  sort: z
+    .string()
+    .trim()
+    .optional()
+    .transform((val) => (val === "" ? 0 : Number(val)))
+    .refine(
+      (val) => Number.isFinite(val),
+      "Sort must be a number.",
+    ),
+});
+
+export async function assignStoreProductVariant(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = storeProductVariantSchema.safeParse({
+    store_product_id: formData.get("store_product_id"),
+    variant_label: formData.get("variant_label"),
+    is_available: formData.get("is_available"),
+    price_override: formData.get("price_override"),
+    moq_override: formData.get("moq_override"),
+    stock_override: formData.get("stock_override"),
+    sort: formData.get("sort"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  const { error } = await supabase.from("store_product_variants").insert({
+    store_product_id: parsed.data.store_product_id,
+    variant_label: parsed.data.variant_label,
+    is_available: parsed.data.is_available !== "off",
+    price_override: parsed.data.price_override,
+    moq_override: parsed.data.moq_override,
+    stock_override: parsed.data.stock_override
+      ? Number(parsed.data.stock_override)
+      : 0,
+    sort: parsed.data.sort ?? 0,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return {
+        ok: false,
+        message: "A variant with that label already exists for this store product.",
+      };
+    }
+    console.error("assignStoreProductVariant failed:", error);
+    return { ok: false, message: "Could not add variant. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
+
+const variantIdSchema = z.object({
+  id: z.string().uuid("Invalid variant."),
+});
+
+export async function toggleStoreProductVariant(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = variantIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid variant." };
+  }
+
+  const { data: row } = await supabase
+    .from("store_product_variants")
+    .select("id, is_available")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+  if (!row) {
+    return { ok: false, message: "Variant not found." };
+  }
+
+  const { error } = await supabase
+    .from("store_product_variants")
+    .update({ is_available: !row.is_available })
+    .eq("id", row.id);
+  if (error) {
+    console.error("toggleStoreProductVariant failed:", error);
+    return { ok: false, message: "Could not update. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
+
+export async function updateStoreProductVariant(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = storeProductVariantSchema
+    .extend({ id: z.string().uuid() })
+    .safeParse({
+      id: formData.get("id"),
+      store_product_id: formData.get("store_product_id"),
+      variant_label: formData.get("variant_label"),
+      is_available: formData.get("is_available"),
+      price_override: formData.get("price_override"),
+      moq_override: formData.get("moq_override"),
+      stock_override: formData.get("stock_override"),
+      sort: formData.get("sort"),
+    });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  const { data: row } = await supabase
+    .from("store_product_variants")
+    .select("id")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+  if (!row) {
+    return { ok: false, message: "Variant not found." };
+  }
+
+  const { error } = await supabase
+    .from("store_product_variants")
+    .update({
+      variant_label: parsed.data.variant_label,
+      is_available: parsed.data.is_available !== "off",
+      price_override: parsed.data.price_override,
+      moq_override: parsed.data.moq_override,
+      stock_override: parsed.data.stock_override
+        ? Number(parsed.data.stock_override)
+        : 0,
+      sort: parsed.data.sort ?? 0,
+    })
+    .eq("id", row.id);
+  if (error) {
+    console.error("updateStoreProductVariant failed:", error);
+    return { ok: false, message: "Could not save. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
+
+export async function deleteStoreProductVariant(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = variantIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid variant." };
+  }
+
+  const { error } = await supabase
+    .from("store_product_variants")
+    .delete()
+    .eq("id", parsed.data.id);
+  if (error) {
+    console.error("deleteStoreProductVariant failed:", error);
+    return { ok: false, message: "Could not delete. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
