@@ -569,3 +569,67 @@ export async function deleteStoreProductVariant(
   revalidatePath("/admin/dashboard");
   redirect("/admin/dashboard/stores");
 }
+
+// ---------------------------------------------------------------------------
+// Store product pricing -------------------------------------------------------
+// ---------------------------------------------------------------------------
+
+const storeProductPricingSchema = z.object({
+  store_product_id: z.string().uuid("Invalid store product."),
+  price_per_unit: z
+    .string()
+    .trim()
+    .transform((val) => (val === "" ? null : Number(val)))
+    .refine(
+      (val) => val === null || (Number.isFinite(val) && val > 0),
+      "Price must be greater than 0.",
+    ),
+  moq: z
+    .string()
+    .trim()
+    .transform((val) => (val === "" ? null : Number(val)))
+    .refine((val) => val === null || (Number.isFinite(val) && val >= 1), "MOQ must be at least 1."),
+});
+
+export async function updateStoreProductPricing(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = storeProductPricingSchema.safeParse({
+    store_product_id: formData.get("store_product_id"),
+    price_per_unit: formData.get("price_per_unit"),
+    moq: formData.get("moq"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  const { data: row } = await supabase
+    .from("store_products")
+    .select("id")
+    .eq("id", parsed.data.store_product_id)
+    .maybeSingle();
+  if (!row) {
+    return { ok: false, message: "Store product not found." };
+  }
+
+  const { error } = await supabase
+    .from("store_products")
+    .update({
+      price_per_unit: parsed.data.price_per_unit,
+      moq: parsed.data.moq,
+    })
+    .eq("id", row.id);
+  if (error) {
+    console.error("updateStoreProductPricing failed:", error);
+    return { ok: false, message: "Could not save. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
