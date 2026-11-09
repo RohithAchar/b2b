@@ -255,16 +255,32 @@ export function ProductForm({
   }
 
   // Persist text fields to sessionStorage (debounced).
+  const draftSaveTimerRef = useRef<number | null>(null);
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
+    if (draftSaveTimerRef.current) window.clearTimeout(draftSaveTimerRef.current);
+    draftSaveTimerRef.current = window.setTimeout(() => {
       try {
         window.sessionStorage.setItem(draftKey, JSON.stringify(Object.fromEntries(formValues)));
       } catch {
         // storage unavailable — ignore
       }
     }, 500);
-    return () => window.clearTimeout(timeout);
+    return () => {
+      if (draftSaveTimerRef.current) window.clearTimeout(draftSaveTimerRef.current);
+    };
   }, [formValues, draftKey]);
+
+  // Clear any stale draft on mount for create mode so old product data
+  // doesn't bleed into a new product form.
+  useEffect(() => {
+    if (mode === "create") {
+      try {
+        window.sessionStorage.removeItem(draftKey);
+      } catch {
+        // ignore
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear the draft once a save succeeds.
   useEffect(() => {
@@ -299,13 +315,24 @@ export function ProductForm({
   // can be uploaded in a separate step. In edit mode, return to the list.
   useEffect(() => {
     if (state.ok && state.productId) {
+      // Cancel any pending draft save so it doesn't re-save after clear.
+      if (draftSaveTimerRef.current) {
+        window.clearTimeout(draftSaveTimerRef.current);
+        draftSaveTimerRef.current = null;
+      }
+      // Clear the draft synchronously before navigating away.
+      try {
+        window.sessionStorage.removeItem(draftKey);
+      } catch {
+        // ignore
+      }
       if (mode === "create") {
         router.push(`/supplier/dashboard/products/${state.productId}/images`);
       } else {
         router.push("/supplier/dashboard/products");
       }
     }
-  }, [state.ok, state.productId, mode, router]);
+  }, [state.ok, state.productId, mode, router, draftKey]);
 
   // Route every field error to one scroll/focus path so client-side and
   // server-side errors behave identically. Hidden inputs (like #images) have
