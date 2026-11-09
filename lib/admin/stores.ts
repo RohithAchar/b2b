@@ -200,3 +200,133 @@ export async function updateStore(
   revalidatePath("/admin/dashboard");
   redirect("/admin/dashboard/stores");
 }
+
+// ---------------------------------------------------------------------------
+// Store-product assignments ---------------------------------------------------
+// ---------------------------------------------------------------------------
+
+export type StoreProduct = {
+  id: string;
+  store_id: string;
+  global_product_id: string;
+  is_listed: boolean;
+  created_at: string;
+};
+
+export async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("store_products")
+    .select("id, store_id, global_product_id, is_listed, created_at")
+    .eq("store_id", storeId)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as StoreProduct[];
+}
+
+const storeProductSchema = z.object({
+  store_id: z.string().uuid("Invalid store."),
+  global_product_id: z.string().uuid("Invalid product."),
+});
+
+export async function assignStoreProduct(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = storeProductSchema.safeParse({
+    store_id: formData.get("store_id"),
+    global_product_id: formData.get("global_product_id"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Check the form and try again.",
+    };
+  }
+
+  // Prevent duplicate assignments via the DB unique constraint; surface a
+  // clear message instead of a 500.
+  const { error } = await supabase.from("store_products").insert({
+    store_id: parsed.data.store_id,
+    global_product_id: parsed.data.global_product_id,
+    is_listed: true,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      // unique_violation on store_products_store_product_unique
+      return {
+        ok: false,
+        message: "This product is already assigned to that store.",
+      };
+    }
+    console.error("assignStoreProduct failed:", error);
+    return { ok: false, message: "Could not assign product. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
+
+const assignmentIdSchema = z.object({
+  id: z.string().uuid("Invalid assignment."),
+});
+
+export async function toggleStoreProductListing(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = assignmentIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid assignment." };
+  }
+
+  const { data: row } = await supabase
+    .from("store_products")
+    .select("id, is_listed")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
+  if (!row) {
+    return { ok: false, message: "Assignment not found." };
+  }
+
+  const { error } = await supabase
+    .from("store_products")
+    .update({ is_listed: !row.is_listed })
+    .eq("id", row.id);
+  if (error) {
+    console.error("toggleStoreProductListing failed:", error);
+    return { ok: false, message: "Could not update. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
+
+export async function deleteStoreProductAssignment(
+  _prevState: StoreActionState,
+  formData: FormData,
+): Promise<StoreActionState | never> {
+  const { supabase } = await requireAdmin();
+  const parsed = assignmentIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid assignment." };
+  }
+
+  const { error } = await supabase
+    .from("store_products")
+    .delete()
+    .eq("id", parsed.data.id);
+  if (error) {
+    console.error("deleteStoreProductAssignment failed:", error);
+    return { ok: false, message: "Could not delete. Try again." };
+  }
+
+  revalidatePath("/admin/dashboard/stores");
+  revalidatePath("/admin/dashboard");
+  redirect("/admin/dashboard/stores");
+}
