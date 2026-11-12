@@ -198,6 +198,33 @@ export function ProductForm({
 
   const youtubeId = useMemo(() => extractYoutubeId(youtubeUrl), [youtubeUrl]);
   const existingImages = useMemo(() => product?.images ?? [], [product]);
+
+  const totalImages =
+    existingImages.length -
+    removedImagePaths.length +
+    Math.max(newFiles.length, fileInputRef.current?.files?.length || 0);
+
+  const isFormValid = useMemo(() => {
+    if (skuDuplicate === true) return false;
+    const title = (formValues.get("title") ?? "").trim();
+    if (title.length < 10) return false;
+    const category = (formValues.get("category_id") ?? "").trim();
+    if (!category) return false;
+    const sku = (formValues.get("seller_sku") ?? "").trim();
+    if (!/^[A-Za-z0-9-_]{3,30}$/i.test(sku)) return false;
+    const hsn = (formValues.get("hsn_code") ?? "").trim();
+    if (!/^\d{4,8}$/.test(hsn)) return false;
+    const gst = (formValues.get("gst_rate") ?? "").trim();
+    if (gst === "") return false;
+    const unit = (formValues.get("unit") ?? "").trim() || "pcs";
+    if (!["pcs", "kg", "box", "mtr", "ltr"].includes(unit)) return false;
+    const price = Number(formValues.get("price_per_unit") ?? "");
+    if (!Number.isFinite(price) || price <= 0) return false;
+    const descLen = plainTextLength(formValues.get("description") ?? "");
+    if (descLen < DESCRIPTION_MIN_TEXT_CHARS) return false;
+    if (totalImages < MIN_PRODUCT_IMAGES) return false;
+    return true;
+  }, [formValues, skuDuplicate, totalImages]);
   const visibleExistingImages = useMemo(
     () => existingImages.filter((image) => !removedImagePaths.includes(image.path)),
     [existingImages, removedImagePaths],
@@ -213,10 +240,6 @@ export function ProductForm({
     if (primaryImageKey && imageKeys.includes(primaryImageKey)) return primaryImageKey;
     return imageKeys[0] ?? null;
   }, [primaryImageKey, imageKeys]);
-  const totalImages =
-    existingImages.length -
-    removedImagePaths.length +
-    Math.max(newFiles.length, fileInputRef.current?.files?.length || 0);
   const canAddMore = totalImages < MAX_PRODUCT_IMAGES;
 
   const variantsJson = useMemo(() => {
@@ -772,6 +795,7 @@ export function ProductForm({
               onSaveSubmit={() => requestSave("submit")}
               showSubmit={showSubmit}
               saveLabel={saveLabel}
+              submitDisabled={!isFormValid}
             />
             <div className="hidden @3xl/content:block">{statusAlert}</div>
           </aside>
@@ -784,6 +808,7 @@ export function ProductForm({
           onSaveSubmit={() => requestSave("submit")}
           showSubmit={showSubmit}
           saveLabel={saveLabel}
+          submitDisabled={!isFormValid}
         />
       </form>
     </div>

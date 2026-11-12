@@ -12,6 +12,7 @@ export function ProductFormActions({
   onSaveSubmit,
   showSubmit = true,
   saveLabel = "Save draft",
+  submitDisabled = false,
 }: {
   pending: boolean
   pendingAction: "draft" | "submit" | null
@@ -19,11 +20,12 @@ export function ProductFormActions({
   onSaveSubmit: () => void
   showSubmit?: boolean
   saveLabel?: string
+  submitDisabled?: boolean
 }) {
   return (
     <div className="flex flex-col gap-2">
       {showSubmit ? (
-        <Button type="button" disabled={pending} onClick={onSaveSubmit}>
+        <Button type="button" disabled={pending || submitDisabled} onClick={onSaveSubmit}>
           {pending && pendingAction === "submit" ? (
             <Spinner data-icon="inline-start" />
           ) : (
@@ -60,6 +62,7 @@ export function ProductFormStickyActions({
   onSaveSubmit,
   showSubmit = true,
   saveLabel = "Save draft",
+  submitDisabled = false,
 }: {
   pending: boolean
   pendingAction: "draft" | "submit" | null
@@ -67,6 +70,7 @@ export function ProductFormStickyActions({
   onSaveSubmit: () => void
   showSubmit?: boolean
   saveLabel?: string
+  submitDisabled?: boolean
 }) {
   return (
     <div className="@3xl/content:hidden">
@@ -77,7 +81,7 @@ export function ProductFormStickyActions({
       >
         <div className="flex flex-col gap-2">
           {showSubmit ? (
-            <Button type="button" disabled={pending} onClick={onSaveSubmit}>
+            <Button type="button" disabled={pending || submitDisabled} onClick={onSaveSubmit}>
               {pending && pendingAction === "submit" ? (
                 <Spinner data-icon="inline-start" />
               ) : (
