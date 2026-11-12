@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { publicImageUrl } from "@/lib/storage"
+import { publicTransformedImageUrl } from "@/lib/storage"
 import {
   MIN_CART_VALUE,
   formatRupees,
@@ -111,7 +111,11 @@ export function CartGroups({
                     >
                       {line.imagePath ? (
                         <Image
-                          src={publicImageUrl("product_images", line.imagePath)}
+                          src={publicTransformedImageUrl(
+                            "product_images",
+                            line.imagePath,
+                            { width: 160, height: 160 },
+                          )}
                           alt={line.title}
                           fill
                           sizes="80px"

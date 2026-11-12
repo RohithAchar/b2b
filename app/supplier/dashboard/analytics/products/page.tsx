@@ -33,7 +33,10 @@ const PRODUCTS_BASE = "/supplier/dashboard/analytics/products";
 
 function thumbUrl(path: string | null): string | null {
   if (!path) return null;
-  return publicTransformedImageUrl("product_images", path, { width: 160 });
+  return publicTransformedImageUrl("product_images", path, {
+    width: 160,
+    height: 160,
+  });
 }
 
 export default async function ProductsAnalyticsPage({

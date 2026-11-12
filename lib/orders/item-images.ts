@@ -28,7 +28,10 @@ export async function getOrderItemImages(
     if (!thumbnails.has(row.product_id)) {
       thumbnails.set(
         row.product_id,
-        publicTransformedImageUrl(BUCKET, row.path, { width: 96 }),
+        publicTransformedImageUrl(BUCKET, row.path, {
+          width: 96,
+          height: 96,
+        }),
       );
     }
   }

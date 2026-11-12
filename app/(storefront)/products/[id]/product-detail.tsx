@@ -117,6 +117,7 @@ export function ProductDetail({ product }: { product: Product }) {
   const coverImage = images[0]
     ? publicTransformedImageUrl("product_images", images[0].path, {
         width: 320,
+        height: 320,
       })
     : null
 

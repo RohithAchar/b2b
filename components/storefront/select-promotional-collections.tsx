@@ -112,6 +112,7 @@ export async function SelectPromotionalCollections() {
           const imageSrc = cover
             ? publicTransformedImageUrl("product_images", cover.path, {
                 width: 240,
+                height: 240,
               })
             : null
           return (

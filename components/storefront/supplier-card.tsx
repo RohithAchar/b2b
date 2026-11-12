@@ -2,7 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Location01Icon, ShieldCheckIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { publicImageUrl } from "@/lib/storage";
+import {
+  publicImageUrl,
+  publicTransformedImageUrl,
+} from "@/lib/storage";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -54,7 +57,10 @@ export function SupplierCard({ supplier }: { supplier: SupplierCardData }) {
               className="relative aspect-square flex-1 overflow-hidden rounded-md bg-muted"
             >
               <Image
-                src={publicImageUrl("product_images", path)}
+                src={publicTransformedImageUrl("product_images", path, {
+                  width: 200,
+                  height: 200,
+                })}
                 alt=""
                 fill
                 sizes="(min-width: 1024px) 12vw, (min-width: 640px) 25vw, 50vw"

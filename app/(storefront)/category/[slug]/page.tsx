@@ -3,7 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
-import { publicImageUrl } from "@/lib/storage"
+import { publicTransformedImageUrl } from "@/lib/storage"
 import {
   getCachedCategoryBySlug,
   getCachedCategoryProductCount,
@@ -192,9 +192,14 @@ export default async function CategoryPage({
         {category.image_path && (
           <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
             <Image
-              src={publicImageUrl("category_images", category.image_path)}
+              src={publicTransformedImageUrl(
+                "category_images",
+                category.image_path,
+                { width: 128, height: 128 },
+              )}
               alt={category.name}
               fill
+              unoptimized
               priority
               sizes="64px"
               className="object-cover"

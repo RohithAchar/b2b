@@ -29,11 +29,12 @@ export function ProductGallery({
       {/* Main image first in the DOM (mobile order), thumbnails pulled to the
           left rail on desktop via `lg:order-first`. */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-        <div className="relative -mx-4 aspect-square overflow-hidden bg-muted sm:mx-0 sm:rounded-lg sm:border sm:border-border lg:max-w-[640px]">
+        <div className="relative -mx-4 aspect-square overflow-hidden bg-muted sm:mx-0 sm:rounded-lg sm:border sm:border-border lg:min-w-0 lg:flex-1 lg:max-w-[640px]">
           {images.length > 0 ? (
             <Image
               src={publicTransformedImageUrl("product_images", images[active].path, {
                 width: 1200,
+                height: 1200,
               })}
               alt={images[active].alt ?? title}
               fill
@@ -70,6 +71,7 @@ export function ProductGallery({
                 <Image
                   src={publicTransformedImageUrl("product_images", img.path, {
                     width: 128,
+                    height: 128,
                   })}
                   alt=""
                   fill
