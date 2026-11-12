@@ -403,9 +403,10 @@ page owns only the clearance for its own mobile buy bar.
   message — never invented policy copy).
 - Sticky mobile actions: `AddToCartForm` renders a fixed View Cart (outline) +
   Add to Cart (brand orange `default` button) bar above the bottom nav
-  (`bottom-(--bottom-nav-offset)`, `lg:hidden`). The Add button submits the same
-  in-flow form via its `form` attribute, so variant/quantity state is shared;
-  signed-out clicks go to login. The page adds a 64px spacer only for this bar.
+  (`bottom-0` with `pb-(--safe-area-bottom)` on product detail, `lg:hidden`).
+  The Add button submits the same in-flow form via its `form` attribute, so
+  variant/quantity state is shared; signed-out clicks go to login. The page
+  adds a `calc(4rem + var(--safe-area-bottom))` spacer for this bar.
 - Desktop keeps the in-flow buy box instead of the fixed bar.
 
 ### Product gallery (`components/storefront/product-gallery.tsx`)

@@ -147,8 +147,13 @@ export default async function ProductPage({
           <RelatedProductsSection categoryId={catId} excludeId={id} />
         </Suspense>
       )}
-      {/* Clearance for the fixed mobile buy bar; the shell owns bottom-nav clearance. */}
-      <div aria-hidden className="h-16 lg:hidden" />
+      {/* Clearance for the fixed mobile buy bar (64px bar + safe-area inset); the
+          shell owns bottom-nav clearance. */}
+      <div
+        aria-hidden
+        className="lg:hidden"
+        style={{ height: "calc(4rem + var(--safe-area-bottom))" }}
+      />
     </>
   )
 }
