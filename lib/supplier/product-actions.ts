@@ -16,6 +16,7 @@ import { defaultSeoDescription, defaultSeoTitle } from "@/lib/supplier/rich-text
 import { sanitizeRichText } from "@/lib/supplier/sanitize";
 import { indexProductImages } from "@/lib/ai/index-product-image";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { optimizeImageUpload } from "@/lib/image-optimize";
 
 export type ProductActionState = {
   ok: boolean;
@@ -43,12 +44,31 @@ async function uploadProductImage(
   folder: string | null = null,
 ): Promise<string> {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const baseName = safeName.replace(/\.[^.]+$/, "");
+
+  // Compress at upload time so storage stays small. Fall back to the original
+  // file if optimization fails, so uploads never break.
+  let body: Buffer | File = file;
+  let contentType = file.type || "application/octet-stream";
+  let extension = safeName.includes(".") ? safeName.split(".").pop()! : "bin";
+  try {
+    const optimized = await optimizeImageUpload(file, {
+      maxDimension: 1600,
+      targetBytes: 100 * 1024,
+    });
+    body = optimized.buffer;
+    contentType = optimized.contentType;
+    extension = optimized.extension;
+  } catch (err) {
+    console.error("product image optimization failed, uploading original:", err);
+  }
+
   const path = folder
-    ? `${userId}/${folder}/${productId}_${Date.now()}_${safeName}`
-    : `${userId}/${productId}_${Date.now()}_${safeName}`;
+    ? `${userId}/${folder}/${productId}_${Date.now()}_${baseName}.${extension}`
+    : `${userId}/${productId}_${Date.now()}_${baseName}.${extension}`;
   const { error } = await supabase.storage
     .from("product_images")
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, body, { contentType, upsert: false });
   if (error) throw new Error("Could not upload product image. Try again.");
   return path;
 }
