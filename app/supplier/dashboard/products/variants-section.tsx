@@ -56,10 +56,10 @@ export function VariantsSection({
               <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Label</TableHead>
+                    <TableHead>Label <span className="text-destructive">*</span></TableHead>
                     <TableHead>Attribute</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Price ₹</TableHead>
+                    <TableHead>SKU <span className="text-destructive">*</span></TableHead>
+                    <TableHead>Price ₹ <span className="text-destructive">*</span></TableHead>
                     <TableHead>MOQ</TableHead>
                     <TableHead>Stock</TableHead>
                   </TableRow>

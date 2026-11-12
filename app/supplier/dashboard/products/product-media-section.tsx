@@ -177,7 +177,7 @@ export function ProductMediaSection({
       <FieldSet>
         <FieldLegend>Images</FieldLegend>
         <Field>
-          <FieldLabel htmlFor="images">Product images</FieldLabel>
+          <FieldLabel htmlFor="images">Product images <span className="text-destructive">*</span></FieldLabel>
           <input
             ref={fileInputRef}
             id="images"
