@@ -84,15 +84,19 @@ export function latestAcceptedQuotation<T extends QuotationRef>(
 }
 
 /**
- * Amount actually owed for an order: the accepted quotation wins, otherwise
- * the order's stored subtotal. `subtotal` is already net of any coupon, so
+ * Amount actually owed for an order: the accepted quotation wins (it carries
+ * its own tax), otherwise the order's stored subtotal plus the GST saved at
+ * checkout (`orders.gst_amount`). `subtotal` is already net of any coupon, so
  * discount must never be subtracted again.
  */
 export function orderAmount(
   subtotal: number | string,
   quotations?: QuotationRef | readonly QuotationRef[] | null,
+  gstAmount: number | string | null = 0,
 ): number {
-  return Number(latestAcceptedQuotation(quotations)?.total ?? subtotal);
+  const accepted = latestAcceptedQuotation(quotations);
+  if (accepted) return Number(accepted.total);
+  return roundRupees(Number(subtotal) + Number(gstAmount ?? 0));
 }
 
 /** Pre-discount item value, for a readable subtotal → discount → total block. */

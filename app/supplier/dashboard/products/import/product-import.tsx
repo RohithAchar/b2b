@@ -13,7 +13,14 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/client";
-import { shrinkImageFile } from "@/lib/shrink-image";
+import { findLowResImages, lowResWarning, shrinkImageFile } from "@/lib/shrink-image";
+import { toast } from "@/components/ui/toast";
+
+/** Advise (never block) when picked photos are too small to look sharp. */
+async function warnIfLowRes(files: File[]) {
+  const warning = lowResWarning(await findLowResImages(files));
+  if (warning) toast.add({ type: "warning", ...warning });
+}
 import { MAX_PRODUCT_IMAGES } from "@/lib/supplier/products";
 import { submitProduct } from "@/lib/supplier/product-actions";
 import {
@@ -182,6 +189,7 @@ export function ProductImport({ categories }: { categories: Category[] }) {
 
   function onLocalPhotos(files: File[]) {
     if (files.length === 0) return;
+    void warnIfLowRes(files.filter((f) => /\.(jpe?g|png|webp)$/i.test(f.name)));
     setLocalFiles((prev) => {
       const next = new Map(prev);
       for (const f of files) if (/\.(jpe?g|png|webp)$/i.test(f.name)) next.set(localFileKey(f.name), f);
@@ -280,6 +288,7 @@ export function ProductImport({ categories }: { categories: Category[] }) {
   /** Image files named by SKU (SKU_1.jpg …) → uploaded straight to Storage, then attached. */
   async function onImages(files: File[]) {
     if (files.length === 0) return;
+    void warnIfLowRes(files);
     setImageBusy(true);
     setImageStatus("Matching files to SKUs…");
     try {

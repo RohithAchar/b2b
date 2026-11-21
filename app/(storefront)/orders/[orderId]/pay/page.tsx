@@ -57,6 +57,7 @@ type OrderRow = {
   payment_status: string
   subtotal: number
   discount: number
+  gst_amount: number
   payment_claim_reference: string | null
   payment_claimed_at: string | null
 }
@@ -85,7 +86,7 @@ export default async function PaySupplierPage({
     supabase
       .from("orders")
       .select(
-        "id, reference, status, payment_status, subtotal, discount, payment_claim_reference, payment_claimed_at"
+        "id, reference, status, payment_status, subtotal, discount, gst_amount, payment_claim_reference, payment_claimed_at"
       )
       .eq("id", orderId)
       .eq("buyer_id", user.id)
@@ -110,7 +111,7 @@ export default async function PaySupplierPage({
   const orderRow = order as unknown as OrderRow
 
   const quote = acceptedQuote as { status: string; total: number; version: number } | null
-  const amount = orderAmount(orderRow.subtotal, quote)
+  const amount = orderAmount(orderRow.subtotal, quote, orderRow.gst_amount)
   const status = parseOrderStatus(orderRow.status) ?? "new"
   const payment = parsePaymentStatus(orderRow.payment_status) ?? "not_requested"
   const supplierName =

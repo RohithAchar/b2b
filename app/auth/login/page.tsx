@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signInWithGoogle } from "@/lib/auth/actions";
 import { getSafeNextPath } from "@/lib/auth/paths";
 import { AuthShell } from "../shell";
@@ -20,12 +21,14 @@ export const metadata: Metadata = {
 };
 
 type LoginPageProps = {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reason?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { next } = await searchParams;
+  const { next, reason } = await searchParams;
   const safeNext = getSafeNextPath(next);
+  // Sent here from Add to cart, the cart or checkout: say why.
+  const purchaseNotice = reason === "purchase";
 
   return (
     <AuthShell
@@ -44,6 +47,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {purchaseNotice ? (
+            <Alert>
+              <AlertDescription>
+                Log in to add products to your cart and place your order.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <RequestOtpForm next={safeNext} />
           <div className="flex items-center gap-3">
             <Separator className="flex-1" />

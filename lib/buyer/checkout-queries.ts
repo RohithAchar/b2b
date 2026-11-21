@@ -4,7 +4,9 @@ import {
   getCartSummary,
   type CartSummaryResult,
 } from "@/lib/buyer/cart-actions";
-import { groupCartLinesBySupplier, type PricedCartLine } from "@/lib/buyer/cart";
+import { groupCartLinesBySupplier, gstForLines, type PricedCartLine } from "@/lib/buyer/cart";
+
+const roundRupees = (value: number) => Math.round(value * 100) / 100;
 import {
   describeCoupon,
   validateCouponForOrder,
@@ -26,14 +28,23 @@ export type CheckoutGroup = {
   coupon: CheckoutGroupCoupon | null;
   /** Why a saved code did not apply, so the buyer is not misled. */
   couponError: string | null;
+  /** After coupon, before GST. */
   total: number;
+  /** GST on this store's lines at each product's rate (after coupon). */
+  gst: number;
+  /** total + gst: what this store's order comes to. */
+  grandTotal: number;
 };
 
 export type CheckoutPreview = {
   groups: CheckoutGroup[];
   subtotal: number;
   savings: number;
+  /** After coupons, before GST. */
   total: number;
+  gst: number;
+  /** total + gst. */
+  grandTotal: number;
   meetsMinimum: boolean;
   shortfall: number;
   unavailableCount: number;
@@ -107,6 +118,9 @@ export async function getCheckoutPreview(
       }
     }
 
+    const total = group.subtotal - (coupon?.discount ?? 0);
+    // GST is due on what is actually paid, so a coupon lowers it in proportion.
+    const gst = gstForLines(group.lines, group.subtotal > 0 ? total / group.subtotal : 0);
     return {
       supplierId: group.supplierId,
       supplierName: group.supplierName,
@@ -114,17 +128,23 @@ export async function getCheckoutPreview(
       subtotal: group.subtotal,
       coupon,
       couponError,
-      total: group.subtotal - (coupon?.discount ?? 0),
+      total,
+      gst,
+      grandTotal: roundRupees(total + gst),
     };
   });
 
   const savings = groups.reduce((sum, g) => sum + (g.coupon?.discount ?? 0), 0);
+  const total = summary.subtotal - savings;
+  const gst = roundRupees(groups.reduce((sum, g) => sum + g.gst, 0));
 
   return {
     groups,
     subtotal: summary.subtotal,
     savings,
-    total: summary.subtotal - savings,
+    total,
+    gst,
+    grandTotal: roundRupees(total + gst),
     meetsMinimum: summary.meetsMinimum,
     shortfall: summary.shortfall,
     unavailableCount: summary.unavailableCount,
@@ -143,7 +163,7 @@ export async function getCheckoutOrders(
   const { data: orders } = await supabase
     .from("orders")
     .select(
-      "id, reference, status, subtotal, discount, item_count, created_at, supplier_id",
+      "id, reference, status, subtotal, discount, gst_amount, item_count, created_at, supplier_id",
     )
     .eq("buyer_id", buyerId)
     .in("id", orderIds);
@@ -201,6 +221,7 @@ export type OrderResultRow = {
   status: string;
   subtotal: number;
   discount: number;
+  gst_amount: number;
   item_count: number;
   created_at: string;
   supplier_id: string;

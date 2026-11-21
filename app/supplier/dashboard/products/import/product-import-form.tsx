@@ -62,6 +62,15 @@ import {
   importProductImages,
   previewProductImportFile,
 } from "@/lib/supplier/product-import-sheet-actions";
+import { findLowResImages, lowResWarning } from "@/lib/shrink-image";
+import { toast } from "@/components/ui/toast";
+
+/** Advise (never block) when photos in the SKU folders are too small to look sharp. */
+async function warnIfLowRes(files: File[]) {
+  const images = files.filter((f) => /\.(jpe?g|png|webp)$/i.test(f.name));
+  const warning = lowResWarning(await findLowResImages(images));
+  if (warning) toast.add({ type: "warning", ...warning });
+}
 
 const PRODUCTS_PATH = "/supplier/dashboard/products";
 const TEMPLATE_ROUTE = "/api/supplier/products/import/template";
@@ -295,6 +304,7 @@ export function ProductImportForm({
   function handleFolder(list: FileList | null) {
     const files = Array.from(list ?? []);
     setFolderFiles(files);
+    void warnIfLowRes(files);
     // Same for the folder: re-selecting it must always re-run the check.
     if (folderInputRef.current) folderInputRef.current.value = "";
     void refreshPreview(excelFile, files);

@@ -6,7 +6,6 @@ import { TopCategoriesSection } from "@/components/storefront/home-categories"
 import { FrequentlyBoughtSection } from "@/components/storefront/frequently-bought"
 import { RecommendedProductsSection } from "@/components/storefront/home-recommended"
 import {
-  FrequentlyBoughtSkeleton,
   PromotionalCollectionsSkeleton,
   RecommendedProductsSkeleton,
   TopCategoriesSkeleton,
@@ -35,8 +34,8 @@ export default async function SelectPage() {
         <TopCategoriesSection />
       </Suspense>
 
-      <Suspense fallback={<FrequentlyBoughtSkeleton />}>
-        <FrequentlyBoughtSection storeId={selectStoreId} />
+      <Suspense fallback={null}>
+        <FrequentlyBoughtSection />
       </Suspense>
 
       <Suspense fallback={<RecommendedProductsSkeleton />}>

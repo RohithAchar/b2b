@@ -29,8 +29,11 @@ export function CartGroups({
   meetsMinimum,
   shortfall,
   unavailableCount,
+  buyerName,
 }: {
   groups: CartSupplierGroup[]
+  /** Shown as each group's heading (profile name, else from the email). */
+  buyerName: string
   /** Persisted coupon codes by supplier, hydrated into each box on load. */
   savedCoupons: Record<string, string>
   subtotal: number
@@ -80,21 +83,14 @@ export function CartGroups({
         {groups.map((group) => (
           <section
             key={group.supplierId}
-            aria-label={`Items from ${group.supplierName}`}
+            aria-label={`${buyerName}'s cart items`}
           >
             <div className="flex items-baseline justify-between gap-2">
-              {group.supplierId === "unknown" ? (
-                <span className="truncate text-sm font-bold tracking-tight">
-                  {group.supplierName}
-                </span>
-              ) : (
-                <Link
-                  href={`/store/${group.supplierId}`}
-                  className="truncate text-sm font-bold tracking-tight hover:text-primary hover:underline"
-                >
-                  {group.supplierName}
-                </Link>
-              )}
+              {/* The buyer's own name heads the cart; the supplier's store
+                  name is not shown to buyers. */}
+              <span className="truncate text-sm font-bold tracking-tight">
+                {buyerName}
+              </span>
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                 {group.lines.length} item{group.lines.length > 1 ? "s" : ""} ·{" "}
                 {formatRupees(group.subtotal)}

@@ -82,6 +82,8 @@ type OrderRow = {
   payment_status: string;
   subtotal: number;
   discount: number;
+  /** GST saved at checkout (0 on orders placed before GST was stored). */
+  gst_amount: number;
   item_count: number;
   delivery: DeliverySnapshot | null;
   buyer_note: string | null;
@@ -165,7 +167,7 @@ export default async function SupplierOrderDetailPage({
     supabase
       .from("orders")
       .select(
-        "id, reference, status, payment_status, subtotal, discount, item_count, delivery, buyer_note, supplier_note, rejection_reason, rejected_at, carrier, tracking_ref, shipment_notes, shipped_at, delivered_at, cancelled_at, payment_confirmed_by, payment_confirmed_at, payment_claim_reference, payment_claimed_at, created_at",
+        "id, reference, status, payment_status, subtotal, discount, gst_amount, item_count, delivery, buyer_note, supplier_note, rejection_reason, rejected_at, carrier, tracking_ref, shipment_notes, shipped_at, delivered_at, cancelled_at, payment_confirmed_by, payment_confirmed_at, payment_claim_reference, payment_claimed_at, created_at",
       )
       .eq("id", orderId)
       .eq("supplier_id", ctx.companyId)
@@ -215,7 +217,7 @@ export default async function SupplierOrderDetailPage({
   const quoteRows = (quotations ?? []) as unknown as QuotationRow[];
   const acceptedQuote = latestAcceptedQuotation(quoteRows);
   const itemsTotal = grossItemsTotal(orderRow.subtotal, orderRow.discount);
-  const amountDue = orderAmount(orderRow.subtotal, quoteRows);
+  const amountDue = orderAmount(orderRow.subtotal, quoteRows, orderRow.gst_amount);
   const orderItems = orderItemsForImages;
   const quoteItemRows = (quotationItems ?? []) as unknown as {
     id: string;
@@ -323,6 +325,14 @@ export default async function SupplierOrderDetailPage({
                   <span className="text-muted-foreground">Coupon discount</span>
                   <span className="tabular-nums">
                     −{formatRupees(Number(orderRow.discount))}
+                  </span>
+                </div>
+              ) : null}
+              {!acceptedQuote && Number(orderRow.gst_amount) > 0 ? (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GST</span>
+                  <span className="tabular-nums">
+                    {formatRupees(Number(orderRow.gst_amount))}
                   </span>
                 </div>
               ) : null}
@@ -437,6 +447,14 @@ export default async function SupplierOrderDetailPage({
                   <span className="text-muted-foreground">Coupon discount</span>
                   <span className="tabular-nums">
                     −{formatRupees(Number(orderRow.discount))}
+                  </span>
+                </div>
+              ) : null}
+              {Number(orderRow.gst_amount) > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">GST</span>
+                  <span className="tabular-nums">
+                    {formatRupees(Number(orderRow.gst_amount))}
                   </span>
                 </div>
               ) : null}

@@ -17,18 +17,16 @@ type StoreTab = {
   href: string | null
 }
 
-/** The store brands inside Direct2Hub. Core and Select are live. */
+/** The store brands inside Direct2Hub. Only Core is live; the rest are "Soon". */
 const STORE_TABS: StoreTab[] = [
   { id: "core", name: "Core", fullName: "D2H Core", icon: { src: "/stores/store-core.webp", width: 118 }, href: "/" },
-  { id: "select", name: "Select", fullName: "D2H Select", icon: { src: "/stores/store-select.webp", width: 179 }, href: "/select" },
+  { id: "select", name: "Select", fullName: "D2H Select", icon: { src: "/stores/store-select.webp", width: 179 }, href: null },
   { id: "package", name: "Package", fullName: "Ecom Package", icon: { src: "/stores/store-package.webp", width: 122 }, href: null },
   { id: "dropship", name: "Dropship", fullName: "Dropship", icon: { src: "/stores/store-dropship.webp", width: 190 }, href: null },
 ]
 
 function isActiveTab(tab: StoreTab, pathname: string): boolean {
-  if (tab.id === "core") return pathname === "/"
-  if (tab.id === "select") return pathname === "/select" || pathname.startsWith("/select/")
-  return false
+  return tab.id === "core" && pathname === "/"
 }
 
 // Frosted card, brand icon over the name. Motion and the active gradient border

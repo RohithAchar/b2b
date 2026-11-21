@@ -81,6 +81,64 @@ export async function shrinkImageFile(file: File): Promise<File> {
 }
 
 /**
+ * Product photos are shown up to 720px wide (1440 real pixels on phones and
+ * high-density screens), and uploads are never enlarged. Below this on the
+ * longest side a photo looks soft, e.g. Amazon's `_SX679_` copies. Run
+ * scripts/ai-upscale-product-images.ts to fix ones already uploaded.
+ */
+export const LOW_RES_IMAGE_PX = 1000;
+
+export type LowResImage = { name: string; px: number };
+
+/** Longest side in pixels (EXIF-rotated), or null if the file can't be decoded. */
+export async function imageLongestSide(file: File): Promise<number | null> {
+  if (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp)$/i.test(file.name)) return null;
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await loadOrientedImage(url);
+    const px = Math.max(image.width, image.height);
+    if ("close" in image) image.close();
+    return px || null;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Photos among `files` whose longest side is under LOW_RES_IMAGE_PX, measured
+ * a few at a time so a large import folder doesn't decode everything at once.
+ * Never throws: an unreadable file is simply not reported.
+ */
+export async function findLowResImages(files: File[], concurrency = 4): Promise<LowResImage[]> {
+  const found: LowResImage[] = [];
+  for (let i = 0; i < files.length; i += concurrency) {
+    const batch = files.slice(i, i + concurrency);
+    const sizes = await Promise.all(batch.map(imageLongestSide));
+    sizes.forEach((px, j) => {
+      if (px !== null && px < LOW_RES_IMAGE_PX) found.push({ name: batch[j].name, px });
+    });
+  }
+  return found;
+}
+
+/** Warning text for low-resolution photos (advice only; the upload goes ahead). */
+export function lowResWarning(found: LowResImage[]): { title: string; description: string } | null {
+  if (found.length === 0) return null;
+  const smallest = [...found].sort((a, b) => a.px - b.px)[0];
+  const title =
+    found.length === 1
+      ? "This photo is small and will look blurry"
+      : `${found.length} photos are small and will look blurry`;
+  const example = found.length === 1 ? `"${smallest.name}" is ${smallest.px}px` : `Smallest: "${smallest.name}", ${smallest.px}px`;
+  return {
+    title,
+    description: `${example}. Photos under ${LOW_RES_IMAGE_PX}px look soft on the product page. Use the original photo, 1600px or larger, if you have it.`,
+  };
+}
+
+/**
  * For a plain `<input type="file" name=…>` submitted by a form: swap the
  * picked image for its shrunk copy in place, so the form posts the small one.
  * Returns the file now in the input (or null).

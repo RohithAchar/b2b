@@ -114,7 +114,12 @@ export function SearchMegaMenu({
               }
             }}
           >
-            <Logo className="size-8" />
+            {/* Same height as the search box (h-12), so the mark fills the row
+                without overflowing it. */}
+            <Logo className="size-12 shrink-0 rounded-md object-contain" />
+            {/* The dropdowns are positioned against this box, so they line up
+                with the search field instead of starting under the logo. */}
+            <div className="relative min-w-0 flex-1">
             <form
               action="/products"
               method="get"
@@ -122,7 +127,7 @@ export function SearchMegaMenu({
                 addRecentSearch(value)
                 setOpen(false)
               }}
-              className="flex h-12 flex-1 min-w-0 items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 lg:border-2 lg:border-primary lg:focus-within:ring-0"
+              className="flex h-12 w-full min-w-0 items-stretch rounded-md border border-border bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 lg:border-2 lg:border-primary lg:focus-within:ring-0"
             >
               <input type="hidden" name="page" value="1" />
               <div className="relative min-w-0 flex-1">
@@ -184,7 +189,7 @@ export function SearchMegaMenu({
             {showFallbackDropdown && (
               <div
                 id={listId}
-                className="absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-md border-2 border-t-0 border-primary bg-card shadow-md"
+                className="absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-md border border-t-0 border-border bg-card shadow-md lg:border-2 lg:border-t-0 lg:border-primary"
               >
                 <ul className="flex max-h-64 flex-col overflow-y-auto py-1">
                   {suggestions.map((s) => (
@@ -213,6 +218,7 @@ export function SearchMegaMenu({
                 </ul>
               </div>
             )}
+            </div>
           </div>
 
           {showRecentSearches && (

@@ -18,7 +18,7 @@ import {
   type SupplierOrderListItem,
 } from "./supplier-orders-table"
 import { StatusFilterChip } from "@/components/orders/status-filter-chip"
-import { latestAcceptedQuotation } from "@/lib/orders/quotation"
+import { orderAmount } from "@/lib/orders/quotation"
 import {
   Pagination,
   PaginationContent,
@@ -49,6 +49,7 @@ type OrderRow = {
   status: string
   payment_status: string
   subtotal: number
+  gst_amount: number
   item_count: number
   created_at: string
   updated_at: string
@@ -138,7 +139,7 @@ export default async function SupplierOrdersPage({
   let query = supabase
     .from("orders")
     .select(
-      "id, reference, status, payment_status, subtotal, item_count, created_at, updated_at, delivery, quotations(status, version, total)"
+      "id, reference, status, payment_status, subtotal, gst_amount, item_count, created_at, updated_at, delivery, quotations(status, version, total)"
     )
     .eq("supplier_id", companyId)
     .order("created_at", { ascending: false })
@@ -163,9 +164,8 @@ export default async function SupplierOrdersPage({
       reference: order.reference,
       status: order.status,
       paymentStatus: order.payment_status,
-      subtotal: Number(
-        latestAcceptedQuotation(order.quotations)?.total ?? order.subtotal
-      ),
+      // Amount owed: accepted quotation, else subtotal + GST saved at checkout.
+      subtotal: orderAmount(order.subtotal, order.quotations, order.gst_amount),
       itemCount: order.item_count,
       buyerName: order.delivery?.fullName ?? null,
       createdAt: order.created_at,

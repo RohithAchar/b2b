@@ -22,6 +22,13 @@ describe("order amount helpers", () => {
     expect(orderAmount(2970, quotes)).toBe(3300);
   });
 
+  it("adds the saved GST to the subtotal until a quotation is accepted", () => {
+    expect(orderAmount(2970, null, 534.6)).toBe(3504.6);
+    expect(orderAmount("2970.00", [], "534.60")).toBe(3504.6);
+    // The accepted quotation carries its own tax, so GST is not added again.
+    expect(orderAmount(2970, { status: "accepted", version: 1, total: 3500 }, 534.6)).toBe(3500);
+  });
+
   it("accepts Supabase to-one relations serialized as a single object", () => {
     expect(
       orderAmount(2970, { status: "accepted", version: 1, total: 3200 }),

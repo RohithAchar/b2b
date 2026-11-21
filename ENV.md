@@ -97,6 +97,17 @@ secret, server-only variables and a webhook secret.
 
 Rotate: issue a new key in the OpenWA dashboard, update Vercel, redeploy, and revoke the old key.
 
+| Name | Secret? | Used in | Required | If missing |
+|---|---|---|---|---|
+| `ORDER_ALERT_WHATSAPP` | not secret, but server-only (a team phone number) | `lib/notifications/team-order-alert.ts`: WhatsApp to the D2B team for every new order (reference, store, total incl. GST, buyer name and phone; never the address) | to get order alerts; also needs the `OPENWA_*` settings above | no team alert is sent; orders still work |
+| `NEXT_PUBLIC_SUPPORT_WHATSAPP` (see "Site and support") | public | also the "Chat with us on WhatsApp" button in the order-placed popup | for that button | the popup shows only "OK" |
+
+### Local tools
+
+| Name | Secret? | Used in | Required | If missing |
+|---|---|---|---|---|
+| `REALESRGAN_PATH` | no (a file path on your PC) | `scripts/ai-upscale-product-images.ts` (`pnpm images:ai-upscale --apply`) | only to AI-upscale photos; never on Vercel | the script stops with instructions. A dry run without `--apply` works without it |
+
 ### Set by the platform
 
 | Name | Notes |

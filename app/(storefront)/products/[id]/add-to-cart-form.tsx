@@ -49,7 +49,7 @@ export function AddToCartForm({
   const selected = variants.find((v) => v.id === variantId);
   const effectiveMoq = Math.max(1, selected?.moq ?? moq);
   const formId = `add-to-cart-form-${productId}`;
-  const loginHref = `/auth/login?next=/products/${productId}`;
+  const loginHref = `/auth/login?next=/products/${productId}&reason=purchase`;
 
   function setBoth(next: number) {
     setQuantity(next);

@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatRupees } from "@/lib/format";
 import { ORDER_STATUS_LABELS, parseOrderStatus } from "@/lib/orders/lifecycle";
+import { orderAmount } from "@/lib/orders/quotation";
+import { whatsappContactLink } from "@/lib/orders/whatsapp-link";
+import { SUPPORT_WHATSAPP } from "@/lib/site";
+import { OrderPlacedDialog } from "./order-placed-dialog";
 
 export const metadata: Metadata = {
   title: "Order placed",
@@ -38,9 +42,17 @@ export default async function CheckoutSuccessPage({
     .slice(0, 10);
 
   const results = await getCheckoutOrders(supabase, user.id, orderIds);
+  const references = results.map(({ order }) => order.reference);
+  const whatsappHref = whatsappContactLink(
+    SUPPORT_WHATSAPP,
+    `Hello D2B team, I placed order ${references.join(", ")}.`,
+  );
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8">
+      {results.length > 0 ? (
+        <OrderPlacedDialog references={references} whatsappHref={whatsappHref} />
+      ) : null}
       <h1 className="text-xl font-bold tracking-tight md:text-2xl">
         Order{results.length === 1 ? "" : "s"} placed
       </h1>
@@ -63,7 +75,10 @@ export default async function CheckoutSuccessPage({
                 </Badge>
               </div>
               <span className="text-sm font-semibold tabular-nums">
-                {formatRupees(Number(order.subtotal))}
+                {formatRupees(orderAmount(order.subtotal, null, order.gst_amount))}
+                {Number(order.gst_amount) > 0 ? (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">incl. GST</span>
+                ) : null}
               </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{supplierName}</p>

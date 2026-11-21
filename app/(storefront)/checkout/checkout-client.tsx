@@ -27,9 +27,12 @@ const initialState: CheckoutActionState = { ok: false, message: "", orderIds: []
 export function CheckoutClient({
   preview,
   addresses,
+  buyerName,
 }: {
   preview: CheckoutPreview;
   addresses: BuyerAddress[];
+  /** Heads each group in place of the supplier's store name. */
+  buyerName: string;
 }) {
   const router = useRouter();
   // One request id per checkout attempt: retries after a timeout or double
@@ -53,7 +56,7 @@ export function CheckoutClient({
         {preview.groups.map((group) => (
           <Card key={group.supplierId} className="rounded-lg p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold">{group.supplierName}</p>
+              <p className="text-sm font-semibold">{buyerName}</p>
               <Badge variant="secondary">{group.lines.length} item{group.lines.length === 1 ? "" : "s"}</Badge>
             </div>
             <ul className="mt-3 flex flex-col gap-2">
@@ -93,8 +96,12 @@ export function CheckoutClient({
                 <p className="text-xs text-warning">{group.couponError}</p>
               ) : null}
               <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">GST</span>
+                <span className="tabular-nums">{formatRupees(group.gst)}</span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="font-semibold">Store total</span>
-                <span className="font-bold tabular-nums">{formatRupees(group.total)}</span>
+                <span className="font-bold tabular-nums">{formatRupees(group.grandTotal)}</span>
               </div>
             </div>
           </Card>
@@ -173,8 +180,12 @@ export function CheckoutClient({
             </div>
           ) : null}
           <div className="mt-1.5 flex items-center justify-between text-sm">
-            <span className="font-semibold">Estimated total</span>
-            <span className="font-bold tabular-nums">{formatRupees(preview.total)}</span>
+            <span className="text-muted-foreground">GST</span>
+            <span className="tabular-nums">{formatRupees(preview.gst)}</span>
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-sm">
+            <span className="font-semibold">Total amount</span>
+            <span className="text-base font-bold tabular-nums">{formatRupees(preview.grandTotal)}</span>
           </div>
 
           <form action={action} className="mt-4 flex flex-col gap-3">
@@ -215,7 +226,7 @@ export function CheckoutClient({
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             {preview.meetsMinimum
-              ? "Amounts shown are estimates; suppliers confirm final charges (and any delivery or tax) with a quotation."
+              ? "GST is added at each product's rate. Suppliers confirm final charges (and any delivery) with a quotation."
               : `Add ${formatRupees(preview.shortfall)} more to reach the ${formatRupees(2500)} minimum.`}
           </p>
           {preview.unavailableCount > 0 ? (

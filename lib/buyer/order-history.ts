@@ -11,7 +11,7 @@ export type BuyerOrderSummary = {
   id: string;
   reference: string;
   status: OrderStatus;
-  /** Agreed total: accepted quotation total when one exists, else subtotal. */
+  /** Agreed total: accepted quotation total when one exists, else subtotal + GST. */
   total: number;
   hasAcceptedQuote: boolean;
   itemCount: number;
@@ -27,6 +27,7 @@ type OrderRow = {
   reference: string;
   status: string;
   subtotal: number;
+  gst_amount: number;
   item_count: number;
   delivery: { fullName?: string } | null;
   created_at: string;
@@ -43,7 +44,7 @@ export async function getBuyerOrders(
   const { data: orderRows, error } = await supabase
     .from("orders")
     .select(
-      "id, reference, status, subtotal, item_count, delivery, created_at",
+      "id, reference, status, subtotal, gst_amount, item_count, delivery, created_at",
     )
     .eq("buyer_id", buyerId)
     .order("created_at", { ascending: false })
@@ -87,7 +88,8 @@ export async function getBuyerOrders(
       id: order.id,
       reference: order.reference,
       status: parseOrderStatus(order.status) ?? "new",
-      total: acceptedTotal ?? Number(order.subtotal),
+      // Accepted quotation, else subtotal + GST saved at checkout.
+      total: acceptedTotal ?? Math.round((Number(order.subtotal) + Number(order.gst_amount ?? 0)) * 100) / 100,
       hasAcceptedQuote: acceptedTotal !== undefined,
       itemCount: order.item_count,
       supplierName: supplierNames.get(order.id) ?? null,

@@ -10,9 +10,9 @@ import { isDashboardReady } from "@/lib/store-context-types";
 type StoreOption = { id: string; name: string; slug: string };
 
 /**
- * Store switcher for the supplier dashboard. D2H Core and D2H Select share
- * the same dashboard: switching keeps you on the current page and scopes it
- * to the chosen store.
+ * Store switcher for the supplier dashboard. Open stores (DASHBOARD_READY_STORES,
+ * currently D2H Core) switch in place; the others are labelled "(soon)" and
+ * open the coming-soon page.
  */
 export function DashboardStoreSelector({
   stores,

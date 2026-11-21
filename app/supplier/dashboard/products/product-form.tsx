@@ -50,7 +50,7 @@ import {
   type VariantAttribute,
 } from "./variant-builder"
 import { ProductSeoSection } from "./product-seo-section"
-import { shrinkImageFile } from "@/lib/shrink-image"
+import { findLowResImages, lowResWarning, shrinkImageFile } from "@/lib/shrink-image"
 import { ProductReadiness } from "./product-readiness"
 import {
   ProductFormActions,
@@ -463,8 +463,15 @@ export function ProductForm({
     setNewFiles(files)
   }
 
+  /** Advise (never block) when a photo is too small to look sharp. */
+  async function warnIfLowRes(files: File[]) {
+    const warning = lowResWarning(await findLowResImages(files))
+    if (warning) toast.add({ type: "warning", ...warning })
+  }
+
   async function addFiles(picked: File[]) {
     if (picked.length === 0) return
+    void warnIfLowRes(picked)
     // Shrink before staging: Vercel rejects a save request over 4.5 MB (413).
     const files = await Promise.all(picked.map(shrinkImageFile))
     const current = newFilesRef.current
@@ -497,6 +504,7 @@ export function ProductForm({
   }
 
   async function replaceStaged(index: number, cropped: File) {
+    void warnIfLowRes([cropped])
     const file = await shrinkImageFile(cropped)
     commitStagedFiles(newFilesRef.current.map((f, i) => (i === index ? file : f)))
   }
@@ -508,6 +516,7 @@ export function ProductForm({
   }
 
   async function replaceExisting(path: string, cropped: File) {
+    void warnIfLowRes([cropped])
     const file = await shrinkImageFile(cropped)
     const nextFiles = [...newFilesRef.current, file].slice(0, MAX_PRODUCT_IMAGES)
     // The cropped copy takes the original's place in the order.
@@ -525,6 +534,7 @@ export function ProductForm({
   async function onSeoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0] ?? null
     e.target.value = ""
+    if (picked) void warnIfLowRes([picked])
     const file = picked ? await shrinkImageFile(picked) : null
     syncSeoInput(file)
     if (seoObjectUrlRef.current) URL.revokeObjectURL(seoObjectUrlRef.current)

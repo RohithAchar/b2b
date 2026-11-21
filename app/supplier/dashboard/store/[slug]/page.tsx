@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAccountStoreIds } from "@/lib/supplier/account-stores";
+import { isDashboardReady } from "@/lib/store-context-types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,8 +14,6 @@ import {
 } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 
-// D2H Core and D2H Select use the main dashboard (store switcher).
-const COMING_SOON_STORES = ["ecom-package", "dropshopping"];
 
 export default async function ComingSoonStorePage({
   params,
@@ -40,9 +39,9 @@ export default async function ComingSoonStorePage({
     notFound();
   }
 
-  // D2H Core has its own dashboard; this route is only for the coming-soon
-  // stores. Anything else falls back to the main dashboard.
-  if (!COMING_SOON_STORES.includes(slug)) {
+  // Open stores (DASHBOARD_READY_STORES) use the main dashboard; this route is
+  // only for the coming-soon ones (D2H Select, Ecom Package, Dropship).
+  if (isDashboardReady(slug)) {
     redirect("/supplier/dashboard");
   }
 

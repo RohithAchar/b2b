@@ -27,6 +27,8 @@ export type CartLinePricing = {
   /** Owning supplier (filled by getCartSummary; absent in unit-test fixtures). */
   supplierId?: string;
   supplierName?: string;
+  /** Product GST rate in percent (e.g. 5, 18); null/absent = no GST. */
+  gstRate?: number | null;
 };
 
 export type PricedCartLine = CartLinePricing & {
@@ -71,6 +73,20 @@ export function priceForQuantity(
     if (slab.min_qty <= quantity && slab.price < best) best = slab.price;
   }
   return Number.isFinite(best) ? best : null;
+}
+
+/**
+ * GST in rupees for a set of lines, each at its product's own rate. Prices
+ * are GST-exclusive, so GST is added on top. `taxableRatio` scales it when a
+ * coupon lowers what is paid (GST is due on the discounted value), e.g.
+ * group total / group subtotal. Rounded to the paisa.
+ */
+export function gstForLines(
+  lines: { lineTotal: number; gstRate?: number | null }[],
+  taxableRatio = 1,
+): number {
+  const gst = lines.reduce((sum, line) => sum + (line.lineTotal * (line.gstRate ?? 0)) / 100, 0);
+  return roundCurrency(gst * taxableRatio);
 }
 
 /** Price every line and roll up the shared-minimum gate. */

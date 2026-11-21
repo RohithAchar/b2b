@@ -42,7 +42,8 @@ export function SearchSuggestionsDropdown({
           : cn(
               "absolute inset-x-0 top-full z-50",
               variant === "hero"
-                ? "rounded-b-md border-2 border-t-0 border-primary"
+                ? // Matches the hero search box: thin border on phones, 2px brand border from lg.
+                  "rounded-b-md border border-t-0 border-border lg:border-2 lg:border-t-0 lg:border-primary"
                 : "mt-1 rounded-md border border-border"
             )
       )}

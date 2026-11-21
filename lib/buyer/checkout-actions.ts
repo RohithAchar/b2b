@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { toDeliverySnapshot, type DeliverySnapshot } from "@/lib/orders/delivery";
 import { queueAndDeliver } from "@/lib/notifications/order-notifications";
+import { sendTeamOrderAlert } from "@/lib/notifications/team-order-alert";
+import { getCheckoutPreview } from "@/lib/buyer/checkout-queries";
 import { logStorefrontEvent } from "@/lib/storefront/events";
 
 // Checkout: converts the buyer's cart into one order per supplier by calling
@@ -126,6 +128,10 @@ export async function placeOrder(
     }
   }
 
+  // GST-inclusive totals per store, as the buyer saw them, for the team alert.
+  // Read before the RPC clears the ordered cart lines.
+  const preview = await getCheckoutPreview(supabase, user.id).catch(() => null);
+
   const { data, error } = await supabase.rpc("create_orders_from_cart", {
     p_delivery: delivery,
     p_buyer_note: parsed.data.buyerNote ?? null,
@@ -182,9 +188,29 @@ export async function placeOrder(
     // Analytics is best-effort and runs after the response is committed.
     const { data: orderRows } = await supabase
       .from("orders")
-      .select("id, supplier_id")
+      .select("id, reference, supplier_id")
       .in("id", orderIds);
-    const suppliers = (orderRows ?? []) as { id: string; supplier_id: string }[];
+    const suppliers = (orderRows ?? []) as { id: string; reference: string; supplier_id: string }[];
+
+    // WhatsApp the D2B team (ORDER_ALERT_WHATSAPP) so someone calls the buyer.
+    // Runs after the response; never delays or fails the checkout.
+    const groupBySupplier = new Map((preview?.groups ?? []).map((g) => [g.supplierId, g]));
+    const alertOrders = suppliers.map((order) => {
+      const group = groupBySupplier.get(order.supplier_id);
+      return {
+        reference: order.reference,
+        supplierName: group?.supplierName ?? "Supplier",
+        total: group?.grandTotal ?? 0,
+      };
+    });
+    after(() =>
+      sendTeamOrderAlert({
+        buyerName: delivery.fullName,
+        buyerPhone: delivery.phone,
+        orders: alertOrders,
+      }),
+    );
+
     if (suppliers.length > 0) {
       after(() =>
         Promise.all(

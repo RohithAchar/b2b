@@ -16,7 +16,6 @@ import { FrequentlyBoughtSection } from "@/components/storefront/frequently-boug
 import { RecommendedProductsSection } from "@/components/storefront/home-recommended"
 import {
   CatalogueSkeleton,
-  FrequentlyBoughtSkeleton,
   HomeHeroSkeleton,
   RecentRailSkeleton,
   RecommendedProductsSkeleton,
@@ -110,8 +109,10 @@ export default async function HomePage({
         <RecentlyViewedSection />
       </Suspense>
 
-      <Suspense fallback={<FrequentlyBoughtSkeleton />}>
-        <FrequentlyBoughtSection storeId={coreStoreId} />
+      {/* Buy again: personal and usually empty, so no placeholder (it would
+          only flash and collapse for guests and new accounts). */}
+      <Suspense fallback={null}>
+        <FrequentlyBoughtSection />
       </Suspense>
 
       <Suspense fallback={<RecommendedProductsSkeleton />}>

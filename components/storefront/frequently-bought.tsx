@@ -1,38 +1,34 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ShoppingCart01Icon } from "@hugeicons/core-free-icons"
-import { getCachedHomeProducts } from "@/lib/storefront-cache"
+import { createClient } from "@/lib/supabase/server"
+import { getSessionUser } from "@/lib/auth/session"
+import { getBuyAgainProductIds } from "@/lib/buyer/buy-again"
+import { getRecentlyViewedCards } from "@/lib/buyer/actions"
 import { SectionHeader } from "@/components/storefront/section-header"
 import { ProductCarousel } from "@/components/storefront/product-carousel"
-import type { ProductCardData } from "@/components/storefront/product-card"
 
 /**
- * Placeholder purchase-grouping section.
- *
- * There is no co-purchase aggregation yet, so this shows real newest listings
- * in the same product-card rail as the reference design. Replace the query
- * (not the card layout) when the real aggregation lands.
+ * "Buy again": products this buyer ordered before, newest first (like a
+ * grocery app's reorder rail). Guests and accounts with no orders see nothing,
+ * so the section never shows invented picks.
  */
-export async function FrequentlyBoughtSection({ storeId = null }: { storeId?: string | null }) {
-  const products = await getCachedHomeProducts(storeId)
-  if (products.length === 0) return null
+export async function FrequentlyBoughtSection() {
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
+  if (!user) return null
 
-  const cards: ProductCardData[] = products.slice(0, 10).map((product) => ({
-    id: product.id,
-    title: product.title,
-    unit: product.unit,
-    moq: product.moq,
-    negotiable: product.negotiable,
-    images: product.images,
-    pricing: product.pricing
-      ? { customer_price: product.pricing.customer_price }
-      : null,
-  }))
+  const productIds = await getBuyAgainProductIds(supabase, user.id)
+  if (productIds.length === 0) return null
+
+  // Same priced-card loader as Recently viewed: approved, visible products only.
+  const cards = await getRecentlyViewedCards(productIds)
+  if (cards.length === 0) return null
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-5">
       <SectionHeader
-        title="Frequently bought together"
-        subtitle="Preview — sample picks, not real purchase history yet"
+        title="Buy again"
+        subtitle="Products you ordered before"
         icon={
           <HugeiconsIcon
             icon={ShoppingCart01Icon}
@@ -40,8 +36,8 @@ export async function FrequentlyBoughtSection({ storeId = null }: { storeId?: st
             className="size-4"
           />
         }
-        actionLabel="View all"
-        actionHref="/products"
+        actionLabel="My orders"
+        actionHref="/orders"
       />
       <ProductCarousel
         products={cards}

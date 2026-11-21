@@ -300,6 +300,7 @@ type CartProductRow = {
   moq: number;
   stock_qty: number;
   supplier_id: string;
+  gst_rate: number | string | null;
   images: { path: string; sort: number }[] | null;
 };
 
@@ -332,7 +333,7 @@ export async function getCartSummary(
   const [{ data: products }, { data: variants }, priceMap] = await Promise.all([
     supabase
       .from("products")
-      .select("id, title, unit, moq, stock_qty, supplier_id, images:product_images(path, sort)")
+      .select("id, title, unit, moq, stock_qty, supplier_id, gst_rate, images:product_images(path, sort)")
       .in("id", productIds)
       .eq("status", "approved")
       .eq("is_hidden", false),
@@ -399,6 +400,7 @@ export async function getCartSummary(
       imagePath: images[0]?.path ?? null,
       supplierId: product.supplier_id,
       supplierName: supplierNames.get(product.supplier_id) ?? "Unknown store",
+      gstRate: product.gst_rate == null ? null : Number(product.gst_rate),
     });
   }
 

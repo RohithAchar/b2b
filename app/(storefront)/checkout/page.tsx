@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { getBuyerAddresses } from "@/lib/buyer/address-queries";
 import { getCheckoutPreview } from "@/lib/buyer/checkout-queries";
+import { displayName, getBuyerProfile } from "@/lib/buyer/account-queries";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
@@ -22,12 +23,13 @@ export default async function CheckoutPage() {
   const user = await getSessionUser(supabase);
 
   if (!user) {
-    redirect("/auth/login?next=/checkout");
+    redirect("/auth/login?next=/checkout&reason=purchase");
   }
 
-  const [preview, addresses] = await Promise.all([
+  const [preview, addresses, profile] = await Promise.all([
     getCheckoutPreview(supabase, user.id),
     getBuyerAddresses(supabase, user.id),
+    getBuyerProfile(supabase, user.id, user.email),
   ]);
 
   return (
@@ -58,7 +60,7 @@ export default async function CheckoutPage() {
         </Card>
       ) : (
         <div className="mt-4">
-          <CheckoutClient preview={preview} addresses={addresses} />
+          <CheckoutClient preview={preview} addresses={addresses} buyerName={displayName(profile)} />
         </div>
       )}
     </div>

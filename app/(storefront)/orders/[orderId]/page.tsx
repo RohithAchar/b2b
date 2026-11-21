@@ -137,6 +137,8 @@ type OrderRow = {
   payment_claimed_at: string | null;
   subtotal: number;
   discount: number;
+  /** GST saved at checkout (0 on orders placed before GST was stored). */
+  gst_amount: number;
   item_count: number;
   delivery: DeliverySnapshot | null;
   buyer_note: string | null;
@@ -226,7 +228,7 @@ export default async function BuyerOrderPage({
     supabase
       .from("orders")
       .select(
-        "id, reference, status, payment_status, payment_claim_reference, payment_claimed_at, subtotal, discount, item_count, delivery, buyer_note, rejection_reason, carrier, tracking_ref, shipment_notes, shipped_at, created_at",
+        "id, reference, status, payment_status, payment_claim_reference, payment_claimed_at, subtotal, discount, gst_amount, item_count, delivery, buyer_note, rejection_reason, carrier, tracking_ref, shipment_notes, shipped_at, created_at",
       )
       .eq("id", orderId)
       .eq("buyer_id", user.id)
@@ -308,7 +310,7 @@ export default async function BuyerOrderPage({
   );
 
   const paymentStatus = parsePaymentStatus(orderRow.payment_status) ?? "not_requested";
-  const paymentAmount = orderAmount(orderRow.subtotal, quoteRows);
+  const paymentAmount = orderAmount(orderRow.subtotal, quoteRows, orderRow.gst_amount);
   const paymentActionable =
     paymentStatus === "pending" ||
     acceptedQuote !== null ||
@@ -472,12 +474,22 @@ export default async function BuyerOrderPage({
                 </p>
               </>
             ) : (
-              <div className="flex items-center justify-between border-t border-border pt-2">
-                <span className="font-medium">Total</span>
-                <span className="font-bold tabular-nums">
-                  {formatRupees(Number(orderRow.subtotal))}
-                </span>
-              </div>
+              <>
+                {Number(orderRow.gst_amount) > 0 ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">GST</span>
+                    <span className="tabular-nums">
+                      {formatRupees(Number(orderRow.gst_amount))}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between border-t border-border pt-2">
+                  <span className="font-medium">Total</span>
+                  <span className="font-bold tabular-nums">
+                    {formatRupees(paymentAmount)}
+                  </span>
+                </div>
+              </>
             )}
           </div>
         </Card>

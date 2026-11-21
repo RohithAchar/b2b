@@ -394,6 +394,48 @@ describe.skipIf(!available)("checkout order creation (DB)", () => {
     await service.from("coupons").delete().eq("id", createdCoupon.id);
   });
 
+  it("saves GST on the order and each line's rate (migration 20261121000000)", async () => {
+    await clearCart();
+    await addToCart(buyerUserId, productA, 30); // 3300 at 18% = 594
+
+    const { data, error } = await buyerClient.rpc("create_orders_from_cart", {
+      p_delivery: DELIVERY,
+      p_idempotency_key: randomUUID(),
+    });
+    expect(error).toBeNull();
+    const orderId = (data as { orders: { order_id: string }[] }).orders[0].order_id;
+
+    const { data: order } = await service.from("orders").select("subtotal, gst_amount").eq("id", orderId).single();
+    expect(Number(order?.subtotal)).toBe(3300);
+    expect(Number(order?.gst_amount)).toBe(594);
+
+    const { data: items } = await service.from("order_items").select("gst_rate").eq("order_id", orderId);
+    expect(items?.map((i) => Number(i.gst_rate))).toEqual([18]);
+  });
+
+  it("charges GST on the discounted amount when a coupon applies", async () => {
+    await clearCart();
+    await addToCart(buyerUserId, productA, 30); // 3300, 10% off = 2970, GST 18% of 2970 = 534.6
+    const { data: coupon } = await service
+      .from("coupons")
+      .insert({ supplier_id: companyA, code: `GST${Date.now()}`, type: "percent", percent_value: 10, min_order_value: 0, is_active: true })
+      .select("id, code")
+      .single();
+    await service.from("cart_coupons").insert({ buyer_id: buyerUserId, supplier_id: companyA, code: coupon!.code });
+
+    const { data, error } = await buyerClient.rpc("create_orders_from_cart", {
+      p_delivery: DELIVERY,
+      p_idempotency_key: randomUUID(),
+    });
+    expect(error).toBeNull();
+    const orderId = (data as { orders: { order_id: string }[] }).orders[0].order_id;
+    const { data: order } = await service.from("orders").select("subtotal, gst_amount").eq("id", orderId).single();
+    expect(Number(order?.subtotal)).toBe(2970);
+    expect(Number(order?.gst_amount)).toBe(534.6);
+
+    await service.from("coupons").delete().eq("id", coupon!.id);
+  });
+
   it("cannot be called with forged financial arguments", async () => {
     await clearCart();
     await addToCart(buyerUserId, productA, 30);

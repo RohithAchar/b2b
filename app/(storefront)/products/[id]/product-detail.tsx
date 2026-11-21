@@ -144,7 +144,11 @@ export function ProductDetail({ product }: { product: Product }) {
   const descriptionHtml = sanitizeRichText(product.description ?? "")
   const hasDescription =
     descriptionHtml.replace(/<[^>]*>/g, " ").trim().length > 0
+  // HSN code, GST rate, carton qty and weight: shown under the price and again
+  // at the top of the Highlights tab. Only filled-in values appear.
+  const specRows = highlightRows(product).filter((row) => row.value !== "—")
   const hasHighlights =
+    specRows.length > 0 ||
     attributeEntries.length > 0 ||
     sortedVariants.length > 0 ||
     Boolean(product.packaging_details)
@@ -271,7 +275,7 @@ export function ProductDetail({ product }: { product: Product }) {
         </VariantSelectionProvider>
       </div>
 
-      {/* Description / highlights / return policy */}
+      {/* Description / highlights */}
       <div className="mt-8">
         <ProductDetailTabs
           description={
@@ -289,6 +293,19 @@ export function ProductDetail({ product }: { product: Product }) {
             <Card className="rounded-lg p-4 sm:p-6">
               {hasHighlights ? (
                 <div className="flex flex-col gap-6">
+                  {specRows.length > 0 && (
+                    <Table>
+                      <TableBody>
+                        {specRows.map((row) => (
+                          <TableRow key={row.label}>
+                            <TableHead className="w-40 font-medium">{row.label}</TableHead>
+                            <TableCell className="tabular-nums">{row.value}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+
                   {attributeEntries.length > 0 && (
                     <Table>
                       <TableBody>
@@ -350,20 +367,6 @@ export function ProductDetail({ product }: { product: Product }) {
               ) : (
                 <p className="text-sm text-muted-foreground">
                   No additional highlights have been provided for this product.
-                </p>
-              )}
-            </Card>
-          }
-          returnPolicy={
-            <Card className="rounded-lg p-4 sm:p-6">
-              {product.warranty_return ? (
-                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                  {product.warranty_return}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  This supplier has not provided return policy details for this
-                  product.
                 </p>
               )}
             </Card>

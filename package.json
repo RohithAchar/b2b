@@ -12,6 +12,7 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "migration:list": "supabase migration list",
+    "images:ai-upscale": "node --env-file=.env scripts/ai-upscale-product-images.ts",
     "embeddings:backfill": "node scripts/backfill-product-image-embeddings.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
